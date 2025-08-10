@@ -35,7 +35,7 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
     const adminEmailHtml = `
     <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-        <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/Logo.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+        <img src="https://app.cosmicaweb.com/Logo.png" alt="Logo Cósmica" style="height: 30px; width: auto;">
       </div>
       <div style="padding: 20px 30px;">
         <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">Nueva Solicitud de Cambio Recibida</h1>

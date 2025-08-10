@@ -39,54 +39,50 @@ const AuthPage = ({ auth, updateProfile }) => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen p-4 bg-white">
-      <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 bg-white shadow-2xl rounded-2xl overflow-hidden">
-        <div className="p-10 sm:p-14 md:p-20 flex flex-col justify-center">
-            <img src="/Logo.png" alt="Logo Cósmica" className="h-8 w-auto mb-10 self-start" onError={(e) => { e.target.style.display = 'none'; }} />
-            <div className="mb-8">
-                <h2 className="font-title text-3xl font-bold text-gray-900">{isLogin ? 'Bienvenido de Nuevo' : 'Empecemos a crear'}</h2>
-                <p className="text-sm text-gray-500 mt-2">{isLogin ? 'Accede a tu plataforma de cliente.' : 'Empecemos por crear tu cuenta en Cósmica.'}</p>
-            </div>
-            <hr className="border-gray-200 mb-8" />
-            {error && <p className="bg-red-100 text-red-700 p-3 rounded-md mb-4 text-sm">{error}</p>}
-            {message && <p className="bg-green-100 text-green-700 p-3 rounded-md mb-4 text-sm">{message}</p>}
-            <form onSubmit={handleAuthAction} className="space-y-5">
-                {!isLogin && (
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nombre</label>
-                        <input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]" />
-                    </div>
-                )}
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                    <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]" />
-                </div>
-                <div>
-                    <div className="flex justify-between items-center">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña</label>
-                        {isLogin && <a href="#" onClick={(e) => {e.preventDefault(); alert('Función de recuperación no implementada aún.')}} className="text-sm text-[#3e6cff] hover:underline">¿Olvidaste?</a>}
-                    </div>
-                    <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]" />
-                </div>
-                <div className="pt-4">
-                    <button type="submit" disabled={loading} style={{ backgroundColor: '#3e6cff' }} className="w-full text-white font-bold rounded-lg py-3.5 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50">
-                        {loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}
-                    </button>
-                </div>
-            </form>
-            <p className="text-center text-sm text-gray-500 mt-10">
-                {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}
-                <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(''); }} className="font-bold text-[#3e6cff] hover:underline ml-1">{isLogin ? 'Regístrate' : 'Log in'}</button>
+    <div className="flex justify-center items-center min-h-screen p-4 bg-[#fafafa]">
+      <div className="w-full max-w-lg mx-auto bg-white border border-[#e4e4e7] rounded-2xl p-8 md:p-12 shadow-sm">
+        <img 
+            src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" 
+            alt="Logo Cósmica" 
+            className="h-7 w-auto mb-8"
+        />
+        <div>
+            <h2 className="font-heading text-3xl font-bold text-[#1d1d1f]">
+                {isLogin ? 'Bienvenido de Nuevo' : 'Crea tu Cuenta'}
+            </h2>
+            <p className="text-[#71717a] mt-2">
+                {isLogin ? 'Accede a tu plataforma de cliente.' : 'Únete para gestionar tu universo digital.'}
             </p>
         </div>
-        <div className="hidden lg:flex relative items-center justify-center p-12 bg-gray-900 overflow-hidden">
-            <div className="animated-gradient-bg"></div>
-            <div className="relative z-10 text-center max-w-sm">
-                 <h1 className="font-title text-4xl font-extrabold text-white leading-tight tracking-tight">
-                    Bienvenido al mundo digital simplificado para ti.
-                 </h1>
+        
+        {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg mt-6 text-sm">{error}</p>}
+        {message && <p className="bg-green-100 text-green-700 p-3 rounded-lg mt-6 text-sm">{message}</p>}
+
+        <form onSubmit={handleAuthAction} className="mt-8 space-y-5">
+            {!isLogin && (
+                <div>
+                    <label htmlFor="name" className="block text-sm font-bold text-[#71717a] mb-2">Nombre</label>
+                    <input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
+                </div>
+            )}
+            <div>
+                <label htmlFor="email" className="block text-sm font-bold text-[#71717a] mb-2">Email</label>
+                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
             </div>
-        </div>
+            <div>
+                <label htmlFor="password" className="block text-sm font-bold text-[#71717a] mb-2">Contraseña</label>
+                <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
+            </div>
+            <div className="pt-2">
+                <button type="submit" disabled={loading} style={{ backgroundColor: '#3B82F6' }} className="w-full text-white font-bold rounded-xl py-3 hover:bg-[#2563EB] active:scale-[0.98] transition-all">
+                    {loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}
+                </button>
+            </div>
+        </form>
+        <p className="text-center text-sm text-[#71717a] mt-6">
+            {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}
+            <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(''); }} className="font-bold text-[#3B82F6] hover:underline ml-1">{isLogin ? 'Regístrate' : 'Inicia Sesión'}</button>
+        </p>
       </div>
     </div>
   );
@@ -107,32 +103,19 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, ge
             const functions = getFunctions();
             const exchangeCode = httpsCallable(functions, 'exchangeCodeForTokens');
             exchangeCode({ code: code })
-                .then((result) => {
-                    setGmbStatus('connected');
-                    window.history.replaceState({}, document.title, "/");
-                })
-                .catch((error) => {
-                    alert("Hubo un error al conectar con Google.");
-                    setGmbStatus('disconnected');
-                    window.history.replaceState({}, document.title, "/");
-                });
+                .then(() => { setGmbStatus('connected'); window.history.replaceState({}, document.title, "/"); })
+                .catch(() => { alert("Hubo un error al conectar con Google."); setGmbStatus('disconnected'); window.history.replaceState({}, document.title, "/"); });
         }
     }, [getFunctions, httpsCallable, gmbStatus]);
 
     const handleFileChange = (e) => {
-        if (e.target.files[0]) {
-            setSelectedFile(e.target.files[0]);
-        }
+        if (e.target.files[0]) setSelectedFile(e.target.files[0]);
     };
 
     const handleRequestSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const form = e.target;
-        const title = form.elements['change-title'].value;
-        const type = form.elements['change-type'].value;
-        const description = form.elements['change-description'].value;
-
+        const { 'change-title': title, 'change-type': type, 'change-description': description } = e.target.elements;
         try {
             let fileUrl = null;
             if (selectedFile) {
@@ -140,14 +123,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, ge
                 await uploadBytes(fileRef, selectedFile);
                 fileUrl = await getDownloadURL(fileRef);
             }
-
-            await addDoc(collection(db, "requests"), {
-                title, type, description, userId: user.uid, userEmail: user.email, userName: user.displayName, createdAt: serverTimestamp(), status: 'pending',
-                fileUrl: fileUrl
-            });
-
+            await addDoc(collection(db, "requests"), { title: title.value, type: type.value, description: description.value, userId: user.uid, userEmail: user.email, userName: user.displayName, createdAt: serverTimestamp(), status: 'pending', fileUrl });
             setChangeRequestSent(true);
-            form.reset();
+            e.target.reset();
             setSelectedFile(null);
             setTimeout(() => setChangeRequestSent(false), 5000);
         } catch (error) {
@@ -167,85 +145,48 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, ge
         window.location.href = url;
     };
 
-    const handleLogout = async () => {
-        await auth.signOut();
-    };
-
-    const TabButton = ({ id, label }) => ( <button onClick={() => setActiveTab(id)} className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${activeTab === id ? 'bg-[#3e6cff] text-white' : 'text-gray-500 hover:bg-gray-200'}`}>{label}</button> );
+    const TabButton = ({ id, label }) => ( <button onClick={() => setActiveTab(id)} className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === id ? 'bg-[#3B82F6] text-white' : 'text-[#71717a] hover:bg-gray-100'}`}>{label}</button> );
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="bg-white shadow-sm">
+        <div className="min-h-screen bg-[#fafafa]">
+            <header className="bg-white/80 backdrop-blur-lg border-b border-[#e4e4e7] sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-                    <img src="/Logo.png" alt="Logo Cósmica" className="h-7 w-auto" onError={(e) => { e.target.style.display = 'none'; }} />
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
                     <div>
-                        <span className="text-sm text-gray-600 mr-4">Hola, {user.displayName || user.email}</span>
-                        <button onClick={handleLogout} className="text-sm font-bold text-gray-600 hover:text-[#3e6cff]">Cerrar Sesión</button>
+                        <span className="text-sm text-[#71717a] mr-4 hidden sm:inline">Hola, {user.displayName || user.email}</span>
+                        <button onClick={() => auth.signOut()} className="text-sm font-bold text-[#71717a] hover:text-[#1d1d1f]">Cerrar Sesión</button>
                     </div>
                 </div>
             </header>
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
                 <div className="max-w-3xl mx-auto">
-                    <div className="bg-white border border-gray-200 rounded-lg p-6">
-                        <div className="border-b border-gray-200 mb-6"><nav className="flex space-x-2"><TabButton id="requestChange" label="Solicitar un Cambio" /><TabButton id="connectGmb" label="Conectar GMB" /></nav></div>
+                    <div className="bg-white border border-[#e4e4e7] rounded-2xl p-6 md:p-8">
+                        <div className="border-b border-[#e4e4e7] mb-6"><nav className="flex space-x-2"><TabButton id="requestChange" label="Solicitar un Cambio" /><TabButton id="connectGmb" label="Conectar GMB" /></nav></div>
                         {activeTab === 'requestChange' && (
                             <div>
-                                <h2 className="text-xl font-bold font-title text-gray-800 mb-1">Nueva Solicitud de Cambio</h2>
-                                <p className="text-sm text-gray-500 mb-6">Describe el cambio que necesitas para tu página web. Nuestro equipo lo revisará a la brevedad.</p>
+                                <h2 className="text-xl font-heading font-bold text-[#1d1d1f] mb-1">Nueva Solicitud de Cambio</h2>
+                                <p className="text-sm text-[#71717a] mb-6">Describe el cambio que necesitas para tu página web.</p>
                                 {changeRequestSent ? (
-                                    <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md"><p className="font-bold">¡Solicitud Enviada!</p><p>Hemos recibido tu solicitud de cambio. Muy pronto verás los cambios reflejados en tu web, de ser necesario te contactaremos.</p></div>
+                                    <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg"><p className="font-bold">¡Solicitud Enviada!</p><p>Hemos recibido tu solicitud. Te contactaremos pronto.</p></div>
                                 ) : (
                                     <form onSubmit={handleRequestSubmit} className="space-y-6">
-                                        <div><label htmlFor="change-title" className="block text-sm font-medium text-gray-700">Título del Cambio</label><input type="text" id="change-title" name="change-title" placeholder="Ej: Cambiar texto en la sección de 'Servicios'" required className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]" /></div>
-                                        <div><label htmlFor="change-type" className="block text-sm font-medium text-gray-700">Tipo de Cambio</label><select id="change-type" name="change-type" required className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
-                                        <div><label htmlFor="change-description" className="block text-sm font-medium text-gray-700">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" placeholder="Por favor, sé lo más específico posible..." required className="mt-1 w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3e6cff]"></textarea></div>
+                                        <div><label htmlFor="change-title" className="block text-sm font-bold text-[#71717a] mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" /></div>
+                                        <div><label htmlFor="change-type" className="block text-sm font-bold text-[#71717a] mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
+                                        <div><label htmlFor="change-description" className="block text-sm font-bold text-[#71717a] mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required className="w-full bg-white border border-[#e4e4e7] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"></textarea></div>
                                         <div>
-                                            <label htmlFor="change-file" className="block text-sm font-medium text-gray-700">Adjuntar Archivo (Opcional)</label>
-                                            <div className="mt-1 flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                                <div className="space-y-1 text-center">
-                                                    <PaperclipIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                                    <div className="flex text-sm text-gray-600">
-                                                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-[#3e6cff] hover:text-[#3e6cff] focus-within:outline-none">
-                                                            <span>{selectedFile ? 'Cambiar archivo' : 'Sube un archivo'}</span>
-                                                            <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
-                                                        </label>
-                                                        {!selectedFile && <p className="pl-1">o arrástralo aquí</p>}
-                                                    </div>
-                                                    <p className="text-xs text-gray-500">{selectedFile ? `Archivo seleccionado: ${selectedFile.name}` : 'PNG, JPG, GIF hasta 10MB'}</p>
-                                                </div>
-                                            </div>
+                                            <label className="block text-sm font-bold text-[#71717a] mb-2">Adjuntar Archivo (Opcional)</label>
+                                            <div className="mt-1 flex items-center justify-center px-6 pt-5 pb-6 border-2 border-[#e4e4e7] border-dashed rounded-xl"><div className="space-y-1 text-center"><PaperclipIcon className="mx-auto h-10 w-10 text-gray-400" /><div className="flex text-sm text-gray-600"><label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-bold text-[#3B82F6] hover:text-[#2563EB] focus-within:outline-none"><span>{selectedFile ? 'Cambiar archivo' : 'Sube un archivo'}</span><input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} /></label>{!selectedFile && <p className="pl-1">o arrástralo aquí</p>}</div><p className="text-xs text-gray-500">{selectedFile ? `Seleccionado: ${selectedFile.name}` : 'PNG, JPG, PDF hasta 10MB'}</p></div></div>
                                         </div>
-                                        <div className="text-right"><button type="submit" disabled={loading} className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-[#3e6cff] hover:opacity-90 disabled:opacity-50">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div>
+                                        <div className="text-right pt-2"><button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-50">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div>
                                     </form>
                                 )}
                             </div>
                         )}
                         {activeTab === 'connectGmb' && (
                             <div className="py-8 text-center">
-                                {gmbStatus === 'disconnected' && (
-                                    <>
-                                        <h2 className="text-xl font-bold font-title text-gray-800 mb-2">Conecta tu Perfil de Negocio de Google</h2>
-                                        <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">Potencia tu presencia online mostrando tus reseñas de Google directamente en tu web.</p>
-                                        <div className="mt-8">
-                                            <button onClick={handleGoogleConnect} className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#3e6cff] hover:opacity-90">
-                                                <GoogleIcon className="w-5 h-5 mr-3" />
-                                                Conectar con Google
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                                {gmbStatus === 'connecting' && (
-                                    <div>
-                                        <h2 className="text-xl font-bold font-title text-gray-800">Conectando con Google...</h2>
-                                        <p className="mt-2 text-sm text-gray-500">Por favor, espera mientras verificamos tu autorización.</p>
-                                    </div>
-                                )}
-                                {gmbStatus === 'connected' && (
-                                     <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md">
-                                        <p className="font-bold">¡Conectado!</p>
-                                        <p>Tu cuenta de Google Business Profile ha sido conectada exitosamente.</p>
-                                    </div>
-                                )}
+                                {gmbStatus === 'disconnected' && ( <> <h2 className="text-xl font-heading font-bold text-[#1d1d1f] mb-2">Conecta tu Perfil de Negocio</h2><p className="mt-2 text-sm text-[#71717a] max-w-md mx-auto">Potencia tu presencia online mostrando tus reseñas de Google directamente en tu web.</p><div className="mt-8"><button onClick={handleGoogleConnect} className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-xl text-white bg-[#3B82F6] hover:bg-[#2563EB]"><GoogleIcon className="w-5 h-5 mr-3" />Conectar con Google</button></div></> )}
+                                {gmbStatus === 'connecting' && ( <div><h2 className="text-xl font-heading font-bold text-[#1d1d1f]">Conectando con Google...</h2><p className="mt-2 text-sm text-[#71717a]">Por favor, espera.</p></div> )}
+                                {gmbStatus === 'connected' && ( <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg"><p className="font-bold">¡Conectado!</p><p>Tu cuenta de Google Business Profile ha sido conectada exitosamente.</p></div> )}
                             </div>
                         )}
                     </div>
@@ -278,7 +219,6 @@ export default function App() {
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
         const { getFirestore, collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
-        // CORRECCIÓN: Se renombra 'ref' a 'storageRef' para evitar conflicto con React
         const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
 
         const app = initializeApp(firebaseConfig);
@@ -287,12 +227,9 @@ export default function App() {
         const storage = getStorage(app);
 
         setFirebaseServices({ 
-            auth: { ...auth, createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(auth, email, password), signInWithEmailAndPassword: (email, password) => signInWithEmailAndPassword(auth, email, password), signOut: () => signOut(auth), },
+            auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
             db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
-            storage, 
-            storageRef, // Se pasa la función renombrada
-            uploadBytes, 
-            getDownloadURL
+            storage, storageRef, uploadBytes, getDownloadURL
         });
 
         onAuthStateChanged(auth, (user) => {
@@ -316,9 +253,9 @@ export default function App() {
   return (
     <main>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&display=swap');
-        body { font-family: 'Archivo', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .font-title { font-family: 'Archivo', sans-serif; font-weight: 700; }
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@700&family=Inter:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-heading { font-family: 'IBM Plex Sans', sans-serif; }
         .animated-gradient-bg {
           width: 100%; height: 100%; position: absolute; top: 0; left: 0;
           background: linear-gradient(135deg, #0a1942 0%, #3e6cff 50%, #0a1942 100%);
