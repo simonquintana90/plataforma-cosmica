@@ -278,7 +278,8 @@ export default function App() {
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
         const { getFirestore, collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
-        const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
+        // CORRECCIÓN: Se renombra 'ref' a 'storageRef' para evitar conflicto con React
+        const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -289,7 +290,7 @@ export default function App() {
             auth: { ...auth, createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(auth, email, password), signInWithEmailAndPassword: (email, password) => signInWithEmailAndPassword(auth, email, password), signOut: () => signOut(auth), },
             db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
             storage, 
-            storageRef: ref,
+            storageRef, // Se pasa la función renombrada
             uploadBytes, 
             getDownloadURL
         });
