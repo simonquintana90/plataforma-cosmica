@@ -6,6 +6,7 @@ const GoogleIcon = ({ className }) => ( <svg className={className} role="img" vi
 
 // --- COMPONENTE DE AUTENTICACIÓN ---
 const AuthPage = ({ auth, updateProfile }) => {
+  // ... (El código de AuthPage se mantiene igual, no hay cambios aquí)
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -84,8 +85,9 @@ const AuthPage = ({ auth, updateProfile }) => {
   );
 };
 
-// --- DASHBOARD REDISEÑADO ---
+// --- DASHBOARD DE CLIENTE ---
 const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) => {
+    // ... (El código de DashboardPage se mantiene igual, no hay cambios aquí)
     const [changeRequestSent, setChangeRequestSent] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -180,7 +182,103 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) 
     );
 };
 
+// --- NUEVO: DASHBOARD DE ADMINISTRADOR ---
+const AdminDashboardPage = ({ user, auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc }) => {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const requestsData = [];
+            querySnapshot.forEach((doc) => {
+                requestsData.push({ id: doc.id, ...doc.data() });
+            });
+            setRequests(requestsData);
+            setLoading(false);
+        });
+
+        return () => unsubscribe(); // Limpia el listener cuando el componente se desmonta
+    }, [db, collection, query, orderBy, onSnapshot]);
+
+    const handleMarkAsComplete = async (requestId) => {
+        const requestRef = doc(db, "requests", requestId);
+        try {
+            await updateDoc(requestRef, {
+                status: "completed"
+            });
+            // El email se envía automáticamente gracias a la Cloud Function
+        } catch (error) {
+            console.error("Error al actualizar el estado:", error);
+            alert("Hubo un error al marcar la solicitud como completada.");
+        }
+    };
+
+    const StatusBadge = ({ status }) => {
+        const baseClasses = "text-xs font-bold px-2.5 py-1 rounded-full";
+        if (status === 'completed') {
+            return <span className={`${baseClasses} bg-green-100 text-green-800`}>Completado</span>;
+        }
+        return <span className={`${baseClasses} bg-amber-100 text-amber-800`}>Pendiente</span>;
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm font-bold text-slate-600 hidden sm:inline">Panel de Admin</span>
+                        <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </header>
+            
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="mb-10">
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Solicitudes de Clientes</h1>
+                    <p className="mt-2 text-slate-500">Aquí puedes gestionar todas las solicitudes de cambio pendientes.</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <ul className="divide-y divide-slate-200">
+                        {loading && <li className="p-6 text-center text-slate-500">Cargando solicitudes...</li>}
+                        {!loading && requests.length === 0 && <li className="p-6 text-center text-slate-500">No hay solicitudes por el momento.</li>}
+                        
+                        {requests.map((req) => (
+                            <li key={req.id} className="p-4 sm:p-6 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-blue-600">{req.userName || 'Usuario sin nombre'}</p>
+                                        <p className="text-lg font-bold text-slate-800 truncate">{req.title}</p>
+                                        <p className="text-sm text-slate-500 mt-1">{req.description}</p>
+                                    </div>
+                                    <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                                        <div className="text-right">
+                                            <StatusBadge status={req.status} />
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString('es-CO') : 'Fecha no disp.'}
+                                            </p>
+                                        </div>
+                                        {req.status === 'pending' && (
+                                            <button onClick={() => handleMarkAsComplete(req.id)} className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors">
+                                                Marcar como Completado
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </main>
+        </div>
+    );
+};
+
 // --- COMPONENTE PRINCIPAL Y CARGADOR DE FIREBASE ---
+const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1"; // ID de Administrador
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [firebaseServices, setFirebaseServices] = useState(null);
@@ -201,7 +299,8 @@ export default function App() {
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js');
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
-        const { getFirestore, collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
+        // AÑADIDO: Nuevas funciones de Firestore que necesitaremos
+        const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
         const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
 
@@ -210,10 +309,12 @@ export default function App() {
         const db = getFirestore(app);
         const storage = getStorage(app);
 
+        // AÑADIDO: Pasamos las nuevas funciones a los componentes
         setFirebaseServices({ 
             auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
             db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
-            storage, storageRef, uploadBytes, getDownloadURL
+            storage, storageRef, uploadBytes, getDownloadURL,
+            query, orderBy, onSnapshot, doc, updateDoc
         });
 
         onAuthStateChanged(auth, (user) => {
@@ -236,7 +337,15 @@ export default function App() {
 
   return (
     <main>
-      {!user ? <AuthPage {...firebaseServices} /> : <DashboardPage user={user} {...firebaseServices} />}
+      {
+        !user ? (
+          <AuthPage {...firebaseServices} />
+        ) : user.uid === ADMIN_UID ? (
+          <AdminDashboardPage user={user} {...firebaseServices} />
+        ) : (
+          <DashboardPage user={user} {...firebaseServices} />
+        )
+      }
     </main>
   );
 }
