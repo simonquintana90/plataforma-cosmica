@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 const PaperclipIcon = ({ className }) => ( <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> );
 const GoogleIcon = ({ className }) => ( <svg className={className} role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.62-3.85 1.62-4.64 0-8.54-3.82-8.54-8.42s3.9-8.42 8.54-8.42c2.48 0 4.3.94 5.6 2.16l2.7-2.7C19.02 3.88 16.17 2.4 12.48 2.4c-6.65 0-12 5.35-12 12s5.35 12 12 12c6.4 0 11.45-4.45 11.45-11.72 0-.78-.08-1.55-.2-2.32h-11.25z"/></svg> );
 
-// --- COMPONENTE DE AUTENTICACIÓN (Sin cambios) ---
+// --- COMPONENTE DE AUTENTICACIÓN ---
 const AuthPage = ({ auth, updateProfile }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
@@ -126,16 +126,12 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) 
             </header>
             
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                {/* Encabezado del Dashboard */}
                 <div className="mb-10">
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Hola, {user.displayName || user.email} 👋</h1>
                     <p className="mt-2 text-slate-500">Bienvenido a tu centro de control. Desde aquí puedes solicitar cualquier cambio para tu web.</p>
                 </div>
 
-                {/* Layout de 2 columnas */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    
-                    {/* Columna Izquierda: Formulario de Solicitud */}
                     <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
                         <div className="p-6 md:p-8">
                             {changeRequestSent ? (
@@ -161,21 +157,20 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) 
                         </div>
                     </div>
                     
-                    {/* Columna Derecha: Consejos */}
                     <div className="lg:col-span-1 bg-slate-100/80 border border-slate-200 rounded-2xl p-6">
                          <h3 className="font-heading font-bold text-slate-900">Consejos para una solicitud efectiva</h3>
                          <ul className="mt-4 space-y-4 text-sm text-slate-600">
                             <li className="flex items-start gap-3">
                                 <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>**Sé específico:** En lugar de "cambiar texto", prueba con "En la página de inicio, cambiar el título por...".</span>
+                                <span><strong className="font-bold text-slate-700">Sé específico:</strong> En lugar de "cambiar texto", prueba con "En la página de inicio, cambiar el título por...".</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h2m6-4v2m-6-2v2" /></svg>
-                                <span>**Una solicitud por cambio:** Para mayor agilidad, es mejor enviar los cambios grandes de forma individual.</span>
+                                <span><strong className="font-bold text-slate-700">Una solicitud por cambio:</strong> Para mayor agilidad, es mejor enviar los cambios grandes de forma individual.</span>
                             </li>
                              <li className="flex items-start gap-3">
                                 <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>**Tiempos de entrega:** La mayoría de cambios de contenido se completan en menos de 48 horas hábiles.</span>
+                                <span><strong className="font-bold text-slate-700">Tiempos de entrega:</strong> La mayoría de cambios de contenido se completan en menos de 48 horas hábiles.</span>
                             </li>
                          </ul>
                     </div>
@@ -184,7 +179,6 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) 
         </div>
     );
 };
-
 
 // --- COMPONENTE PRINCIPAL Y CARGADOR DE FIREBASE ---
 export default function App() {

@@ -3,23 +3,26 @@ const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const {Resend} = require("resend");
-const {defineString} = require('firebase-functions/params');
+// ELIMINADO: Ya no necesitamos defineString
+// const {defineString} = require('firebase-functions/params'); 
 const {onCall} = require("firebase-functions/v2/https");
 const axios = require("axios");
 
 initializeApp();
 
-const resendApiKey = defineString("RESEND_API_KEY");
-const googleClientId = defineString("GOOGLE_CLIENT_ID");
-const googleClientSecret = defineString("GOOGLE_CLIENT_SECRET");
+// ELIMINADO: Estas líneas causaban el conflicto y el prompt en la terminal.
+// const resendApiKey = defineString("RESEND_API_KEY");
+// const googleClientId = defineString("GOOGLE_CLIENT_ID");
+// const googleClientSecret = defineString("GOOGLE_CLIENT_SECRET");
 
 exports.sendEmailOnNewRequest = onDocumentCreated(
   {
     document: "requests/{requestId}",
-    secrets: ["RESEND_API_KEY"],
+    secrets: ["RESEND_API_KEY"], // Esto está perfecto
   },
   async (event) => {
-    const resend = new Resend(resendApiKey.value());
+    // CORREGIDO: Usamos process.env para acceder al secreto de forma segura
+    const resend = new Resend(process.env.RESEND_API_KEY); 
     const snapshot = event.data;
     if (!snapshot) {
       console.log("No data associated with the event");
@@ -27,7 +30,6 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
     }
     const newRequest = snapshot.data();
 
-    // **NUEVO:** Lógica para añadir el enlace del archivo al correo del admin
     const fileLinkHtml = newRequest.fileUrl
       ? `<tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Archivo Adjunto:</td><td style="padding: 12px 0;"><a href="${newRequest.fileUrl}" target="_blank" style="color: #3e6cff; text-decoration: none;">Ver Archivo Adjunto</a></td></tr>`
       : '';
@@ -61,7 +63,7 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
   const clientEmailHtml = `
     <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-        <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/Logo.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+        <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
       </div>
       <div style="padding: 20px 30px;">
         <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Hemos recibido tu solicitud!</h1>
