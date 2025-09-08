@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 const PaperclipIcon = ({ className }) => ( <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> );
 const GoogleIcon = ({ className }) => ( <svg className={className} role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.62-3.85 1.62-4.64 0-8.54-3.82-8.54-8.42s3.9-8.42 8.54-8.42c2.48 0 4.3.94 5.6 2.16l2.7-2.7C19.02 3.88 16.17 2.4 12.48 2.4c-6.65 0-12 5.35-12 12s5.35 12 12 12c6.4 0 11.45-4.45 11.45-11.72 0-.78-.08-1.55-.2-2.32h-11.25z"/></svg> );
 
-// --- COMPONENTE DE AUTENTICACIÓN REDISEÑADO ---
+// --- COMPONENTE DE AUTENTICACIÓN (Sin cambios) ---
 const AuthPage = ({ auth, updateProfile }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
@@ -19,7 +19,6 @@ const AuthPage = ({ auth, updateProfile }) => {
     setLoading(true);
     setError(null);
     setMessage('');
-
     try {
       if (isLogin) {
         await auth.signInWithEmailAndPassword(email, password);
@@ -53,10 +52,8 @@ const AuthPage = ({ auth, updateProfile }) => {
                     {isLogin ? 'Accede a tu plataforma de cliente.' : 'Únete para gestionar tu universo digital.'}
                 </p>
             </div>
-            
             {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg mt-6 text-sm">{error}</p>}
             {message && <p className="bg-green-100 text-green-700 p-3 rounded-lg mt-6 text-sm">{message}</p>}
-
             <form onSubmit={handleAuthAction} className="mt-8 space-y-5">
                 {!isLogin && (
                     <div>
@@ -88,45 +85,27 @@ const AuthPage = ({ auth, updateProfile }) => {
 };
 
 // --- DASHBOARD REDISEÑADO ---
-const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, getFunctions, httpsCallable, storage, storageRef, uploadBytes, getDownloadURL }) => {
-    const [activeTab, setActiveTab] = useState('requestChange');
+const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp }) => {
     const [changeRequestSent, setChangeRequestSent] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [gmbStatus, setGmbStatus] = useState('disconnected');
-    const [selectedFile, setSelectedFile] = useState(null);
-
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        if (code && gmbStatus !== 'connected') {
-            setGmbStatus('connecting');
-            const functions = getFunctions();
-            const exchangeCode = httpsCallable(functions, 'exchangeCodeForTokens');
-            exchangeCode({ code: code })
-                .then(() => { setGmbStatus('connected'); window.history.replaceState({}, document.title, "/"); })
-                .catch(() => { alert("Hubo un error al conectar con Google."); setGmbStatus('disconnected'); window.history.replaceState({}, document.title, "/"); });
-        }
-    }, [getFunctions, httpsCallable, gmbStatus]);
-
-    const handleFileChange = (e) => {
-        if (e.target.files[0]) setSelectedFile(e.target.files[0]);
-    };
 
     const handleRequestSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         const { 'change-title': title, 'change-type': type, 'change-description': description } = e.target.elements;
         try {
-            let fileUrl = null;
-            if (selectedFile) {
-                const fileRef = storageRef(storage, `requests/${user.uid}/${Date.now()}_${selectedFile.name}`);
-                await uploadBytes(fileRef, selectedFile);
-                fileUrl = await getDownloadURL(fileRef);
-            }
-            await addDoc(collection(db, "requests"), { title: title.value, type: type.value, description: description.value, userId: user.uid, userEmail: user.email, userName: user.displayName, createdAt: serverTimestamp(), status: 'pending', fileUrl });
+            await addDoc(collection(db, "requests"), { 
+                title: title.value, 
+                type: type.value, 
+                description: description.value, 
+                userId: user.uid, 
+                userEmail: user.email, 
+                userName: user.displayName, 
+                createdAt: serverTimestamp(), 
+                status: 'pending' 
+            });
             setChangeRequestSent(true);
             e.target.reset();
-            setSelectedFile(null);
             setTimeout(() => setChangeRequestSent(false), 5000);
         } catch (error) {
             alert('Error al enviar la solicitud: ' + error.message);
@@ -135,73 +114,70 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, ge
         }
     };
 
-    const handleGoogleConnect = () => {
-        const GOOGLE_CLIENT_ID = "76153163961-g9e0hu938vn2g84lj9ep2hv3vd4dsido.apps.googleusercontent.com";
-        const redirectUri = 'https://app.cosmicaweb.com';
-        const scope = 'https://www.googleapis.com/auth/business.manage';
-        const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-        const params = { 'client_id': GOOGLE_CLIENT_ID, 'redirect_uri': redirectUri, 'response_type': 'code', 'scope': scope, 'access_type': 'offline', 'prompt': 'consent' };
-        const url = `${oauth2Endpoint}?${new URLSearchParams(params).toString()}`;
-        window.location.href = url;
-    };
-
-    const TabButton = ({ id, label }) => ( 
-        <button 
-            onClick={() => setActiveTab(id)} 
-            className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-            {label}
-        </button> 
-    );
-
     return (
         <div className="min-h-screen bg-slate-50">
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-600 hidden sm:inline">Hola, {user.displayName || user.email}</span>
                         <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
                     </div>
                 </div>
             </header>
+            
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                <div className="max-w-3xl mx-auto">
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-                        <div className="p-4 border-b border-slate-200">
-                            <nav className="flex space-x-2">
-                                <TabButton id="requestChange" label="Solicitar un Cambio" />
-                                <TabButton id="connectGmb" label="Conectar GMB" />
-                            </nav>
-                        </div>
+                {/* Encabezado del Dashboard */}
+                <div className="mb-10">
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Hola, {user.displayName || user.email} 👋</h1>
+                    <p className="mt-2 text-slate-500">Bienvenido a tu centro de control. Desde aquí puedes solicitar cualquier cambio para tu web.</p>
+                </div>
+
+                {/* Layout de 2 columnas */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    
+                    {/* Columna Izquierda: Formulario de Solicitud */}
+                    <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
                         <div className="p-6 md:p-8">
-                            {activeTab === 'requestChange' && (
-                                <div>
+                            {changeRequestSent ? (
+                                <div className="flex flex-col items-center justify-center text-center h-96">
+                                    <div className="bg-green-100 p-4 rounded-full mb-4">
+                                        <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                    <h2 className="text-2xl font-heading font-bold text-slate-900">¡Solicitud Enviada!</h2>
+                                    <p className="mt-2 text-slate-500 max-w-sm">Hemos recibido tu solicitud y nos pondremos en marcha pronto. Te notificaremos cualquier novedad.</p>
+                                </div>
+                            ) : (
+                                <>
                                     <h2 className="text-xl font-heading font-bold text-slate-900 mb-1">Nueva Solicitud de Cambio</h2>
-                                    <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web.</p>
-                                    {changeRequestSent ? (
-                                        <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg"><p className="font-bold">¡Solicitud Enviada!</p><p>Hemos recibido tu solicitud. Te contactaremos pronto.</p></div>
-                                    ) : (
-                                        <form onSubmit={handleRequestSubmit} className="space-y-6">
-                                            <div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div>
-                                            <div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
-                                            <div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-2">Adjuntar Archivo (Opcional)</label>
-                                                <div className="mt-1 flex items-center justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg"><div className="space-y-1 text-center"><PaperclipIcon className="mx-auto h-10 w-10 text-slate-400" /><div className="flex text-sm text-slate-600"><label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-bold text-blue-600 hover:text-blue-700 focus-within:outline-none"><span>{selectedFile ? 'Cambiar archivo' : 'Sube un archivo'}</span><input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} /></label>{!selectedFile && <p className="pl-1">o arrástralo aquí</p>}</div><p className="text-xs text-slate-500">{selectedFile ? `Seleccionado: ${selectedFile.name}` : 'PNG, JPG, PDF hasta 10MB'}</p></div></div>
-                                            </div>
-                                            <div className="flex justify-end pt-2"><button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div>
-                                        </form>
-                                    )}
-                                </div>
-                            )}
-                            {activeTab === 'connectGmb' && (
-                                <div className="py-8 text-center">
-                                    {gmbStatus === 'disconnected' && ( <> <h2 className="text-xl font-heading font-bold text-slate-900 mb-2">Conecta tu Perfil de Negocio</h2><p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">Potencia tu presencia online mostrando tus reseñas de Google directamente en tu web.</p><div className="mt-8"><button onClick={handleGoogleConnect} className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"><GoogleIcon className="w-5 h-5 mr-3" />Conectar con Google</button></div></> )}
-                                    {gmbStatus === 'connecting' && ( <div><h2 className="text-xl font-heading font-bold text-slate-900">Conectando con Google...</h2><p className="mt-2 text-sm text-slate-500">Por favor, espera.</p></div> )}
-                                    {gmbStatus === 'connected' && ( <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg"><p className="font-bold">¡Conectado!</p><p>Tu cuenta de Google Business Profile ha sido conectada exitosamente.</p></div> )}
-                                </div>
+                                    <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web de la forma más detallada posible.</p>
+                                    <form onSubmit={handleRequestSubmit} className="space-y-6">
+                                        <div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required placeholder="Ej: Cambiar número de teléfono" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div>
+                                        <div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
+                                        <div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required placeholder="Por favor, sé lo más específico posible. Si aplica, menciona en qué página se debe realizar el cambio." className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div>
+                                        <div className="flex justify-end pt-2"><button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div>
+                                    </form>
+                                </>
                             )}
                         </div>
+                    </div>
+                    
+                    {/* Columna Derecha: Consejos */}
+                    <div className="lg:col-span-1 bg-slate-100/80 border border-slate-200 rounded-2xl p-6">
+                         <h3 className="font-heading font-bold text-slate-900">Consejos para una solicitud efectiva</h3>
+                         <ul className="mt-4 space-y-4 text-sm text-slate-600">
+                            <li className="flex items-start gap-3">
+                                <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>**Sé específico:** En lugar de "cambiar texto", prueba con "En la página de inicio, cambiar el título por...".</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h2m6-4v2m-6-2v2" /></svg>
+                                <span>**Una solicitud por cambio:** Para mayor agilidad, es mejor enviar los cambios grandes de forma individual.</span>
+                            </li>
+                             <li className="flex items-start gap-3">
+                                <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>**Tiempos de entrega:** La mayoría de cambios de contenido se completan en menos de 48 horas hábiles.</span>
+                            </li>
+                         </ul>
                     </div>
                 </div>
             </main>
