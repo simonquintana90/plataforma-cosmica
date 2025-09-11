@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Routes, Route, Link, useParams, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Wallet } from '@mercadopago/sdk-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -50,6 +50,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
             displayName: name,
             createdAt: serverTimestamp(),
             status: "pending_approval",
+            initialPaymentStatus: "pending",
         });
       }
     } catch (error) { setError(error.message); } finally { setLoading(false); }
@@ -91,8 +92,84 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
   );
 };
 
-const SubscriptionWallPage = ({ user, auth, preferenceId, setPreferenceId, isCreatingPreference, setIsCreatingPreference, getFunctions, httpsCallable }) => {
-    
+const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
+    const [preferenceId, setPreferenceId] = useState(null);
+    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
+
+    const handleInitialPayment = async () => {
+        setIsCreatingPreference(true);
+        try {
+            const functions = getFunctions();
+            const createInitialPaymentPreference = httpsCallable(functions, 'createInitialPaymentPreference');
+            const result = await createInitialPaymentPreference();
+            if (result.data.preferenceId) {
+                setPreferenceId(result.data.preferenceId);
+            }
+        } catch (error) {
+            console.error("Error al crear la preferencia de pago inicial:", error);
+            toast.error("Hubo un error al generar el checkout de pago.");
+            setIsCreatingPreference(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
+                </div>
+            </header>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="text-center">
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Bienvenido a Cósmica, {user.displayName || user.email}!</h1>
+                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">El primer paso para lanzar tu presencia digital es la creación de tu sitio web. Realiza el pago inicial para que nuestro equipo comience a trabajar.</p>
+                </div>
+                <div className="max-w-md mx-auto mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+                     <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
+                        Pago Inicial de Creación Web
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-2 text-center">
+                        Un pago único de <strong>$800.000 COP</strong> para construir tu universo digital.
+                    </p>
+                    
+                    {/* CAMBIO 2: Nueva sección sobre e-commerce */}
+                    <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
+                        <p className="text-sm text-blue-800">
+                            Nos especializamos en la creación de <strong className="font-bold">páginas web informativas</strong> para potenciar tu marca. No trabajamos con e-commerce.
+                        </p>
+                    </div>
+
+                    <div className="mt-4 text-center relative group">
+                        <span className="text-blue-600 text-xs cursor-help">
+                            ¿Qué incluye este pago?
+                            {/* CAMBIO 1: Texto del tooltip actualizado */}
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-64 bg-slate-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none mb-2">
+                                Creación de tu página web informativa. El tiempo de entrega es de 2 a 4 semanas.
+                                <svg className="absolute text-slate-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                            </span>
+                        </span>
+                    </div>
+
+                    <div className="mt-8">
+                        {!preferenceId ? (
+                            <button onClick={handleInitialPayment} disabled={isCreatingPreference} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                {isCreatingPreference ? 'Generando checkout...' : 'Pagar $800.000 COP Ahora'}
+                            </button>
+                        ) : (
+                            <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+const SubscriptionWallPage = ({ user, auth, getFunctions, httpsCallable }) => {
+    const [preferenceId, setPreferenceId] = useState(null);
+    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
+
     const handleSubscribe = async () => {
         setIsCreatingPreference(true);
         try {
@@ -559,8 +636,16 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                <div className="mb-10">
+                <div className="mb-6">
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Panel de Administrador</h1>
+                </div>
+
+                <div className="mb-8 p-4 bg-slate-100 border border-slate-200 rounded-xl">
+                    <h3 className="font-bold text-slate-700 text-sm mb-3">Herramientas de Vista Previa</h3>
+                    <div className="flex items-center gap-4">
+                        <Link to="/?view=initial_payment" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Pago Inicial</Link>
+                        <Link to="/?view=subscription_wall" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
+                    </div>
                 </div>
 
                 <div className="border-b border-slate-200 mb-6">
@@ -994,6 +1079,10 @@ export default function App() {
   }
 
   const AppRoutes = () => {
+      const location = useLocation();
+      const queryParams = new URLSearchParams(location.search);
+      const viewAsAdmin = queryParams.get('view');
+
       return (
         <>
             <Toaster position="bottom-right" />
@@ -1002,6 +1091,21 @@ export default function App() {
                 if (!user) {
                     return <AuthPage {...firebaseServices} />;
                 }
+
+                // --- INICIO: LÓGICA DE VISTA DE ADMINISTRADOR ---
+                if (user.uid === ADMIN_UID && viewAsAdmin) {
+                    if (viewAsAdmin === 'initial_payment') {
+                        return <InitialPaymentPage user={user} {...firebaseServices} />;
+                    }
+                    if (viewAsAdmin === 'subscription_wall') {
+                        return <SubscriptionWallPage 
+                                    user={user}
+                                    auth={firebaseServices.auth}
+                                    {...firebaseServices} 
+                                />;
+                    }
+                }
+                // --- FIN: LÓGICA DE VISTA DE ADMINISTRADOR ---
                                 
                 if (userProfile === undefined) {
                     return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
@@ -1014,8 +1118,11 @@ export default function App() {
                 if(userProfile?.status === 'pending_approval') {
                     return <PendingApprovalPage auth={firebaseServices.auth} />;
                 }
+                
+                if (userProfile?.status === 'approved' && userProfile?.initialPaymentStatus !== 'completed' && user.uid !== ADMIN_UID) {
+                    return <InitialPaymentPage user={user} {...firebaseServices} />;
+                }
 
-                // --- NUEVA LÓGICA DE RUTAS ---
                 return (
                     <Routes>
                         <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
@@ -1031,4 +1138,3 @@ export default function App() {
 
   return <AppRoutes />;
 }
-

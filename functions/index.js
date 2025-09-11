@@ -1,5 +1,5 @@
 const functions = require("firebase-functions");
-const admin = require("firebase-admin"); // Añadido para Storage
+const admin = require("firebase-admin");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore"); 
 const {initializeApp} = require("firebase-admin/app");
@@ -8,7 +8,6 @@ const {Resend} = require("resend");
 const {onCall, onRequest} = require("firebase-functions/v2/https");
 const axios = require("axios");
 
-// --- Nuevas dependencias para la subida de archivos ---
 const cors = require("cors")({origin: true});
 const Busboy = require("busboy");
 const path = require("path");
@@ -29,7 +28,6 @@ exports.notifyAdminOnNewUser = onDocumentCreated(
     const user = event.data.data();
     console.log(`Nuevo perfil de usuario creado en Firestore: ${user.email}`);
 
-    // Solo enviamos notificación si el estado es 'pendiente'
     if (user.status !== 'pending_approval') {
       return;
     }
@@ -237,43 +235,6 @@ exports.sendChatMessageNotification = onDocumentCreated(
   }
 );
 
-exports.exchangeCodeForTokens = onCall(
-  {
-    secrets: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-  },
-  async (request) => {
-    if (!request.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'El usuario no está autenticado.');
-    }
-
-    const code = request.data.code;
-    const redirectUri = 'https://app.cosmicaweb.com';
-
-    try {
-      const response = await axios.post('https://oauth2.googleapis.com/token', {
-        code: code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code'
-      });
-
-      const { access_token, refresh_token } = response.data;
-      
-      const db = getFirestore();
-      await db.collection('users').doc(request.auth.uid).set({
-        gmb_access_token: access_token,
-        gmb_refresh_token: refresh_token,
-      }, { merge: true });
-
-      return { success: true, message: "Tokens guardados correctamente." };
-
-    } catch (error) {
-      console.error("Error al intercambiar el código por tokens:", error.response ? error.response.data : error.message);
-      throw new functions.https.HttpsError('internal', 'No se pudieron obtener los tokens de Google.');
-    }
-});
-
 exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
   console.log("Ejecutando la limpieza de solicitudes antiguas...");
 
@@ -307,6 +268,67 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
     return null;
   }
 });
+
+// --- NUEVA FUNCIÓN PARA EL PAGO INICIAL ---
+exports.createInitialPaymentPreference = onCall(
+  {
+    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const userId = request.auth.uid;
+    const userEmail = request.auth.token.email;
+    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+    const preferenceData = {
+      items: [
+        {
+          id: "inicial_web",
+          title: "Pago Inicial Plataforma Cósmica",
+          description: "Creación de página web informativa (2-4 semanas). No incluye e-commerce.",
+          quantity: 1,
+          unit_price: 800000,
+          currency_id: "COP",
+        },
+      ],
+      payer: {
+        email: userEmail,
+      },
+      back_urls: {
+        success: "https://app.cosmicaweb.com",
+        failure: "https://app.cosmicaweb.com",
+        pending: "https://app.cosmicaweb.com",
+      },
+      external_reference: userId,
+      payment_methods: {
+        installments: 1,
+      },
+    };
+
+    try {
+      const response = await axios.post(
+        "https://api.mercadopago.com/checkout/preferences",
+        preferenceData,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      return { preferenceId: response.data.id };
+
+    } catch (error) {
+      console.error("Error al crear la preferencia de pago inicial en Mercado Pago:", error.response ? error.response.data : error.message);
+      throw new functions.https.HttpsError('internal', 'No se pudo crear la preferencia de pago.');
+    }
+  }
+);
+
 
 exports.createSubscriptionPreference = onCall(
   {
@@ -426,10 +448,11 @@ exports.mercadopagoWebhook = onRequest(
     console.log("Notificación de Mercado Pago recibida:", notification);
 
     try {
+      const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      const db = getFirestore();
+
       if (notification.type === 'preapproval' && notification.data && notification.data.id) {
           const subscriptionId = notification.data.id;
-          const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-          
           const subDetails = await axios.get(`https://api.mercadopago.com/preapproval/${subscriptionId}`, {
               headers: { "Authorization": `Bearer ${accessToken}` }
           });
@@ -438,24 +461,40 @@ exports.mercadopagoWebhook = onRequest(
           const userId = external_reference;
 
           if (userId) {
-              const db = getFirestore();
               await db.collection('users').doc(userId).set({
                   subscriptionId: subscriptionId,
                   subscriptionStatus: status,
                   email: payer_email,
               }, { merge: true });
-              console.log(`Usuario ${userId} actualizado con estado de suscripción: ${status}`);
+              console.log(`Usuario (suscripción) ${userId} actualizado con estado: ${status}`);
+          }
+      } else if (notification.type === 'payment' && notification.data && notification.data.id) {
+          const paymentId = notification.data.id;
+          const paymentDetails = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+              headers: { "Authorization": `Bearer ${accessToken}` }
+          });
+          
+          const { external_reference, status } = paymentDetails.data;
+          const userId = external_reference;
+
+          // Verificamos que sea el pago inicial por su ID de item y que esté aprobado
+          const isInitialPayment = paymentDetails.data.additional_info?.items?.[0]?.id === 'inicial_web';
+
+          if (userId && status === 'approved' && isInitialPayment) {
+              await db.collection('users').doc(userId).set({
+                  initialPaymentStatus: 'completed',
+              }, { merge: true });
+              console.log(`Usuario (pago inicial) ${userId} actualizado a 'completed'`);
           }
       }
     } catch (error) {
-        console.error("Error al procesar el webhook de Mercado Pago:", error);
+        console.error("Error al procesar el webhook de Mercado Pago:", error.response ? error.response.data : error.message);
     }
     
     res.status(200).send("OK");
   }
 );
 
-// --- NUEVA FUNCIÓN PARA SUBIR ARCHIVOS ---
 exports.uploadFile = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     if (req.method !== "POST") {
