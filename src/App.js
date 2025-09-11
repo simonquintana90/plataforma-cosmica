@@ -100,6 +100,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [isCancelling, setIsCancelling] = useState(false);
     const [preferenceId, setPreferenceId] = useState(null);
     const [isCreatingPreference, setIsCreatingPreference] = useState(false);
+    const [file, setFile] = useState(null);
+    const fileInputRef = useRef(null);
+
 
     useEffect(() => {
         const userSubRef = doc(db, "users", user.uid);
@@ -127,14 +130,72 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     }, [db, collection, query, where, orderBy, onSnapshot, user.uid]);
 
     const handleRequestSubmit = async (e) => {
-        e.preventDefault(); setLoading(true);
+        e.preventDefault();
+        setLoading(true);
+
         const { 'change-title': title, 'change-type': type, 'change-description': description } = e.target.elements;
+        let uploadResponse = {};
+
+        if (file) {
+            toast.loading('Subiendo archivo...');
+            
+            // --- URL CORREGIDA ---
+            const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadFile';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('La subida del archivo falló.');
+                }
+                
+                uploadResponse = await response.json();
+                
+            } catch (error) {
+                console.error("Error al llamar a la Cloud Function:", error);
+                toast.dismiss();
+                toast.error("Error al subir el archivo.");
+                setLoading(false);
+                return;
+            }
+        }
+        
+        toast.dismiss();
+        toast.loading('Enviando solicitud...');
+
         try {
-            await addDoc(collection(db, "requests"), { title: title.value, type: type.value, description: description.value, userId: user.uid, userEmail: user.email, userName: user.displayName, createdAt: serverTimestamp(), status: 'pending' });
+            const requestData = {
+                title: title.value,
+                type: type.value,
+                description: description.value,
+                userId: user.uid,
+                userEmail: user.email,
+                userName: user.displayName,
+                createdAt: serverTimestamp(),
+                status: 'pending',
+                ...(uploadResponse.fileURL && { fileURL: uploadResponse.fileURL, fileName: uploadResponse.fileName })
+            };
+
+            await addDoc(collection(db, "requests"), requestData);
+            
+            toast.dismiss();
             setChangeRequestSent(true);
-            e.target.reset();
             setTimeout(() => setChangeRequestSent(false), 5000);
-        } catch (error) { alert('Error al enviar la solicitud: ' + error.message); } finally { setLoading(false); }
+            e.target.reset();
+            setFile(null);
+        } catch (error) {
+            toast.dismiss();
+            toast.error('Error al enviar la solicitud.');
+            console.error('Error al enviar la solicitud: ', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSubscribe = async () => {
@@ -167,6 +228,12 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             } finally {
                 setIsCancelling(false);
             }
+        }
+    };
+    
+    const handleFileChange = (e) => {
+        if (e.target.files[0]) {
+            setFile(e.target.files[0]);
         }
     };
 
@@ -221,7 +288,36 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                        <div className="p-6 md:p-8">{changeRequestSent ? ( <div className="flex flex-col items-center justify-center text-center h-96"><div className="bg-green-100 p-4 rounded-full mb-4"><svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg></div><h2 className="text-2xl font-heading font-bold text-slate-900">¡Solicitud Enviada!</h2><p className="mt-2 text-slate-500 max-w-sm">Hemos recibido tu solicitud y nos pondremos en marcha pronto. Te notificaremos cualquier novedad.</p></div>) : ( <> <h2 className="text-xl font-heading font-bold text-slate-900 mb-1">Nueva Solicitud de Cambio</h2> <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web de la forma más detallada posible.</p><form onSubmit={handleRequestSubmit} className="space-y-6"><div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required placeholder="Ej: Cambiar número de teléfono" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div><div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div><div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required placeholder="Por favor, sé lo más específico posible. Si aplica, menciona en qué página se debe realizar el cambio." className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div><div className="flex justify-end pt-2"><button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div></form></>)}</div>
+                        <div className="p-6 md:p-8">{changeRequestSent ? ( <div className="flex flex-col items-center justify-center text-center h-96"><div className="bg-green-100 p-4 rounded-full mb-4"><svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg></div><h2 className="text-2xl font-heading font-bold text-slate-900">¡Solicitud Enviada!</h2><p className="mt-2 text-slate-500 max-w-sm">Hemos recibido tu solicitud y nos pondremos en marcha pronto. Te notificaremos cualquier novedad.</p></div>) : ( <> <h2 className="text-xl font-heading font-bold text-slate-900 mb-1">Nueva Solicitud de Cambio</h2> <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web de la forma más detallada posible.</p>
+                        <form onSubmit={handleRequestSubmit} className="space-y-6">
+                            <div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required placeholder="Ej: Cambiar número de teléfono" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div>
+                            <div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
+                            <div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required placeholder="Por favor, sé lo más específico posible. Si aplica, menciona en qué página se debe realizar el cambio." className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-2">Adjuntar archivo (Opcional)</label>
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => fileInputRef.current.click()}
+                                        className="bg-slate-100 text-slate-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors"
+                                    >
+                                        Seleccionar Archivo
+                                    </button>
+                                    {file && <span className="text-sm text-slate-500">{file.name}</span>}
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileChange} 
+                                        className="hidden" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button>
+                            </div>
+                        </form></>)}</div>
                     </div>
                     <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                          <h3 className="font-heading font-bold text-slate-900">Mis Solicitudes</h3>
@@ -316,6 +412,20 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
                             <p><strong className="text-slate-600">Tipo:</strong> {request.type}</p>
                             <p><strong className="text-slate-600">Estado:</strong> {request.status}</p>
                         </div>
+                        {request.fileURL && (
+                            <div className="mt-4 pt-4 border-t border-slate-200 text-sm">
+                                <p><strong className="text-slate-600">Archivo Adjunto:</strong></p>
+                                <a 
+                                    href={request.fileURL} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="flex items-center gap-2 mt-2 text-blue-600 hover:underline"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    {request.fileName || 'Descargar archivo'}
+                                </a>
+                            </div>
+                        )}
                     </div>
                     <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-[70vh]">
                         <div className="flex-1 p-6 overflow-y-auto">
@@ -550,7 +660,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [nit, setNit] = useState(userProfile?.nit || '');
     const [loading, setLoading] = useState(false);
     
-    // --- NUEVOS ESTADOS PARA CONTRASEÑA ---
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordLoading, setPasswordLoading] = useState(false);
@@ -590,7 +699,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         }
     };
     
-    // --- NUEVA FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
     const handleUpdatePassword = async (e) => {
         e.preventDefault();
         setPasswordError(null);
@@ -612,7 +720,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
             setConfirmPassword('');
         } catch (error) {
             console.error("Error al cambiar contraseña:", error);
-            // Este error es común y requiere que el usuario inicie sesión de nuevo
             if (error.code === 'auth/requires-recent-login') {
                 setPasswordError("Esta operación es sensible y requiere un inicio de sesión reciente. Por favor, cierra sesión y vuelve a entrar para cambiar tu contraseña.");
                 toast.error("Por seguridad, inicia sesión de nuevo.", { duration: 5000 });
@@ -670,7 +777,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                         </form>
                     </div>
 
-                    {/* --- NUEVO FORMULARIO PARA CAMBIAR CONTRASEÑA --- */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-800">Cambiar Contraseña</h2>
                         <form onSubmit={handleUpdatePassword} className="mt-6 space-y-4">
@@ -722,17 +828,35 @@ export default function App() {
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, updatePassword } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
         const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
+        const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
         setFirebaseServices({ 
             auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
-            db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
-            query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc,
-            // Añadimos updatePassword a los servicios
+            db, 
+            storage,
+            storageRef: ref,
+            uploadBytes,
+            getDownloadURL,
+            updateProfile, 
             updatePassword,
+            addDoc, 
+            collection, 
+            serverTimestamp, 
+            getFunctions, 
+            httpsCallable,
+            query, 
+            orderBy, 
+            onSnapshot, 
+            doc, 
+            updateDoc, 
+            getDoc, 
+            where, 
+            setDoc
         });
 
         const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
