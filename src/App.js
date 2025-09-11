@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Wallet } from '@mercadopago/sdk-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 // --- ID DE ADMINISTRADOR ---
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
@@ -175,6 +176,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
                     <div className="flex items-center gap-4">
+                        <Link to="/cuenta" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Mi Cuenta</Link>
                         <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
                     </div>
                 </div>
@@ -348,6 +350,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
     const [pendingUsers, setPendingUsers] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [approvingUserId, setApprovingUserId] = useState(null);
+    const [completingRequestId, setCompletingRequestId] = useState(null);
 
     useEffect(() => {
         setLoadingRequests(true);
@@ -374,17 +378,31 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
     }, [db, collection, query, where, onSnapshot]);
 
     const handleMarkAsComplete = async (requestId) => {
+        setCompletingRequestId(requestId);
         const requestRef = doc(db, "requests", requestId);
         try {
             await updateDoc(requestRef, { status: "completed" });
-        } catch (error) { console.error("Error al actualizar estado:", error); }
+            toast.success("Solicitud completada");
+        } catch (error) { 
+            console.error("Error al actualizar estado:", error); 
+            toast.error("Error al completar la solicitud");
+        } finally {
+            setCompletingRequestId(null);
+        }
     };
 
     const handleApproveUser = async (userId) => {
+        setApprovingUserId(userId);
         const userRef = doc(db, "users", userId);
         try {
             await updateDoc(userRef, { status: "approved" });
-        } catch (error) { console.error("Error al aprobar usuario:", error); }
+            toast.success('Usuario aprobado con éxito');
+        } catch (error) { 
+            console.error("Error al aprobar usuario:", error); 
+            toast.error('Hubo un error al aprobar el usuario.');
+        } finally {
+            setApprovingUserId(null);
+        }
     };
     
     return (
@@ -433,7 +451,13 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                                     <p className="text-xs text-slate-400 mt-1">{req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString('es-CO') : 'Fecha no disp.'}</p>
                                                 </div>
                                                 {req.status === 'pending' && (
-                                                    <button onClick={(e) => { e.preventDefault(); handleMarkAsComplete(req.id); }} className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors flex-shrink-0">Completar</button>
+                                                    <button 
+                                                        onClick={(e) => { e.preventDefault(); handleMarkAsComplete(req.id); }} 
+                                                        disabled={completingRequestId === req.id}
+                                                        className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-wait"
+                                                    >
+                                                        {completingRequestId === req.id ? 'Completando...' : 'Completar'}
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -456,8 +480,12 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                            <p className="font-bold text-slate-800">{pUser.displayName}</p>
                                            <p className="text-sm text-slate-500">{pUser.email}</p>
                                        </div>
-                                       <button onClick={() => handleApproveUser(pUser.id)} className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                                            Aprobar Usuario
+                                       <button 
+                                            onClick={() => handleApproveUser(pUser.id)} 
+                                            disabled={approvingUserId === pUser.id}
+                                            className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        >
+                                            {approvingUserId === pUser.id ? 'Aprobando...' : 'Aprobar Usuario'}
                                        </button>
                                    </div>
                                </li>
@@ -515,6 +543,160 @@ const ProfileErrorPage = ({ auth }) => {
     );
 };
 
+const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword }) => {
+    const [name, setName] = useState(user.displayName || '');
+    const [companyName, setCompanyName] = useState(userProfile?.companyName || '');
+    const [phone, setPhone] = useState(userProfile?.phone || '');
+    const [nit, setNit] = useState(userProfile?.nit || '');
+    const [loading, setLoading] = useState(false);
+    
+    // --- NUEVOS ESTADOS PARA CONTRASEÑA ---
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [passwordError, setPasswordError] = useState(null);
+
+    useEffect(() => {
+        if(userProfile) {
+            setCompanyName(userProfile.companyName || '');
+            setPhone(userProfile.phone || '');
+            setNit(userProfile.nit || '');
+        }
+    }, [userProfile]);
+
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        const userRef = doc(db, "users", user.uid);
+
+        try {
+            if (name !== user.displayName) {
+                await updateProfile(auth.currentUser, { displayName: name });
+            }
+            
+            await updateDoc(userRef, { 
+                displayName: name,
+                companyName: companyName,
+                phone: phone,
+                nit: nit
+            });
+
+            toast.success('Perfil actualizado con éxito');
+        } catch (error) {
+            console.error("Error al actualizar el perfil:", error);
+            toast.error('Hubo un error al actualizar tu perfil.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // --- NUEVA FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
+    const handleUpdatePassword = async (e) => {
+        e.preventDefault();
+        setPasswordError(null);
+
+        if (newPassword.length < 6) {
+            setPasswordError("La contraseña debe tener al menos 6 caracteres.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError("Las contraseñas no coinciden.");
+            return;
+        }
+        
+        setPasswordLoading(true);
+        try {
+            await updatePassword(auth.currentUser, newPassword);
+            toast.success('Contraseña actualizada con éxito.');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            console.error("Error al cambiar contraseña:", error);
+            // Este error es común y requiere que el usuario inicie sesión de nuevo
+            if (error.code === 'auth/requires-recent-login') {
+                setPasswordError("Esta operación es sensible y requiere un inicio de sesión reciente. Por favor, cierra sesión y vuelve a entrar para cambiar tu contraseña.");
+                toast.error("Por seguridad, inicia sesión de nuevo.", { duration: 5000 });
+            } else {
+                setPasswordError(error.message);
+            }
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+    
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <Link to="/"><img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" /></Link>
+                    <Link to="/" className="text-sm font-bold text-blue-600 hover:underline">← Volver al Dashboard</Link>
+                </div>
+            </header>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="max-w-3xl mx-auto space-y-8">
+                    <div className="mb-10">
+                        <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Mi Cuenta</h1>
+                        <p className="mt-2 text-slate-500">Actualiza los datos de tu perfil y tu contraseña.</p>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800">Datos Personales y de la Empresa</h2>
+                        <form onSubmit={handleUpdateProfile} className="mt-6 space-y-4">
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-slate-600 mb-2">Email</label>
+                                <input id="email" type="email" value={user.email} disabled className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed" />
+                            </div>
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-slate-600 mb-2">Nombre</label>
+                                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="companyName" className="block text-sm font-medium text-slate-600 mb-2">Nombre de la Empresa</label>
+                                <input id="companyName" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="phone" className="block text-sm font-medium text-slate-600 mb-2">Celular</label>
+                                <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="nit" className="block text-sm font-medium text-slate-600 mb-2">NIT</label>
+                                <input id="nit" type="text" value={nit} onChange={(e) => setNit(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div className="flex justify-end pt-2">
+                                <button type="submit" disabled={loading} className="inline-flex justify-center py-2 px-5 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                    {loading ? 'Guardando...' : 'Guardar Cambios'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* --- NUEVO FORMULARIO PARA CAMBIAR CONTRASEÑA --- */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800">Cambiar Contraseña</h2>
+                        <form onSubmit={handleUpdatePassword} className="mt-6 space-y-4">
+                            <div>
+                                <label htmlFor="newPassword" className="block text-sm font-medium text-slate-600 mb-2">Nueva Contraseña</label>
+                                <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 mb-2">Confirmar Nueva Contraseña</label>
+                                <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+                            <div className="flex justify-end pt-2">
+                                <button type="submit" disabled={passwordLoading} className="inline-flex justify-center py-2 px-5 border border-transparent text-sm font-bold rounded-lg text-white bg-slate-800 hover:bg-slate-900 disabled:opacity-50 transition-colors">
+                                    {passwordLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    );
+};
+
 
 // --- COMPONENTE PRINCIPAL Y CARGADOR DE FIREBASE ---
 export default function App() {
@@ -537,7 +719,7 @@ export default function App() {
     const loadFirebase = async () => {
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js');
-        const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
+        const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, updatePassword } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
         const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
         
@@ -548,10 +730,11 @@ export default function App() {
         setFirebaseServices({ 
             auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
             db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
-            query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc
+            query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc,
+            // Añadimos updatePassword a los servicios
+            updatePassword,
         });
 
-        // --- LÓGICA DE AUTENTICACIÓN UNIFICADA ---
         const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
             if (currentUser) {
                 setUser(currentUser);
@@ -586,10 +769,10 @@ export default function App() {
       }
     };
     
-    const unsubscribe = loadFirebase();
+    const unsubscribePromise = loadFirebase();
 
     return () => {
-        unsubscribe.then(unsub => unsub && unsub());
+        unsubscribePromise.then(unsub => unsub && unsub());
     };
   }, []);
 
@@ -599,41 +782,50 @@ export default function App() {
   }
 
   const AppRoutes = () => {
-      if (!user) {
-        return <AuthPage {...firebaseServices} />;
-      }
-      
-      if(user.uid === ADMIN_UID){
-        return (
-          <Routes>
-            <Route path="/" element={<AdminDashboardPage user={user} {...firebaseServices} />} />
-            <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
-          </Routes>
-        );
-      }
-      
-      if (userProfile === undefined) {
-          return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
-      }
+      return (
+        <>
+            <Toaster position="bottom-right" />
+            
+            {(() => {
+                if (!user) {
+                    return <AuthPage {...firebaseServices} />;
+                }
+                
+                if(user.uid === ADMIN_UID){
+                    return (
+                    <Routes>
+                        <Route path="/" element={<AdminDashboardPage user={user} {...firebaseServices} />} />
+                        <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
+                    </Routes>
+                    );
+                }
+                
+                if (userProfile === undefined) {
+                    return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
+                }
 
-      if (userProfile === null) {
-          return <ProfileErrorPage auth={firebaseServices.auth} />;
-      }
+                if (userProfile === null) {
+                    return <ProfileErrorPage auth={firebaseServices.auth} />;
+                }
 
-      if(userProfile.status === 'pending_approval') {
-        return <PendingApprovalPage auth={firebaseServices.auth} />;
-      }
+                if(userProfile.status === 'pending_approval') {
+                    return <PendingApprovalPage auth={firebaseServices.auth} />;
+                }
 
-      if(userProfile.status === 'approved') {
-        return (
-            <Routes>
-                <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
-                <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
-            </Routes>
-        );
-      }
-      
-      return <AuthPage {...firebaseServices} />;
+                if(userProfile.status === 'approved') {
+                    return (
+                        <Routes>
+                            <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
+                            <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
+                            <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
+                        </Routes>
+                    );
+                }
+                
+                return <AuthPage {...firebaseServices} />;
+            })()}
+        </>
+      );
   };
 
   return <AppRoutes />;
