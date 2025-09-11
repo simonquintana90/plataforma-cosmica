@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Routes, Route, Link, useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Wallet } from '@mercadopago/sdk-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -91,18 +91,76 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
   );
 };
 
-const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, getDoc, httpsCallable, getFunctions }) => {
+const SubscriptionWallPage = ({ user, auth, preferenceId, setPreferenceId, isCreatingPreference, setIsCreatingPreference, getFunctions, httpsCallable }) => {
+    
+    const handleSubscribe = async () => {
+        setIsCreatingPreference(true);
+        try {
+            const functions = getFunctions();
+            const createSubscriptionPreference = httpsCallable(functions, 'createSubscriptionPreference');
+            const result = await createSubscriptionPreference();
+            if (result.data.preferenceId) {
+                setPreferenceId(result.data.preferenceId);
+            }
+        } catch (error) {
+            console.error("Error al crear la preferencia:", error);
+            toast.error("Hubo un error al iniciar la suscripción.");
+            setIsCreatingPreference(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <div className="flex items-center gap-4">
+                        <Link to="/cuenta" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Mi Cuenta</Link>
+                        <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </header>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="text-center">
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Hola, {user.displayName || user.email} 👋</h1>
+                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Para poder enviar solicitudes de cambio y acceder a todas las funcionalidades, necesitas una suscripción activa.</p>
+                </div>
+                <div className="max-w-md mx-auto mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+                     <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
+                        Activa tu Suscripción
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-2 text-center">
+                        Accede a cambios ilimitados y soporte prioritario con nuestro plan mensual.
+                    </p>
+                    <div className="mt-8">
+                        {!preferenceId ? (
+                            <button onClick={handleSubscribe} disabled={isCreatingPreference} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                {isCreatingPreference ? 'Generando checkout...' : 'Suscribirme Ahora'}
+                            </button>
+                        ) : (
+                            <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+
+const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, getFunctions, httpsCallable }) => {
     const [changeRequestSent, setChangeRequestSent] = useState(false);
     const [loading, setLoading] = useState(false);
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [subscription, setSubscription] = useState({ status: 'loading' });
-    const [isCancelling, setIsCancelling] = useState(false);
     const [preferenceId, setPreferenceId] = useState(null);
     const [isCreatingPreference, setIsCreatingPreference] = useState(false);
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
-
+    
+    const activeRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
+    const completedRequestsCount = useMemo(() => requests.filter(r => r.status === 'completed').length, [requests]);
 
     useEffect(() => {
         const userSubRef = doc(db, "users", user.uid);
@@ -138,10 +196,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
 
         if (file) {
             toast.loading('Subiendo archivo...');
-            
-            // --- URL CORREGIDA ---
             const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadFile';
-            
             const formData = new FormData();
             formData.append('file', file);
             
@@ -151,12 +206,8 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                     body: formData,
                 });
 
-                if (!response.ok) {
-                    throw new Error('La subida del archivo falló.');
-                }
-                
+                if (!response.ok) { throw new Error('La subida del archivo falló.'); }
                 uploadResponse = await response.json();
-                
             } catch (error) {
                 console.error("Error al llamar a la Cloud Function:", error);
                 toast.dismiss();
@@ -197,45 +248,31 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             setLoading(false);
         }
     };
-
-    const handleSubscribe = async () => {
-        setIsCreatingPreference(true);
-        try {
-            const functions = getFunctions();
-            const createSubscriptionPreference = httpsCallable(functions, 'createSubscriptionPreference');
-            const result = await createSubscriptionPreference();
-            if (result.data.preferenceId) {
-                setPreferenceId(result.data.preferenceId);
-            }
-        } catch (error) {
-            console.error("Error al crear la preferencia:", error);
-            alert("Hubo un error al iniciar la suscripción. Por favor, intenta de nuevo.");
-            setIsCreatingPreference(false);
-        }
-    };
-    
-    const handleCancel = async () => {
-        if (window.confirm("¿Estás seguro de que deseas cancelar tu suscripción? Perderás el acceso a los cambios ilimitados al final de tu ciclo de facturación.")) {
-            setIsCancelling(true);
-            try {
-                const functions = getFunctions();
-                const cancelSubscription = httpsCallable(functions, 'cancelSubscription');
-                await cancelSubscription();
-                alert("Tu suscripción ha sido cancelada. El cambio se reflejará en breve.");
-            } catch (error) {
-                console.error("Error al cancelar:", error);
-                alert("Hubo un error al cancelar la suscripción. Por favor, contacta a soporte.");
-            } finally {
-                setIsCancelling(false);
-            }
-        }
-    };
     
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
             setFile(e.target.files[0]);
         }
     };
+    
+    const isSubscribed = subscription.status === 'authorized' || user.uid === ADMIN_UID;
+    
+    if (subscription.status === 'loading') {
+        return <div className="flex justify-center items-center min-h-screen">Verificando suscripción...</div>;
+    }
+
+    if (!isSubscribed) {
+        return <SubscriptionWallPage 
+                    user={user}
+                    auth={auth}
+                    preferenceId={preferenceId}
+                    setPreferenceId={setPreferenceId}
+                    isCreatingPreference={isCreatingPreference}
+                    setIsCreatingPreference={setIsCreatingPreference}
+                    getFunctions={getFunctions}
+                    httpsCallable={httpsCallable}
+                />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -243,6 +280,11 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
                     <div className="flex items-center gap-4">
+                        {user.uid === ADMIN_UID && (
+                            <Link to="/admin" className="text-sm font-bold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
+                                Panel de Admin
+                            </Link>
+                        )}
                         <Link to="/cuenta" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Mi Cuenta</Link>
                         <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
                     </div>
@@ -255,34 +297,24 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                     <p className="mt-2 text-slate-500">Bienvenido a tu centro de control.</p>
                 </div>
 
-                <div className="mb-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <h3 className="font-heading text-lg font-bold text-slate-900">
-                                {subscription.status === 'authorized' ? 'Suscripción Activa' : 'Activa tu Suscripción'}
-                            </h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                                {subscription.status === 'authorized' 
-                                    ? 'Gracias por ser parte de Cósmica. ¡Estamos listos para tu próxima solicitud!'
-                                    : 'Accede a cambios ilimitados y soporte prioritario con nuestro plan mensual.'
-                                }
-                            </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 flex items-center gap-5">
+                        <div className="bg-amber-100 rounded-full p-3 flex-shrink-0">
+                            <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
-                        {subscription.status === 'authorized' ? (
-                            <button onClick={handleCancel} disabled={isCancelling} className="bg-red-100 text-red-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50">
-                                {isCancelling ? 'Cancelando...' : 'Cancelar Suscripción'}
-                            </button>
-                        ) : (
-                            <div className="min-w-[180px]">
-                                {!preferenceId ? (
-                                    <button onClick={handleSubscribe} disabled={isCreatingPreference || subscription.status === 'loading'} className="w-full bg-blue-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                                        {isCreatingPreference ? 'Generando checkout...' : 'Suscribirme Ahora'}
-                                    </button>
-                                ) : (
-                                    <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
-                                )}
-                            </div>
-                        )}
+                        <div>
+                            <p className="text-sm text-slate-500">Solicitudes Activas</p>
+                            <p className="text-2xl font-bold text-slate-900">{activeRequestsCount}</p>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 flex items-center gap-5">
+                        <div className="bg-green-100 rounded-full p-3 flex-shrink-0">
+                            <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-slate-500">Completadas</p>
+                            <p className="text-2xl font-bold text-slate-900">{completedRequestsCount}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -399,7 +431,7 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
-                    <button onClick={() => navigate('/')} className="text-sm font-bold text-blue-600 hover:underline">← Volver al Dashboard</button>
+                    <button onClick={() => navigate(-1)} className="text-sm font-bold text-blue-600 hover:underline">← Volver</button>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -521,7 +553,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-bold text-slate-600 hidden sm:inline">Panel de Admin</span>
+                        <Link to="/" className="text-sm font-bold text-blue-600 hover:underline">← Ver como Cliente</Link>
                         <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
                     </div>
                 </div>
@@ -653,7 +685,7 @@ const ProfileErrorPage = ({ auth }) => {
     );
 };
 
-const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword }) => {
+const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword, getFunctions, httpsCallable, onSnapshot }) => {
     const [name, setName] = useState(user.displayName || '');
     const [companyName, setCompanyName] = useState(userProfile?.companyName || '');
     const [phone, setPhone] = useState(userProfile?.phone || '');
@@ -665,6 +697,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [passwordError, setPasswordError] = useState(null);
 
+    const [subscription, setSubscription] = useState({ status: 'loading' });
+    const [isCancelling, setIsCancelling] = useState(false);
+
     useEffect(() => {
         if(userProfile) {
             setCompanyName(userProfile.companyName || '');
@@ -672,6 +707,18 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
             setNit(userProfile.nit || '');
         }
     }, [userProfile]);
+    
+    useEffect(() => {
+        const userSubRef = doc(db, "users", user.uid);
+        const unsubscribe = onSnapshot(userSubRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().subscriptionStatus) {
+                setSubscription({ status: docSnap.data().subscriptionStatus });
+            } else {
+                setSubscription({ status: 'inactive' });
+            }
+        });
+        return () => unsubscribe();
+    }, [db, doc, onSnapshot, user.uid]);
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -731,12 +778,36 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         }
     };
     
+    const handleCancel = async () => {
+        if (window.confirm("¿Estás seguro de que deseas cancelar tu suscripción? Perderás el acceso a los cambios ilimitados al final de tu ciclo de facturación.")) {
+            setIsCancelling(true);
+            try {
+                const functions = getFunctions();
+                const cancelSubscription = httpsCallable(functions, 'cancelSubscription');
+                await cancelSubscription();
+                toast.success("Tu suscripción ha sido cancelada.");
+            } catch (error) {
+                console.error("Error al cancelar:", error);
+                toast.error("Hubo un error al cancelar la suscripción.");
+            } finally {
+                setIsCancelling(false);
+            }
+        }
+    };
+    
     return (
         <div className="min-h-screen bg-slate-50">
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <Link to="/"><img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" /></Link>
-                    <Link to="/" className="text-sm font-bold text-blue-600 hover:underline">← Volver al Dashboard</Link>
+                    <div className="flex items-center gap-4">
+                        {user.uid === ADMIN_UID && (
+                                <Link to="/admin" className="text-sm font-bold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
+                                    Panel de Admin
+                                </Link>
+                        )}
+                        <Link to="/" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Dashboard</Link>
+                    </div>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -775,6 +846,26 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                 </button>
                             </div>
                         </form>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800">Suscripción</h2>
+                        <div className="mt-4">
+                            {subscription.status === 'loading' && <p className="text-sm text-slate-500">Cargando estado...</p>}
+                            {subscription.status === 'authorized' && (
+                                <>
+                                    <p className="text-sm text-slate-600">Tu plan está activo. ¡Gracias por ser parte de Cósmica!</p>
+                                    <button 
+                                        onClick={handleCancel} 
+                                        disabled={isCancelling} 
+                                        className="mt-4 bg-red-100 text-red-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                                    >
+                                        {isCancelling ? 'Cancelando...' : 'Cancelar Suscripción'}
+                                    </button>
+                                </>
+                            )}
+                            {subscription.status === 'inactive' && <p className="text-sm text-slate-600">No tienes una suscripción activa.</p>}
+                        </div>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -828,7 +919,7 @@ export default function App() {
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, updatePassword } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
         const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
-        const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
+        const { getStorage } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -839,9 +930,6 @@ export default function App() {
             auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
             db, 
             storage,
-            storageRef: ref,
-            uploadBytes,
-            getDownloadURL,
             updateProfile, 
             updatePassword,
             addDoc, 
@@ -914,39 +1002,28 @@ export default function App() {
                 if (!user) {
                     return <AuthPage {...firebaseServices} />;
                 }
-                
-                if(user.uid === ADMIN_UID){
-                    return (
-                    <Routes>
-                        <Route path="/" element={<AdminDashboardPage user={user} {...firebaseServices} />} />
-                        <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
-                    </Routes>
-                    );
-                }
-                
+                                
                 if (userProfile === undefined) {
                     return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
                 }
 
-                if (userProfile === null) {
+                if (userProfile === null && user.uid !== ADMIN_UID) {
                     return <ProfileErrorPage auth={firebaseServices.auth} />;
                 }
 
-                if(userProfile.status === 'pending_approval') {
+                if(userProfile?.status === 'pending_approval') {
                     return <PendingApprovalPage auth={firebaseServices.auth} />;
                 }
 
-                if(userProfile.status === 'approved') {
-                    return (
-                        <Routes>
-                            <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
-                            <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
-                            <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
-                        </Routes>
-                    );
-                }
-                
-                return <AuthPage {...firebaseServices} />;
+                // --- NUEVA LÓGICA DE RUTAS ---
+                return (
+                    <Routes>
+                        <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
+                        <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
+                        <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
+                        <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
+                    </Routes>
+                );
             })()}
         </>
       );
@@ -954,3 +1031,4 @@ export default function App() {
 
   return <AppRoutes />;
 }
+
