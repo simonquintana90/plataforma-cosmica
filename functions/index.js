@@ -1,17 +1,59 @@
 const functions = require("firebase-functions");
-// AÑADIDO: Importamos el disparador para funciones programadas
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore"); 
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const {Resend} = require("resend");
-const {onCall} = require("firebase-functions/v2/https");
+const {onCall, onRequest} = require("firebase-functions/v2/https");
 const axios = require("axios");
 
 initializeApp();
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
+
+// CORREGIDO: Renombrado para mayor claridad
+exports.notifyAdminOnNewUser = onDocumentCreated(
+  {
+    document: "users/{userId}",
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (event) => {
+    const user = event.data.data();
+    console.log(`Nuevo perfil de usuario creado en Firestore: ${user.email}`);
+
+    // Solo enviamos notificación si el estado es 'pendiente'
+    if (user.status !== 'pending_approval') {
+      return;
+    }
+
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const adminEmailHtml = `
+        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
+          <h1 style="font-size: 22px;">Nuevo Usuario Pendiente de Aprobación</h1>
+          <p>Un nuevo usuario se ha registrado en la plataforma y requiere tu aprobación.</p>
+          <ul style="list-style: none; padding: 0;">
+            <li style="padding: 5px 0;"><strong>Email:</strong> ${user.email}</li>
+            <li style="padding: 5px 0;"><strong>Nombre:</strong> ${user.displayName || "No proporcionado"}</li>
+          </ul>
+          <p>Puedes aprobarlo desde el panel de administrador en la aplicación.</p>
+        </div>
+      `;
+      const adminEmail = {
+        from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
+        to: ADMIN_EMAIL,
+        subject: "Nuevo Usuario Registrado - Requiere Aprobación",
+        html: adminEmailHtml,
+      };
+
+      await resend.emails.send(adminEmail);
+      console.log(`Notificación de nuevo usuario enviada a ${ADMIN_EMAIL}.`);
+    } catch (error) {
+      console.error("Error al enviar notificación de nuevo usuario:", error);
+    }
+  }
+);
 
 exports.sendEmailOnNewRequest = onDocumentCreated(
   {
@@ -225,18 +267,15 @@ exports.exchangeCodeForTokens = onCall(
     }
 });
 
-// --- NUEVA FUNCIÓN PROGRAMADA: Limpieza automática de solicitudes antiguas ---
 exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
   console.log("Ejecutando la limpieza de solicitudes antiguas...");
 
   const db = getFirestore();
   const requestsRef = db.collection("requests");
 
-  // Calcular la fecha de hace 30 días
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  // Crear la consulta para encontrar documentos completados y más antiguos de 30 días
   const oldCompletedRequestsQuery = requestsRef
     .where("status", "==", "completed")
     .where("createdAt", "<=", thirtyDaysAgo);
@@ -248,7 +287,6 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
       return null;
     }
 
-    // Usar un batch para eliminar los documentos de forma eficiente
     const batch = db.batch();
     snapshot.forEach((doc) => {
       batch.delete(doc.ref);
@@ -262,3 +300,150 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
     return null;
   }
 });
+
+exports.createSubscriptionPreference = onCall(
+  {
+    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const userId = request.auth.uid;
+    const userEmail = request.auth.token.email;
+    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    
+    const preferenceData = {
+      items: [
+        {
+          id: "plan_mensual",
+          title: "Suscripción Mensual Cósmica",
+          description: "Acceso a cambios ilimitados y soporte prioritario",
+          quantity: 1,
+          unit_price: 300000,
+          currency_id: "COP",
+        },
+      ],
+      payer: {
+        email: userEmail,
+      },
+      back_urls: {
+        success: "https://app.cosmicaweb.com",
+        failure: "https://app.cosmicaweb.com",
+        pending: "https://app.cosmicaweb.com",
+      },
+      external_reference: userId,
+      payment_methods: {
+        installments: 1,
+      },
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: "months",
+        transaction_amount: 300000,
+        currency_id: "COP",
+      },
+    };
+
+    try {
+      const response = await axios.post(
+        "https://api.mercadopago.com/checkout/preferences",
+        preferenceData,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      return { preferenceId: response.data.id };
+
+    } catch (error) {
+      console.error("Error al crear la preferencia en Mercado Pago:", error.response ? error.response.data : error.message);
+      throw new functions.https.HttpsError('internal', 'No se pudo crear la preferencia de pago.');
+    }
+  }
+);
+
+exports.cancelSubscription = onCall(
+  {
+    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
+  },
+  async(request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const userId = request.auth.uid;
+    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+    try {
+      const db = getFirestore();
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists || !userDoc.data().subscriptionId) {
+        throw new functions.https.HttpsError('not-found', 'No se encontró una suscripción para este usuario.');
+      }
+      
+      const subscriptionId = userDoc.data().subscriptionId;
+
+      await axios.put(
+        `https://api.mercadopago.com/preapproval/${subscriptionId}`,
+        { status: 'cancelled' },
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      console.log(`Solicitud de cancelación enviada para la suscripción ${subscriptionId}`);
+      return { success: true, message: 'La suscripción ha sido cancelada.' };
+
+    } catch (error) {
+      console.error("Error al cancelar la suscripción:", error.response ? error.response.data : error.message);
+      throw new functions.https.HttpsError('internal', 'No se pudo cancelar la suscripción.');
+    }
+  }
+);
+
+exports.mercadopagoWebhook = onRequest(
+  { secrets: ["MERCADOPAGO_ACCESS_TOKEN"] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method Not Allowed');
+    }
+
+    const notification = req.body;
+    console.log("Notificación de Mercado Pago recibida:", notification);
+
+    try {
+      if (notification.type === 'preapproval' && notification.data && notification.data.id) {
+          const subscriptionId = notification.data.id;
+          const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+          
+          const subDetails = await axios.get(`https://api.mercadopago.com/preapproval/${subscriptionId}`, {
+              headers: { "Authorization": `Bearer ${accessToken}` }
+          });
+          
+          const { external_reference, status, payer_email } = subDetails.data;
+          const userId = external_reference;
+
+          if (userId) {
+              const db = getFirestore();
+              await db.collection('users').doc(userId).set({
+                  subscriptionId: subscriptionId,
+                  subscriptionStatus: status,
+                  email: payer_email,
+              }, { merge: true });
+              console.log(`Usuario ${userId} actualizado con estado de suscripción: ${status}`);
+          }
+      }
+    } catch (error) {
+        console.error("Error al procesar el webhook de Mercado Pago:", error);
+    }
+    
+    res.status(200).send("OK");
+  }
+);

@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
-
-// --- ÍCONOS SVG ---
-const PaperclipIcon = ({ className }) => ( <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> );
-const GoogleIcon = ({ className }) => ( <svg className={className} role="img" viewBox="0 0 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.62-3.85 1.62-4.64 0-8.54-3.82-8.54-8.42s3.9-8.42 8.54-8.42c2.48 0 4.3.94 5.6 2.16l2.7-2.7C19.02 3.88 16.17 2.4 12.48 2.4c-6.65 0-12 5.35-12 12s5.35 12 12 12c6.4 0 11.45-4.45 11.45-11.72 0-.78-.08-1.55-.2-2.32h-11.25z"/></svg> );
+import { Wallet } from '@mercadopago/sdk-react';
 
 // --- ID DE ADMINISTRADOR ---
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
-// --- COMPONENTE REUTILIZABLE para Estatus ---
+// --- COMPONENTES REUTILIZABLES ---
 const StatusBadge = ({ status }) => {
     const baseClasses = "text-xs font-bold px-2.5 py-1 rounded-full";
     if (status === 'completed') {
@@ -17,10 +14,18 @@ const StatusBadge = ({ status }) => {
     return <span className={`${baseClasses} bg-amber-100 text-amber-800`}>Pendiente</span>;
 };
 
+const UserStatusBadge = ({ status }) => {
+    const baseClasses = "text-xs font-bold px-2.5 py-1 rounded-full";
+     if (status === 'approved') {
+        return <span className={`${baseClasses} bg-green-100 text-green-800`}>Aprobado</span>;
+    }
+    return <span className={`${baseClasses} bg-amber-100 text-amber-800`}>Pendiente de Aprobación</span>;
+};
+
 
 // --- COMPONENTES DE PÁGINA ---
 
-const AuthPage = ({ auth, updateProfile }) => {
+const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,35 +35,30 @@ const AuthPage = ({ auth, updateProfile }) => {
   const [message, setMessage] = useState('');
 
   const handleAuthAction = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage('');
+    e.preventDefault(); setLoading(true); setError(null); setMessage('');
     try {
       if (isLogin) {
         await auth.signInWithEmailAndPassword(email, password);
       } else {
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         await updateProfile(userCredential.user, { displayName: name });
-        setMessage('¡Cuenta creada! Por favor, inicia sesión.');
-        setIsLogin(true);
+
+        const userRef = doc(db, "users", userCredential.user.uid);
+        await setDoc(userRef, {
+            email: userCredential.user.email,
+            displayName: name,
+            createdAt: serverTimestamp(),
+            status: "pending_approval",
+        });
       }
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { setError(error.message); } finally { setLoading(false); }
   };
 
   return (
     <div className="relative flex justify-center items-center min-h-screen p-4 bg-slate-50 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-100 to-transparent blur-3xl" />
         <div className="relative w-full max-w-md mx-auto bg-white/60 backdrop-blur-xl border border-slate-200 rounded-2xl p-8 md:p-10 shadow-lg">
-            <img 
-                src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" 
-                alt="Logo Cósmica" 
-                className="h-7 w-auto mb-10 mx-auto"
-            />
+            <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-7 w-auto mb-10 mx-auto"/>
             <div className="text-center">
                 <h2 className="font-heading text-3xl font-bold text-slate-900">{isLogin ? 'Bienvenido de Nuevo' : 'Crea tu Cuenta'}</h2>
                 <p className="text-slate-500 mt-2">{isLogin ? 'Accede a tu plataforma de cliente.' : 'Únete para gestionar tu universo digital.'}</p>
@@ -90,11 +90,27 @@ const AuthPage = ({ auth, updateProfile }) => {
   );
 };
 
-const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot }) => {
+const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, getDoc, httpsCallable, getFunctions }) => {
     const [changeRequestSent, setChangeRequestSent] = useState(false);
     const [loading, setLoading] = useState(false);
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
+    const [subscription, setSubscription] = useState({ status: 'loading' });
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [preferenceId, setPreferenceId] = useState(null);
+    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
+
+    useEffect(() => {
+        const userSubRef = doc(db, "users", user.uid);
+        const unsubscribe = onSnapshot(userSubRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().subscriptionStatus) {
+                setSubscription({ status: docSnap.data().subscriptionStatus });
+            } else {
+                setSubscription({ status: 'inactive' });
+            }
+        });
+        return () => unsubscribe();
+    }, [db, doc, onSnapshot, user.uid]);
 
     useEffect(() => {
         const q = query(collection(db, "requests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
@@ -120,6 +136,39 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         } catch (error) { alert('Error al enviar la solicitud: ' + error.message); } finally { setLoading(false); }
     };
 
+    const handleSubscribe = async () => {
+        setIsCreatingPreference(true);
+        try {
+            const functions = getFunctions();
+            const createSubscriptionPreference = httpsCallable(functions, 'createSubscriptionPreference');
+            const result = await createSubscriptionPreference();
+            if (result.data.preferenceId) {
+                setPreferenceId(result.data.preferenceId);
+            }
+        } catch (error) {
+            console.error("Error al crear la preferencia:", error);
+            alert("Hubo un error al iniciar la suscripción. Por favor, intenta de nuevo.");
+            setIsCreatingPreference(false);
+        }
+    };
+    
+    const handleCancel = async () => {
+        if (window.confirm("¿Estás seguro de que deseas cancelar tu suscripción? Perderás el acceso a los cambios ilimitados al final de tu ciclo de facturación.")) {
+            setIsCancelling(true);
+            try {
+                const functions = getFunctions();
+                const cancelSubscription = httpsCallable(functions, 'cancelSubscription');
+                await cancelSubscription();
+                alert("Tu suscripción ha sido cancelada. El cambio se reflejará en breve.");
+            } catch (error) {
+                console.error("Error al cancelar:", error);
+                alert("Hubo un error al cancelar la suscripción. Por favor, contacta a soporte.");
+            } finally {
+                setIsCancelling(false);
+            }
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
@@ -134,8 +183,40 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
                 <div className="mb-10">
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Hola, {user.displayName || user.email} 👋</h1>
-                    <p className="mt-2 text-slate-500">Bienvenido a tu centro de control. Desde aquí puedes solicitar cualquier cambio para tu web.</p>
+                    <p className="mt-2 text-slate-500">Bienvenido a tu centro de control.</p>
                 </div>
+
+                <div className="mb-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h3 className="font-heading text-lg font-bold text-slate-900">
+                                {subscription.status === 'authorized' ? 'Suscripción Activa' : 'Activa tu Suscripción'}
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                {subscription.status === 'authorized' 
+                                    ? 'Gracias por ser parte de Cósmica. ¡Estamos listos para tu próxima solicitud!'
+                                    : 'Accede a cambios ilimitados y soporte prioritario con nuestro plan mensual.'
+                                }
+                            </p>
+                        </div>
+                        {subscription.status === 'authorized' ? (
+                            <button onClick={handleCancel} disabled={isCancelling} className="bg-red-100 text-red-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50">
+                                {isCancelling ? 'Cancelando...' : 'Cancelar Suscripción'}
+                            </button>
+                        ) : (
+                            <div className="min-w-[180px]">
+                                {!preferenceId ? (
+                                    <button onClick={handleSubscribe} disabled={isCreatingPreference || subscription.status === 'loading'} className="w-full bg-blue-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                        {isCreatingPreference ? 'Generando checkout...' : 'Suscribirme Ahora'}
+                                    </button>
+                                ) : (
+                                    <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
                         <div className="p-6 md:p-8">{changeRequestSent ? ( <div className="flex flex-col items-center justify-center text-center h-96"><div className="bg-green-100 p-4 rounded-full mb-4"><svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg></div><h2 className="text-2xl font-heading font-bold text-slate-900">¡Solicitud Enviada!</h2><p className="mt-2 text-slate-500 max-w-sm">Hemos recibido tu solicitud y nos pondremos en marcha pronto. Te notificaremos cualquier novedad.</p></div>) : ( <> <h2 className="text-xl font-heading font-bold text-slate-900 mb-1">Nueva Solicitud de Cambio</h2> <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web de la forma más detallada posible.</p><form onSubmit={handleRequestSubmit} className="space-y-6"><div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required placeholder="Ej: Cambiar número de teléfono" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div><div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div><div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required placeholder="Por favor, sé lo más específico posible. Si aplica, menciona en qué página se debe realizar el cambio." className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div><div className="flex justify-end pt-2"><button type="submit" disabled={loading} className="inline-flex justify-center py-2.5 px-6 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">{loading ? 'Enviando...' : 'Enviar Solicitud'}</button></div></form></>)}</div>
@@ -161,12 +242,12 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
     const chatEndRef = useRef(null);
 
     useEffect(() => {
+        if (!user) return;
         const getRequestDetails = async () => {
             const docRef = doc(db, "requests", requestId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const requestData = { id: docSnap.id, ...docSnap.data() };
-                // Security Check: Ensure the user is either the admin or the owner of the request
                 if (user.uid === ADMIN_UID || user.uid === requestData.userId) {
                     setRequest(requestData);
                 } else {
@@ -177,7 +258,7 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
             }
             setLoading(false);
         };
-        if(user) getRequestDetails();
+        getRequestDetails();
     }, [requestId, db, doc, getDoc, user]);
     
     useEffect(() => {
@@ -213,7 +294,7 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
     };
     
     if (loading) return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
-    if (error) return <div className="flex justify-center items-center min-h-screen">{error}</div>;
+    if (error) return <div className="flex justify-center items-center min-h-screen">{error} <Link to="/" className="ml-2 text-blue-600 hover:underline">Volver</Link></div>;
     
     return (
         <div className="min-h-screen bg-slate-50">
@@ -238,8 +319,8 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
                         <div className="flex-1 p-6 overflow-y-auto">
                            {messages.map(msg => (
                                <div key={msg.id} className={`flex my-2 ${msg.senderId === user.uid ? 'justify-end' : 'justify-start'}`}>
-                                   <div className={`max-w-sm rounded-2xl px-4 py-2 ${msg.senderId === user.uid ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-200 text-slate-800 rounded-bl-none'}`}>
-                                       <p className="text-sm">{msg.text}</p>
+                                   <div className={`max-w-xs md:max-w-md rounded-2xl px-4 py-2 ${msg.senderId === user.uid ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-200 text-slate-800 rounded-bl-none'}`}>
+                                       <p className="text-sm break-words">{msg.text}</p>
                                        <p className={`text-xs mt-1 ${msg.senderId === user.uid ? 'text-blue-200' : 'text-slate-500'}`}>
                                            {msg.createdAt ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'}) : ''}
                                        </p>
@@ -261,31 +342,49 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
     );
 };
 
-const AdminDashboardPage = ({ user, auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc }) => {
+const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc }) => {
+    const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [pendingUsers, setPendingUsers] = useState([]);
+    const [loadingRequests, setLoadingRequests] = useState(true);
+    const [loadingUsers, setLoadingUsers] = useState(true);
 
     useEffect(() => {
+        setLoadingRequests(true);
         const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const requestsData = [];
-            querySnapshot.forEach((doc) => {
-                requestsData.push({ id: doc.id, ...doc.data() });
-            });
-            setRequests(requestsData);
-            setLoading(false);
+            const data = [];
+            querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+            setRequests(data);
+            setLoadingRequests(false);
         });
         return () => unsubscribe();
     }, [db, collection, query, orderBy, onSnapshot]);
+
+    useEffect(() => {
+        setLoadingUsers(true);
+        const q = query(collection(db, "users"), where("status", "==", "pending_approval"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const data = [];
+            querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+            setPendingUsers(data);
+            setLoadingUsers(false);
+        });
+        return () => unsubscribe();
+    }, [db, collection, query, where, onSnapshot]);
 
     const handleMarkAsComplete = async (requestId) => {
         const requestRef = doc(db, "requests", requestId);
         try {
             await updateDoc(requestRef, { status: "completed" });
-        } catch (error) {
-            console.error("Error al actualizar el estado:", error);
-            alert("Hubo un error al marcar la solicitud como completada.");
-        }
+        } catch (error) { console.error("Error al actualizar estado:", error); }
+    };
+
+    const handleApproveUser = async (userId) => {
+        const userRef = doc(db, "users", userId);
+        try {
+            await updateDoc(userRef, { status: "approved" });
+        } catch (error) { console.error("Error al aprobar usuario:", error); }
     };
     
     return (
@@ -301,49 +400,126 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, orderBy, onSnap
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
                 <div className="mb-10">
-                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Solicitudes de Clientes</h1>
-                    <p className="mt-2 text-slate-500">Aquí puedes gestionar todas las solicitudes de cambio pendientes.</p>
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Panel de Administrador</h1>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                    <ul className="divide-y divide-slate-200">
-                        {loading && <li className="p-6 text-center text-slate-500">Cargando solicitudes...</li>}
-                        {!loading && requests.length === 0 && <li className="p-6 text-center text-slate-500">No hay solicitudes por el momento.</li>}
-                        {requests.map((req) => (
-                            <li key={req.id}>
-                                <Link to={`/solicitud/${req.id}`} className="block p-4 sm:p-6 hover:bg-slate-50/50 transition-colors">
-                                    <div className="flex flex-wrap items-center justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-blue-600">{req.userName || 'Usuario sin nombre'}</p>
-                                            <p className="text-lg font-bold text-slate-800 truncate">{req.title}</p>
-                                            <p className="text-sm text-slate-500 mt-1 truncate">{req.description}</p>
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                                            <div className="text-right">
-                                                <StatusBadge status={req.status} />
-                                                <p className="text-xs text-slate-400 mt-1">
-                                                    {req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString('es-CO') : 'Fecha no disp.'}
-                                                </p>
+
+                <div className="border-b border-slate-200 mb-6">
+                    <nav className="flex space-x-4">
+                        <button onClick={() => setActiveTab('requests')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'requests' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Solicitudes ({requests.length})</button>
+                        <button onClick={() => setActiveTab('users')} className={`relative px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'users' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>
+                            Usuarios Pendientes
+                            {pendingUsers.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsers.length}</span></span>}
+                        </button>
+                    </nav>
+                </div>
+
+                {activeTab === 'requests' && (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <ul className="divide-y divide-slate-200">
+                            {loadingRequests && <li className="p-6 text-center text-slate-500">Cargando solicitudes...</li>}
+                            {!loadingRequests && requests.length === 0 && <li className="p-6 text-center text-slate-500">No hay solicitudes por el momento.</li>}
+                            {requests.map((req) => (
+                                <li key={req.id}>
+                                    <Link to={`/solicitud/${req.id}`} className="block p-4 sm:p-6 hover:bg-slate-50/50 transition-colors">
+                                        <div className="flex flex-wrap items-center justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-blue-600">{req.userName || 'Usuario sin nombre'}</p>
+                                                <p className="text-lg font-bold text-slate-800 truncate">{req.title}</p>
+                                                <p className="text-sm text-slate-500 mt-1 truncate">{req.description}</p>
                                             </div>
-                                            {req.status === 'pending' && (
-                                                <button onClick={(e) => { e.preventDefault(); handleMarkAsComplete(req.id); }} className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors flex-shrink-0">
-                                                    Completar
-                                                </button>
-                                            )}
+                                            <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                                                <div className="text-right">
+                                                    <StatusBadge status={req.status} />
+                                                    <p className="text-xs text-slate-400 mt-1">{req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString('es-CO') : 'Fecha no disp.'}</p>
+                                                </div>
+                                                {req.status === 'pending' && (
+                                                    <button onClick={(e) => { e.preventDefault(); handleMarkAsComplete(req.id); }} className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors flex-shrink-0">Completar</button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                
+                {activeTab === 'users' && (
+                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <ul className="divide-y divide-slate-200">
+                           {loadingUsers && <li className="p-6 text-center text-slate-500">Cargando usuarios...</li>}
+                           {!loadingUsers && pendingUsers.length === 0 && <li className="p-6 text-center text-slate-500">No hay usuarios pendientes de aprobación.</li>}
+                           {pendingUsers.map(pUser => (
+                               <li key={pUser.id} className="p-4 sm:p-6">
+                                   <div className="flex flex-wrap items-center justify-between gap-4">
+                                       <div>
+                                           <p className="font-bold text-slate-800">{pUser.displayName}</p>
+                                           <p className="text-sm text-slate-500">{pUser.email}</p>
+                                       </div>
+                                       <button onClick={() => handleApproveUser(pUser.id)} className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                            Aprobar Usuario
+                                       </button>
+                                   </div>
+                               </li>
+                           ))}
+                        </ul>
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+};
+
+const PendingApprovalPage = ({ auth }) => {
+    return (
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <header className="bg-white border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
+                </div>
+            </header>
+            <main className="flex-1 flex items-center justify-center text-center p-4">
+                <div>
+                    <h1 className="font-heading text-3xl font-bold text-slate-900">Cuenta Pendiente de Aprobación</h1>
+                    <p className="mt-2 max-w-md mx-auto text-slate-500">Gracias por registrarte. Te notificaremos por correo cuando tu cuenta sea activada.</p>
                 </div>
             </main>
         </div>
     );
 };
 
+const ProfileErrorPage = ({ auth }) => {
+    return (
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <header className="bg-white border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                </div>
+            </header>
+            <main className="flex-1 flex items-center justify-center text-center p-4">
+                <div>
+                    <h1 className="font-heading text-3xl font-bold text-slate-900">Error al Cargar tu Perfil</h1>
+                    <p className="mt-2 max-w-md mx-auto text-slate-500">
+                        No pudimos encontrar los datos de tu perfil. Esto puede deberse a un error durante el registro. Por favor, contacta a soporte.
+                    </p>
+                    <button 
+                        onClick={() => auth.signOut()} 
+                        className="mt-8 bg-slate-200 text-slate-800 font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-300 transition-colors"
+                    >
+                        Volver a Inicio
+                    </button>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+
 // --- COMPONENTE PRINCIPAL Y CARGADOR DE FIREBASE ---
 export default function App() {
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(undefined);
   const [firebaseServices, setFirebaseServices] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -362,7 +538,7 @@ export default function App() {
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js');
         const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
-        const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
+        const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
         const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
         
         const app = initializeApp(firebaseConfig);
@@ -372,39 +548,92 @@ export default function App() {
         setFirebaseServices({ 
             auth: { ...auth, createUserWithEmailAndPassword: (e, p) => createUserWithEmailAndPassword(auth, e, p), signInWithEmailAndPassword: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), },
             db, updateProfile, addDoc, collection, serverTimestamp, getFunctions, httpsCallable,
-            query, orderBy, onSnapshot, doc, updateDoc, getDoc, where
+            query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc
         });
 
-        onAuthStateChanged(auth, (user) => {
-          setUser(user);
-          setLoading(false);
+        // --- LÓGICA DE AUTENTICACIÓN UNIFICADA ---
+        const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                setUser(currentUser);
+                const userDocRef = doc(db, "users", currentUser.uid);
+                
+                const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setUserProfile(docSnap.data());
+                    } else {
+                        setUserProfile(null);
+                    }
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error de Firestore al leer el perfil:", error);
+                    setUserProfile(null);
+                    setLoading(false);
+                });
+                
+                return unsubscribeSnapshot;
+            } else {
+                setUser(null);
+                setUserProfile(null);
+                setLoading(false);
+            }
         });
-      } catch (error) { console.error("Error al cargar Firebase:", error); setLoading(false); }
+        
+        return unsubscribeAuth;
+
+      } catch (error) { 
+        console.error("Error al cargar Firebase:", error);
+        setLoading(false); 
+      }
     };
     
-    loadFirebase();
+    const unsubscribe = loadFirebase();
+
+    return () => {
+        unsubscribe.then(unsub => unsub && unsub());
+    };
   }, []);
 
-  if (loading || !firebaseServices) {
+
+  if (loading) {
       return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Inicializando plataforma...</div>;
   }
 
-  // Lógica de ruteo principal
   const AppRoutes = () => {
-      if (!user) return <AuthPage {...firebaseServices} />;
-
-      return (
+      if (!user) {
+        return <AuthPage {...firebaseServices} />;
+      }
+      
+      if(user.uid === ADMIN_UID){
+        return (
           <Routes>
-              <Route path="/" element={
-                  user.uid === ADMIN_UID 
-                  ? <AdminDashboardPage user={user} {...firebaseServices} /> 
-                  : <DashboardPage user={user} {...firebaseServices} />
-              } />
-              <Route path="/solicitud/:requestId" element={
-                  <RequestDetailPage user={user} {...firebaseServices} />
-              } />
+            <Route path="/" element={<AdminDashboardPage user={user} {...firebaseServices} />} />
+            <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
           </Routes>
-      );
+        );
+      }
+      
+      if (userProfile === undefined) {
+          return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
+      }
+
+      if (userProfile === null) {
+          return <ProfileErrorPage auth={firebaseServices.auth} />;
+      }
+
+      if(userProfile.status === 'pending_approval') {
+        return <PendingApprovalPage auth={firebaseServices.auth} />;
+      }
+
+      if(userProfile.status === 'approved') {
+        return (
+            <Routes>
+                <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
+                <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
+            </Routes>
+        );
+      }
+      
+      return <AuthPage {...firebaseServices} />;
   };
 
   return <AppRoutes />;
