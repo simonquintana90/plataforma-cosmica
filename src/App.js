@@ -9,7 +9,7 @@ const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 // --- COMPONENTES REUTILIZABLES ---
 const StatusBadge = ({ status }) => {
     const baseClasses = "text-xs font-bold px-2.5 py-1 rounded-full";
-    if (status === 'completed') {
+    if (status === 'completed' || status === 'approved') {
         return <span className={`${baseClasses} bg-green-100 text-green-800`}>Completado</span>;
     }
     return <span className={`${baseClasses} bg-amber-100 text-amber-800`}>Pendiente</span>;
@@ -133,7 +133,6 @@ const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
                         Un pago único de <strong>$800.000 COP</strong> para construir tu universo digital.
                     </p>
                     
-                    {/* CAMBIO 2: Nueva sección sobre e-commerce */}
                     <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
                         <p className="text-sm text-blue-800">
                             Nos especializamos en la creación de <strong className="font-bold">páginas web informativas</strong> para potenciar tu marca. No trabajamos con e-commerce.
@@ -143,7 +142,6 @@ const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
                     <div className="mt-4 text-center relative group">
                         <span className="text-blue-600 text-xs cursor-help">
                             ¿Qué incluye este pago?
-                            {/* CAMBIO 1: Texto del tooltip actualizado */}
                             <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-64 bg-slate-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none mb-2">
                                 Creación de tu página web informativa. El tiempo de entrega es de 2 a 4 semanas.
                                 <svg className="absolute text-slate-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
@@ -566,11 +564,13 @@ const RequestDetailPage = ({ user, db, doc, getDoc, collection, query, orderBy, 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc }) => {
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
-    const [pendingUsers, setPendingUsers] = useState([]);
+    const [users, setUsers] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [approvingUserId, setApprovingUserId] = useState(null);
     const [completingRequestId, setCompletingRequestId] = useState(null);
+
+    const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
 
     useEffect(() => {
         setLoadingRequests(true);
@@ -586,15 +586,15 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
     useEffect(() => {
         setLoadingUsers(true);
-        const q = query(collection(db, "users"), where("status", "==", "pending_approval"));
+        const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data = [];
             querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
-            setPendingUsers(data);
+            setUsers(data);
             setLoadingUsers(false);
         });
         return () => unsubscribe();
-    }, [db, collection, query, where, onSnapshot]);
+    }, [db, collection, query, onSnapshot, orderBy]);
 
     const handleMarkAsComplete = async (requestId) => {
         setCompletingRequestId(requestId);
@@ -610,7 +610,9 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         }
     };
 
-    const handleApproveUser = async (userId) => {
+    const handleApproveUser = async (e, userId) => {
+        e.stopPropagation();
+        e.preventDefault();
         setApprovingUserId(userId);
         const userRef = doc(db, "users", userId);
         try {
@@ -652,8 +654,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                     <nav className="flex space-x-4">
                         <button onClick={() => setActiveTab('requests')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'requests' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Solicitudes ({requests.length})</button>
                         <button onClick={() => setActiveTab('users')} className={`relative px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'users' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>
-                            Usuarios Pendientes
-                            {pendingUsers.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsers.length}</span></span>}
+                            Todos los Usuarios ({users.length})
+                            {pendingUsersCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsersCount}</span></span>}
                         </button>
                     </nav>
                 </div>
@@ -699,22 +701,31 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                         <ul className="divide-y divide-slate-200">
                            {loadingUsers && <li className="p-6 text-center text-slate-500">Cargando usuarios...</li>}
-                           {!loadingUsers && pendingUsers.length === 0 && <li className="p-6 text-center text-slate-500">No hay usuarios pendientes de aprobación.</li>}
-                           {pendingUsers.map(pUser => (
-                               <li key={pUser.id} className="p-4 sm:p-6">
-                                   <div className="flex flex-wrap items-center justify-between gap-4">
-                                       <div>
-                                           <p className="font-bold text-slate-800">{pUser.displayName}</p>
-                                           <p className="text-sm text-slate-500">{pUser.email}</p>
+                           {!loadingUsers && users.length === 0 && <li className="p-6 text-center text-slate-500">No hay usuarios registrados.</li>}
+                           {users.map(u => (
+                               <li key={u.id}>
+                                   <Link to={`/admin/user/${u.id}`} className="block p-4 sm:p-6 hover:bg-slate-50/50 transition-colors">
+                                       <div className="flex flex-wrap items-center justify-between gap-4">
+                                           <div>
+                                               <p className="font-bold text-slate-800">{u.displayName}</p>
+                                               <p className="text-sm text-slate-500">{u.email}</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <UserStatusBadge status={u.status} />
+                                                    {u.status === 'approved' && <StatusBadge status={u.initialPaymentStatus} />}
+                                                    {u.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${u.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{u.subscriptionStatus}</span>}
+                                                </div>
+                                           </div>
+                                           {u.status === 'pending_approval' && (
+                                                <button 
+                                                    onClick={(e) => handleApproveUser(e, u.id)} 
+                                                    disabled={approvingUserId === u.id}
+                                                    className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                                >
+                                                    {approvingUserId === u.id ? 'Aprobando...' : 'Aprobar'}
+                                                </button>
+                                            )}
                                        </div>
-                                       <button 
-                                            onClick={() => handleApproveUser(pUser.id)} 
-                                            disabled={approvingUserId === pUser.id}
-                                            className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                                        >
-                                            {approvingUserId === pUser.id ? 'Aprobando...' : 'Aprobar Usuario'}
-                                       </button>
-                                   </div>
+                                   </Link>
                                </li>
                            ))}
                         </ul>
@@ -724,6 +735,130 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         </div>
     );
 };
+
+const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderBy, onSnapshot, getFunctions, httpsCallable }) => {
+    const { userId } = useParams();
+    const [userDetail, setUserDetail] = useState(null);
+    const [userRequests, setUserRequests] = useState([]);
+    const [paymentHistory, setPaymentHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            setLoading(true);
+            // Fetch user profile
+            const userDocRef = doc(db, "users", userId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                setUserDetail(userDocSnap.data());
+            } else {
+                setUserDetail(null);
+            }
+
+            // Fetch user requests
+            const requestsQuery = query(collection(db, "requests"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+            const unsubscribeRequests = onSnapshot(requestsQuery, (qSnapshot) => {
+                setUserRequests(qSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+            });
+
+            // Fetch payment history
+            try {
+                const getPaymentHistory = httpsCallable(getFunctions(), 'getPaymentHistory');
+                const result = await getPaymentHistory({ userId: userId });
+                setPaymentHistory(result.data);
+            } catch (error) {
+                console.error("Error fetching payment history:", error);
+                toast.error("No se pudo cargar el historial de pagos.");
+            }
+            
+            setLoading(false);
+            return () => unsubscribeRequests();
+        };
+
+        fetchUserData();
+    }, [userId, db, doc, getDoc, collection, query, where, orderBy, onSnapshot, httpsCallable, getFunctions]);
+
+    if (loading) return <div className="flex justify-center items-center min-h-screen">Cargando datos del usuario...</div>;
+    if (!userDetail) return <div className="flex justify-center items-center min-h-screen">No se encontró al usuario.</div>;
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <Link to="/admin" className="text-sm font-bold text-blue-600 hover:underline">← Volver al Panel</Link>
+                </div>
+            </header>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-1 space-y-8">
+                        {/* User Details */}
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                            <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
+                            <p className="text-sm text-slate-500">{userDetail.email}</p>
+                            
+                            <div className="mt-4 pt-4 border-t border-slate-200 space-y-3 text-sm">
+                                <p><strong className="text-slate-600 w-24 inline-block">Empresa:</strong> {userDetail.companyName || 'N/A'}</p>
+                                <p><strong className="text-slate-600 w-24 inline-block">Celular:</strong> {userDetail.phone || 'N/A'}</p>
+                                <p><strong className="text-slate-600 w-24 inline-block">NIT:</strong> {userDetail.nit || 'N/A'}</p>
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
+                                <h3 className="text-sm font-bold text-slate-600 mb-2">Estado General</h3>
+                                <div className="flex items-center gap-2"><UserStatusBadge status={userDetail.status} /> <span>Cuenta</span></div>
+                                <div className="flex items-center gap-2"><StatusBadge status={userDetail.initialPaymentStatus} /> <span>Pago Inicial</span></div>
+                                {userDetail.subscriptionStatus && <div className="flex items-center gap-2"><span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span> <span>Suscripción</span></div>}
+                            </div>
+                        </div>
+                        {/* Payment History */}
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+                           <h2 className="text-lg font-bold text-slate-800 p-6 border-b border-slate-200">Historial de Pagos</h2>
+                           <ul className="divide-y divide-slate-200">
+                                {paymentHistory.length === 0 ? (
+                                    <li className="p-6 text-center text-sm text-slate-500">No hay pagos registrados.</li>
+                                ) : (
+                                    paymentHistory.map(p => (
+                                        <li key={p.paymentId} className="p-4">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-bold text-slate-700">{p.description}</p>
+                                                    <p className="text-xs text-slate-400 mt-1">{p.date ? new Date(p.date).toLocaleString('es-CO') : ''}</p>
+                                                </div>
+                                                <p className="font-bold text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(p.amount)}</p>
+                                            </div>
+                                        </li>
+                                    ))
+                                )}
+                           </ul>
+                        </div>
+                    </div>
+                    {/* User Requests */}
+                    <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800 p-6 border-b border-slate-200">Historial de Solicitudes ({userRequests.length})</h2>
+                        <ul className="divide-y divide-slate-200">
+                            {userRequests.length === 0 ? (
+                                <li className="p-6 text-center text-slate-500">Este usuario aún no ha enviado solicitudes.</li>
+                            ) : (
+                                userRequests.map(req => (
+                                    <li key={req.id}>
+                                        <Link to={`/solicitud/${req.id}`} className="block p-4 hover:bg-slate-50/50 transition-colors">
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-bold text-slate-700 truncate">{req.title}</p>
+                                                <StatusBadge status={req.status} />
+                                            </div>
+                                            <p className="text-xs text-slate-400 mt-1">{req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleString('es-CO') : ''}</p>
+                                        </Link>
+                                    </li>
+                                ))
+                            )}
+                        </ul>
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
 
 const PendingApprovalPage = ({ auth }) => {
     return (
@@ -784,6 +919,8 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
 
     const [subscription, setSubscription] = useState({ status: 'loading' });
     const [isCancelling, setIsCancelling] = useState(false);
+    const [paymentHistory, setPaymentHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(true);
 
     useEffect(() => {
         if(userProfile) {
@@ -804,6 +941,22 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         });
         return () => unsubscribe();
     }, [db, doc, onSnapshot, user.uid]);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setLoadingHistory(true);
+            try {
+                const getPaymentHistory = httpsCallable(getFunctions(), 'getPaymentHistory');
+                const result = await getPaymentHistory(); // No payload needed, gets own history
+                setPaymentHistory(result.data);
+            } catch (error) {
+                console.error("Error fetching payment history:", error);
+                toast.error("No se pudo cargar tu historial de pagos.");
+            }
+            setLoadingHistory(false);
+        };
+        fetchHistory();
+    }, [getFunctions, httpsCallable]);
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -933,9 +1086,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                         </form>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-800">Suscripción</h2>
-                        <div className="mt-4">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800 p-6">Suscripción</h2>
+                        <div className="px-6 pb-6">
                             {subscription.status === 'loading' && <p className="text-sm text-slate-500">Cargando estado...</p>}
                             {subscription.status === 'authorized' && (
                                 <>
@@ -949,8 +1102,30 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                     </button>
                                 </>
                             )}
-                            {subscription.status === 'inactive' && <p className="text-sm text-slate-600">No tienes una suscripción activa.</p>}
+                            {(subscription.status === 'inactive' || subscription.status === 'cancelled') && <p className="text-sm text-slate-600">No tienes una suscripción activa.</p>}
                         </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800 p-6 border-b border-slate-200">Historial de Pagos</h2>
+                        <ul className="divide-y divide-slate-200">
+                           {loadingHistory ? <li className="p-6 text-center text-sm text-slate-500">Cargando historial...</li> :
+                            paymentHistory.length === 0 ? (
+                                <li className="p-6 text-center text-sm text-slate-500">No tienes pagos registrados.</li>
+                            ) : (
+                                paymentHistory.map(p => (
+                                    <li key={p.paymentId} className="p-4 px-6">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-slate-700">{p.description}</p>
+                                                <p className="text-xs text-slate-400 mt-1">{p.date ? new Date(p.date).toLocaleString('es-CO') : ''}</p>
+                                            </div>
+                                            <p className="font-bold text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(p.amount)}</p>
+                                        </div>
+                                    </li>
+                                ))
+                            )}
+                       </ul>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1020,7 +1195,7 @@ export default function App() {
             addDoc, 
             collection, 
             serverTimestamp, 
-            getFunctions, 
+            getFunctions: () => getFunctions(app), 
             httpsCallable,
             query, 
             orderBy, 
@@ -1092,7 +1267,6 @@ export default function App() {
                     return <AuthPage {...firebaseServices} />;
                 }
 
-                // --- INICIO: LÓGICA DE VISTA DE ADMINISTRADOR ---
                 if (user.uid === ADMIN_UID && viewAsAdmin) {
                     if (viewAsAdmin === 'initial_payment') {
                         return <InitialPaymentPage user={user} {...firebaseServices} />;
@@ -1105,7 +1279,6 @@ export default function App() {
                                 />;
                     }
                 }
-                // --- FIN: LÓGICA DE VISTA DE ADMINISTRADOR ---
                                 
                 if (userProfile === undefined) {
                     return <div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Verificando estado de tu cuenta...</div>;
@@ -1128,7 +1301,9 @@ export default function App() {
                         <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
                         <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
                         <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
+                        
                         <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
+                        <Route path="/admin/user/:userId" element={user.uid === ADMIN_UID ? <AdminUserDetailPage {...firebaseServices} /> : <Navigate to="/" />} />
                     </Routes>
                 );
             })()}

@@ -269,7 +269,6 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
   }
 });
 
-// --- NUEVA FUNCIÓN PARA EL PAGO INICIAL ---
 exports.createInitialPaymentPreference = onCall(
   {
     secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
@@ -288,7 +287,7 @@ exports.createInitialPaymentPreference = onCall(
         {
           id: "inicial_web",
           title: "Pago Inicial Plataforma Cósmica",
-          description: "Creación de página web informativa (2-4 semanas). No incluye e-commerce.",
+          description: "Creación de página web informativa (2-4 semanas).",
           quantity: 1,
           unit_price: 800000,
           currency_id: "COP",
@@ -474,17 +473,29 @@ exports.mercadopagoWebhook = onRequest(
               headers: { "Authorization": `Bearer ${accessToken}` }
           });
           
-          const { external_reference, status } = paymentDetails.data;
+          const { external_reference, status, description, transaction_amount } = paymentDetails.data;
           const userId = external_reference;
 
-          // Verificamos que sea el pago inicial por su ID de item y que esté aprobado
-          const isInitialPayment = paymentDetails.data.additional_info?.items?.[0]?.id === 'inicial_web';
+          const item = paymentDetails.data.additional_info?.items?.[0];
 
-          if (userId && status === 'approved' && isInitialPayment) {
-              await db.collection('users').doc(userId).set({
-                  initialPaymentStatus: 'completed',
-              }, { merge: true });
-              console.log(`Usuario (pago inicial) ${userId} actualizado a 'completed'`);
+          if (userId && status === 'approved' && item) {
+              const userRef = db.collection('users').doc(userId);
+              const paymentRef = userRef.collection('payments').doc(paymentId.toString());
+
+              await paymentRef.set({
+                  paymentId: paymentId.toString(),
+                  date: admin.firestore.FieldValue.serverTimestamp(),
+                  amount: transaction_amount,
+                  description: description,
+                  status: status,
+                  type: item.id === 'inicial_web' ? 'initial' : 'subscription',
+              });
+              
+              if (item.id === 'inicial_web') {
+                  await userRef.set({ initialPaymentStatus: 'completed' }, { merge: true });
+                  console.log(`Usuario (pago inicial) ${userId} actualizado a 'completed'`);
+              }
+              console.log(`Registro de pago ${paymentId} guardado para el usuario ${userId}.`);
           }
       }
     } catch (error) {
@@ -494,6 +505,47 @@ exports.mercadopagoWebhook = onRequest(
     res.status(200).send("OK");
   }
 );
+
+exports.getPaymentHistory = onCall(async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const callerUid = request.auth.uid;
+    // CORRECCIÓN: Usar optional chaining para evitar error si request.data es undefined
+    const targetUserId = request.data?.userId; 
+
+    if (targetUserId && callerUid !== ADMIN_UID) {
+        throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para ver este historial.');
+    }
+
+    const finalUserId = targetUserId || callerUid;
+
+    try {
+        const db = getFirestore();
+        const paymentsRef = db.collection('users').doc(finalUserId).collection('payments');
+        const snapshot = await paymentsRef.orderBy('date', 'desc').get();
+        
+        if (snapshot.empty) {
+            return [];
+        }
+
+        const payments = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                date: data.date ? data.date.toDate().toISOString() : null,
+            };
+        });
+
+        return payments;
+
+    } catch (error) {
+        console.error("Error al obtener el historial de pagos:", error);
+        throw new functions.https.HttpsError('internal', 'No se pudo obtener el historial de pagos.');
+    }
+});
+
 
 exports.uploadFile = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
