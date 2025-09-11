@@ -512,7 +512,6 @@ exports.getPaymentHistory = onCall(async (request) => {
     }
 
     const callerUid = request.auth.uid;
-    // CORRECCIÓN: Usar optional chaining para evitar error si request.data es undefined
     const targetUserId = request.data?.userId; 
 
     if (targetUserId && callerUid !== ADMIN_UID) {
@@ -547,6 +546,7 @@ exports.getPaymentHistory = onCall(async (request) => {
 });
 
 
+// --- FUNCIÓN PARA SUBIR ARCHIVOS DE SOLICITUDES ---
 exports.uploadFile = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     if (req.method !== "POST") {
@@ -566,10 +566,8 @@ exports.uploadFile = functions.https.onRequest((req, res) => {
     busboy.on("file", (fieldname, file, filename) => {
       const filepath = path.join(tmpdir, filename.filename);
       uploads[fieldname] = {filepath, filename: filename.filename};
-
       const writeStream = fs.createWriteStream(filepath);
       file.pipe(writeStream);
-
       const promise = new Promise((resolve, reject) => {
         file.on("end", () => writeStream.end());
         writeStream.on("finish", resolve);
@@ -580,31 +578,72 @@ exports.uploadFile = functions.https.onRequest((req, res) => {
 
     busboy.on("finish", async () => {
       await Promise.all(fileWrites);
-
       const bucket = admin.storage().bucket();
       const fileField = Object.keys(uploads)[0];
       const {filepath, filename} = uploads[fileField];
-
       const destination = `requests/${userId}/${Date.now()}-${filename}`;
-
       try {
-        const [uploadedFile] = await bucket.upload(filepath, {
-          destination: destination,
-          resumable: false,
-        });
-
+        const [uploadedFile] = await bucket.upload(filepath, { destination: destination, resumable: false });
         await uploadedFile.makePublic();
         const downloadURL = uploadedFile.publicUrl();
-
         fs.unlinkSync(filepath);
-
-        res.status(200).json({
-          fileURL: downloadURL,
-          fileName: filename,
-        });
+        res.status(200).json({ fileURL: downloadURL, fileName: filename });
       } catch (error) {
         console.error("Error al subir el archivo a Storage:", error);
         res.status(500).json({message: "Error al subir el archivo."});
+      }
+    });
+
+    busboy.end(req.rawBody);
+  });
+});
+
+// --- NUEVA FUNCIÓN PARA SUBIR LOGOTIPOS ---
+exports.uploadLogo = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    if (req.method !== "POST") {
+      return res.status(405).json({message: "Método no permitido"});
+    }
+    
+    const userId = req.query.userId;
+    if (!userId) {
+        return res.status(400).json({message: "Falta el ID del usuario."});
+    }
+
+    const busboy = Busboy({headers: req.headers});
+    const uploads = {};
+    const tmpdir = os.tmpdir();
+    let fileWrites = [];
+
+    busboy.on("file", (fieldname, file, filename) => {
+      const filepath = path.join(tmpdir, filename.filename);
+      uploads[fieldname] = {filepath, filename: filename.filename};
+      const writeStream = fs.createWriteStream(filepath);
+      file.pipe(writeStream);
+      const promise = new Promise((resolve, reject) => {
+        file.on("end", () => writeStream.end());
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+      });
+      fileWrites.push(promise);
+    });
+
+    busboy.on("finish", async () => {
+      await Promise.all(fileWrites);
+      const bucket = admin.storage().bucket();
+      const fileField = Object.keys(uploads)[0];
+      const {filepath, filename} = uploads[fileField];
+      // Guardamos en una carpeta diferente para logos
+      const destination = `logos/${userId}/${Date.now()}-${filename}`;
+      try {
+        const [uploadedFile] = await bucket.upload(filepath, { destination: destination, resumable: false });
+        await uploadedFile.makePublic();
+        const downloadURL = uploadedFile.publicUrl();
+        fs.unlinkSync(filepath);
+        res.status(200).json({ fileURL: downloadURL, fileName: filename });
+      } catch (error) {
+        console.error("Error al subir el logo a Storage:", error);
+        res.status(500).json({message: "Error al subir el logo."});
       }
     });
 

@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Routes, Route, Link, useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
-import { Wallet } from '@mercadopago/sdk-react';
+// 1. AÑADE initMercadoPago A ESTA LÍNEA
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import toast, { Toaster } from 'react-hot-toast';
+
+// 2. AÑADE ESTA LÍNEA AQUÍ, REEMPLAZANDO CON TU LLAVE DE PRODUCCIÓN
+initMercadoPago('APP_USR-2b43cf78-e7af-49c4-a6ca-774e1c0774e4');
 
 // --- ID DE ADMINISTRADOR ---
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
+
+// ...el resto de tu código continúa aquí...
 
 // --- COMPONENTES REUTILIZABLES ---
 const StatusBadge = ({ status }) => {
@@ -51,6 +57,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
             createdAt: serverTimestamp(),
             status: "pending_approval",
             initialPaymentStatus: "pending",
+            websiteInfoStatus: "pending",
         });
       }
     } catch (error) { setError(error.message); } finally { setLoading(false); }
@@ -159,6 +166,243 @@ const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
                         )}
                     </div>
                 </div>
+            </main>
+        </div>
+    );
+};
+
+const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }) => {
+    const [activeSection, setActiveSection] = useState(1);
+    const [formData, setFormData] = useState({
+        domain: '',
+        clientType: [],
+        commonReasonsNotToChoose: '',
+        mainService: '',
+        servicesInclude: '',
+        processStepByStep: '',
+        additionalServices: '',
+        mainCity: '',
+        otherCities: '',
+        uniqueAspect: '',
+        guarantees: '',
+        certifications: '',
+        civilInsurance: '',
+        exampleSite1: '',
+        exampleSite2: '',
+        exampleSite3: '',
+        logoUrl: '',
+        logoFileName: ''
+    });
+    const [logoFile, setLogoFile] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleCheckboxChange = (e) => {
+        const { value, checked } = e.target;
+        setFormData(prev => {
+            const newClientType = checked 
+                ? [...prev.clientType, value] 
+                : prev.clientType.filter(item => item !== value);
+            return { ...prev, clientType: newClientType };
+        });
+    };
+    
+    const handleLogoChange = (e) => {
+        if (e.target.files[0]) {
+            setLogoFile(e.target.files[0]);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        toast.loading('Guardando tu información...');
+        
+        let finalData = { ...formData };
+
+        if (logoFile) {
+            setIsUploading(true);
+            toast.dismiss();
+            toast.loading('Subiendo tu logotipo...');
+            const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadLogo';
+            const formPayload = new FormData();
+            formPayload.append('logo', logoFile);
+            
+            try {
+                const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
+                    method: 'POST',
+                    body: formPayload,
+                });
+
+                if (!response.ok) { throw new Error('La subida del logo falló.'); }
+                const uploadResponse = await response.json();
+                finalData.logoUrl = uploadResponse.fileURL;
+                finalData.logoFileName = uploadResponse.fileName;
+                toast.dismiss();
+                toast.loading('Logotipo subido. Guardando formulario...');
+            } catch (error) {
+                console.error("Error al subir el logo:", error);
+                toast.dismiss();
+                toast.error("Error al subir tu logo. Por favor, intenta de nuevo.");
+                setIsSaving(false);
+                setIsUploading(false);
+                return;
+            }
+            setIsUploading(false);
+        }
+
+        try {
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, {
+                websiteInfo: {
+                    ...finalData,
+                    lastEdited: serverTimestamp()
+                },
+                websiteInfoStatus: 'completed'
+            });
+            toast.dismiss();
+            toast.success('¡Información guardada con éxito! Ya casi terminamos.');
+        } catch (error) {
+            console.error("Error al guardar el formulario:", error);
+            toast.dismiss();
+            toast.error("Hubo un error al guardar tu información.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const AccordionSection = ({ sectionNumber, title, children }) => (
+        <div className="border-b border-slate-200">
+            <h2>
+                <button 
+                    type="button" 
+                    className="flex items-center justify-between w-full p-5 font-medium text-left text-slate-700"
+                    onClick={() => setActiveSection(activeSection === sectionNumber ? 0 : sectionNumber)}
+                >
+                    <span className="text-lg">{title}</span>
+                    <svg className={`w-6 h-6 shrink-0 transition-transform ${activeSection === sectionNumber ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+            </h2>
+            <div className={`${activeSection === sectionNumber ? '' : 'hidden'}`}>
+                <div className="p-5 border-t border-slate-200">
+                    {children}
+                    <div className="flex justify-between mt-6">
+                        {sectionNumber > 1 ? (
+                            <button type="button" onClick={() => setActiveSection(sectionNumber - 1)} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300">Anterior</button>
+                        ) : <div></div>}
+                        {sectionNumber < 7 && (
+                            <button type="button" onClick={() => setActiveSection(sectionNumber + 1)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Siguiente</button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+    
+    return (
+        <div className="min-h-screen bg-slate-50">
+             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
+                    <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
+                </div>
+            </header>
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="text-center">
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Excelente! Un paso más.</h1>
+                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Por favor, completa la siguiente información para que podamos empezar a construir tu sitio web. Puedes tomarte tu tiempo, la información se guardará al final.</p>
+                </div>
+                <form onSubmit={handleSubmit} className="mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                    <AccordionSection sectionNumber={1} title="Sección 1: Dominio y Logo">
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Tu dominio</label>
+                                <p className="text-xs text-slate-500 mb-2">Tu empresa solo debe tener un dominio. Tener varios dominios puede diluir tus esfuerzos de SEO y causar problemas de contenido duplicado.</p>
+                                <input type="text" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Adjuntar logo</label>
+                                <p className="text-xs text-slate-500 mb-2">Adjunta tu logo en formato PNG con fondo transparente, no mayor a 1000px por el lado más largo.</p>
+                                <button type="button" onClick={() => fileInputRef.current.click()} className="bg-slate-100 text-slate-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors">Seleccionar Archivo</button>
+                                {logoFile && <span className="text-sm text-slate-500 ml-4">{logoFile.name}</span>}
+                                <input type="file" ref={fileInputRef} onChange={handleLogoChange} accept=".png" className="hidden" />
+                            </div>
+                        </div>
+                    </AccordionSection>
+                    
+                    <AccordionSection sectionNumber={2} title="Sección 2: Tus Clientes">
+                         <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">¿A qué tipo de clientes atienden? <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Residencial" onChange={handleCheckboxChange} className="mr-2" /> Residencial</label>
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Comercial" onChange={handleCheckboxChange} className="mr-2" /> Comercial</label>
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Otro" onChange={handleCheckboxChange} className="mr-2" /> Otro...</label>
+                                </div>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">¿Cuáles son las razones más comunes por las que los clientes potenciales podrían no elegir tu empresa?</label>
+                                <input type="text" name="commonReasonsNotToChoose" value={formData.commonReasonsNotToChoose} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                            </div>
+                        </div>
+                    </AccordionSection>
+
+                    <AccordionSection sectionNumber={3} title="Sección 3: Tus Servicios">
+                         <div className="space-y-6">
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es el principal servicio que ofrecen? <span className="text-red-500">*</span></label><input type="text" name="mainService" value={formData.mainService} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué incluyen tus servicios? <span className="text-red-500">*</span></label><textarea name="servicesInclude" value={formData.servicesInclude} onChange={handleInputChange} required rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Describe tu proceso paso a paso desde el principio hasta el final. <span className="text-red-500">*</span></label><textarea name="processStepByStep" value={formData.processStepByStep} onChange={handleInputChange} required rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Enumera todos los servicios adicionales que deseas mostrar en tu sitio. <span className="text-red-500">*</span></label><input type="text" name="additionalServices" value={formData.additionalServices} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                         </div>
+                    </AccordionSection>
+                    
+                    <AccordionSection sectionNumber={4} title="Sección 4: Áreas de Servicio">
+                         <div className="space-y-6">
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es la ciudad principal donde te gustaría conseguir más negocios? <span className="text-red-500">*</span></label><input type="text" name="mainCity" value={formData.mainCity} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿A qué otras ciudades prestan servicio? <span className="text-red-500">*</span></label><input type="text" name="otherCities" value={formData.otherCities} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                         </div>
+                    </AccordionSection>
+
+                    <AccordionSection sectionNumber={5} title="Sección 5: Acerca de tu Negocio">
+                         <div className="space-y-6">
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué hace tu negocio único? <span className="text-red-500">*</span></label><input type="text" name="uniqueAspect" value={formData.uniqueAspect} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué garantías ofreces a tus clientes? <span className="text-red-500">*</span></label><input type="text" name="guarantees" value={formData.guarantees} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué certificaciones o premios has obtenido?</label><input type="text" name="certifications" value={formData.certifications} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                             <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">¿Tus clientes necesitan saber que tienes seguro de responsabilidad civil? <span className="text-red-500">*</span></label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="Sí" onChange={handleInputChange} required className="mr-2" /> Sí</label>
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="No" onChange={handleInputChange} required className="mr-2" /> No</label>
+                                </div>
+                            </div>
+                         </div>
+                    </AccordionSection>
+                    
+                    <AccordionSection sectionNumber={6} title="Sección 6: Ejemplos de Sitios">
+                         <div className="space-y-6">
+                             <p className="text-sm text-slate-500">Ayúdanos a comprender tus preferencias. Esto nos ayudará a crear un sitio que se ajuste a tu visión.</p>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 1 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite1" value={formData.exampleSite1} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 2 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite2" value={formData.exampleSite2} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 3 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite3" value={formData.exampleSite3} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                         </div>
+                    </AccordionSection>
+
+                     <div className="p-5">
+                         <button 
+                            type="submit" 
+                            disabled={isSaving || isUploading}
+                            className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                            {isSaving ? 'Guardando...' : 'Guardar y Finalizar'}
+                        </button>
+                     </div>
+                </form>
             </main>
         </div>
     );
@@ -644,8 +888,9 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
                 <div className="mb-8 p-4 bg-slate-100 border border-slate-200 rounded-xl">
                     <h3 className="font-bold text-slate-700 text-sm mb-3">Herramientas de Vista Previa</h3>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
                         <Link to="/?view=initial_payment" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Pago Inicial</Link>
+                        <Link to="/?view=website_form" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Formulario Web</Link>
                         <Link to="/?view=subscription_wall" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
                     </div>
                 </div>
@@ -736,32 +981,36 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
     );
 };
 
-const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderBy, onSnapshot, getFunctions, httpsCallable }) => {
+const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderBy, onSnapshot, getFunctions, httpsCallable, updateDoc, serverTimestamp }) => {
     const { userId } = useParams();
     const [userDetail, setUserDetail] = useState(null);
     const [userRequests, setUserRequests] = useState([]);
     const [paymentHistory, setPaymentHistory] = useState([]);
+    const [websiteInfo, setWebsiteInfo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchUserData = async () => {
             setLoading(true);
-            // Fetch user profile
             const userDocRef = doc(db, "users", userId);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                setUserDetail(userDocSnap.data());
-            } else {
-                setUserDetail(null);
-            }
+            
+            const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setUserDetail(data);
+                    setWebsiteInfo(data.websiteInfo || {});
+                } else {
+                    setUserDetail(null);
+                }
+            });
 
-            // Fetch user requests
             const requestsQuery = query(collection(db, "requests"), where("userId", "==", userId), orderBy("createdAt", "desc"));
             const unsubscribeRequests = onSnapshot(requestsQuery, (qSnapshot) => {
                 setUserRequests(qSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
             });
 
-            // Fetch payment history
             try {
                 const getPaymentHistory = httpsCallable(getFunctions(), 'getPaymentHistory');
                 const result = await getPaymentHistory({ userId: userId });
@@ -772,14 +1021,116 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
             }
             
             setLoading(false);
-            return () => unsubscribeRequests();
+            
+            return () => {
+                unsubscribeUser();
+                unsubscribeRequests();
+            };
         };
 
         fetchUserData();
-    }, [userId, db, doc, getDoc, collection, query, where, orderBy, onSnapshot, httpsCallable, getFunctions]);
+    }, [userId, db, doc, getFunctions, httpsCallable, collection, query, where, orderBy, onSnapshot]);
+    
+    const handleInfoChange = (e) => {
+        const { name, value } = e.target;
+        setWebsiteInfo(prev => ({...prev, [name]: value}));
+    };
+
+    const handleSaveChanges = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        toast.loading('Guardando cambios...');
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                websiteInfo: {
+                    ...websiteInfo,
+                    lastEdited: serverTimestamp()
+                }
+            });
+            toast.dismiss();
+            toast.success("Información actualizada con éxito.");
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error al actualizar la información:", error);
+            toast.dismiss();
+            toast.error("No se pudieron guardar los cambios.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (loading) return <div className="flex justify-center items-center min-h-screen">Cargando datos del usuario...</div>;
     if (!userDetail) return <div className="flex justify-center items-center min-h-screen">No se encontró al usuario.</div>;
+
+    const renderWebsiteInfo = () => {
+        const fields = [
+            { label: 'Dominio', key: 'domain' },
+            { label: 'Razones para no elegir', key: 'commonReasonsNotToChoose' },
+            { label: 'Servicio Principal', key: 'mainService' },
+            { label: 'Servicios Incluyen', key: 'servicesInclude' },
+            { label: 'Proceso Paso a Paso', key: 'processStepByStep' },
+            { label: 'Servicios Adicionales', key: 'additionalServices' },
+            { label: 'Ciudad Principal', key: 'mainCity' },
+            { label: 'Otras Ciudades', key: 'otherCities' },
+            { label: 'Aspecto Único', key: 'uniqueAspect' },
+            { label: 'Garantías', key: 'guarantees' },
+            { label: 'Certificaciones', key: 'certifications' },
+            { label: 'Seguro Civil', key: 'civilInsurance' },
+            { label: 'Ejemplo Sitio 1', key: 'exampleSite1' },
+            { label: 'Ejemplo Sitio 2', key: 'exampleSite2' },
+            { label: 'Ejemplo Sitio 3', key: 'exampleSite3' },
+        ];
+        
+        const lastEditedDate = websiteInfo?.lastEdited?.seconds ? new Date(websiteInfo.lastEdited.seconds * 1000).toLocaleString('es-CO') : 'N/A';
+        
+        return (
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800">Información para el Sitio Web</h2>
+                        <p className="text-sm text-slate-500">Última edición: {lastEditedDate}</p>
+                    </div>
+                    {!isEditing && <button onClick={() => setIsEditing(true)} className="bg-slate-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-900">Editar</button>}
+                </div>
+                
+                {Object.keys(websiteInfo).length > 0 ? (
+                    <form onSubmit={handleSaveChanges}>
+                        <div className="space-y-4">
+                            {websiteInfo.logoUrl && (
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Logotipo</label>
+                                    <a href={websiteInfo.logoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{websiteInfo.logoFileName || 'Ver logo'}</a>
+                                </div>
+                            )}
+                            {fields.map(field => (
+                                <div key={field.key}>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">{field.label}</label>
+                                    {isEditing ? (
+                                        <textarea 
+                                            name={field.key}
+                                            value={websiteInfo[field.key] || ''}
+                                            onChange={handleInfoChange}
+                                            rows={field.key.startsWith('example') || field.key === 'processStepByStep' ? 3 : 1}
+                                            className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-slate-600 p-2 bg-slate-50 rounded">{websiteInfo[field.key] || 'No provisto'}</p>
+                                    )}
+                                </div>
+                            ))}
+                            {isEditing && (
+                                <div className="flex justify-end gap-4 pt-4">
+                                    <button type="button" onClick={() => setIsEditing(false)} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300">Cancelar</button>
+                                    <button type="submit" disabled={isSaving} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50">{isSaving ? 'Guardando...' : 'Guardar Cambios'}</button>
+                                </div>
+                            )}
+                        </div>
+                    </form>
+                ) : <p>El cliente aún no ha completado el formulario de información web.</p>}
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -790,69 +1141,21 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-1 space-y-8">
-                        {/* User Details */}
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                            <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
-                            <p className="text-sm text-slate-500">{userDetail.email}</p>
-                            
-                            <div className="mt-4 pt-4 border-t border-slate-200 space-y-3 text-sm">
-                                <p><strong className="text-slate-600 w-24 inline-block">Empresa:</strong> {userDetail.companyName || 'N/A'}</p>
-                                <p><strong className="text-slate-600 w-24 inline-block">Celular:</strong> {userDetail.phone || 'N/A'}</p>
-                                <p><strong className="text-slate-600 w-24 inline-block">NIT:</strong> {userDetail.nit || 'N/A'}</p>
-                            </div>
+                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 mb-8">
+                    <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
+                    <p className="text-sm text-slate-500">{userDetail.email}</p>
+                    <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
+                        <h3 className="text-sm font-bold text-slate-600 mb-2">Estado General</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <UserStatusBadge status={userDetail.status} />
+                            <StatusBadge status={userDetail.initialPaymentStatus} />
+                            {userDetail.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span>}
+                        </div>
+                    </div>
+                </div>
 
-                            <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
-                                <h3 className="text-sm font-bold text-slate-600 mb-2">Estado General</h3>
-                                <div className="flex items-center gap-2"><UserStatusBadge status={userDetail.status} /> <span>Cuenta</span></div>
-                                <div className="flex items-center gap-2"><StatusBadge status={userDetail.initialPaymentStatus} /> <span>Pago Inicial</span></div>
-                                {userDetail.subscriptionStatus && <div className="flex items-center gap-2"><span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span> <span>Suscripción</span></div>}
-                            </div>
-                        </div>
-                        {/* Payment History */}
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-                           <h2 className="text-lg font-bold text-slate-800 p-6 border-b border-slate-200">Historial de Pagos</h2>
-                           <ul className="divide-y divide-slate-200">
-                                {paymentHistory.length === 0 ? (
-                                    <li className="p-6 text-center text-sm text-slate-500">No hay pagos registrados.</li>
-                                ) : (
-                                    paymentHistory.map(p => (
-                                        <li key={p.paymentId} className="p-4">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-bold text-slate-700">{p.description}</p>
-                                                    <p className="text-xs text-slate-400 mt-1">{p.date ? new Date(p.date).toLocaleString('es-CO') : ''}</p>
-                                                </div>
-                                                <p className="font-bold text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(p.amount)}</p>
-                                            </div>
-                                        </li>
-                                    ))
-                                )}
-                           </ul>
-                        </div>
-                    </div>
-                    {/* User Requests */}
-                    <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-800 p-6 border-b border-slate-200">Historial de Solicitudes ({userRequests.length})</h2>
-                        <ul className="divide-y divide-slate-200">
-                            {userRequests.length === 0 ? (
-                                <li className="p-6 text-center text-slate-500">Este usuario aún no ha enviado solicitudes.</li>
-                            ) : (
-                                userRequests.map(req => (
-                                    <li key={req.id}>
-                                        <Link to={`/solicitud/${req.id}`} className="block p-4 hover:bg-slate-50/50 transition-colors">
-                                            <div className="flex justify-between items-center">
-                                                <p className="font-bold text-slate-700 truncate">{req.title}</p>
-                                                <StatusBadge status={req.status} />
-                                            </div>
-                                            <p className="text-xs text-slate-400 mt-1">{req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleString('es-CO') : ''}</p>
-                                        </Link>
-                                    </li>
-                                ))
-                            )}
-                        </ul>
-                    </div>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                    {renderWebsiteInfo()}
                 </div>
             </main>
         </div>
@@ -947,7 +1250,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
             setLoadingHistory(true);
             try {
                 const getPaymentHistory = httpsCallable(getFunctions(), 'getPaymentHistory');
-                const result = await getPaymentHistory(); // No payload needed, gets own history
+                const result = await getPaymentHistory();
                 setPaymentHistory(result.data);
             } catch (error) {
                 console.error("Error fetching payment history:", error);
@@ -1125,7 +1428,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                     </li>
                                 ))
                             )}
-                       </ul>
+                        </ul>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1271,6 +1574,9 @@ export default function App() {
                     if (viewAsAdmin === 'initial_payment') {
                         return <InitialPaymentPage user={user} {...firebaseServices} />;
                     }
+                    if (viewAsAdmin === 'website_form') {
+                        return <WebsiteInfoFormPage user={user} {...firebaseServices} />;
+                    }
                     if (viewAsAdmin === 'subscription_wall') {
                         return <SubscriptionWallPage 
                                     user={user}
@@ -1294,6 +1600,10 @@ export default function App() {
                 
                 if (userProfile?.status === 'approved' && userProfile?.initialPaymentStatus !== 'completed' && user.uid !== ADMIN_UID) {
                     return <InitialPaymentPage user={user} {...firebaseServices} />;
+                }
+
+                if (userProfile?.status === 'approved' && userProfile?.initialPaymentStatus === 'completed' && userProfile?.websiteInfoStatus !== 'completed' && user.uid !== ADMIN_UID) {
+                    return <WebsiteInfoFormPage user={user} {...firebaseServices} />;
                 }
 
                 return (
