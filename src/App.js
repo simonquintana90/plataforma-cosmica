@@ -31,7 +31,9 @@ const UserStatusBadge = ({ status }) => {
 // --- COMPONENTES DE PÁGINA ---
 
 const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation(); // <-- AÑADE ESTA LÍNEA
+  // Si la ruta es /login, isLogin es true. Para cualquier otra ruta (como /), es false (Registro).
+  const [isLogin, setIsLogin] = useState(location.pathname === '/login'); // <-- MODIFICA ESTA LÍNEA
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1620,7 +1622,17 @@ export default function App() {
             
             {(() => {
                 if (!user) {
-                    return <AuthPage {...firebaseServices} />;
+                    // --- INICIO DEL CAMBIO ---
+                    // Envolvemos AuthPage en Routes para que useLocation() funcione
+                    return (
+                        <Routes>
+                            {/* /login muestra AuthPage en modo Login */}
+                            <Route path="/login" element={<AuthPage {...firebaseServices} />} /> 
+                            {/* Cualquier otra ruta (como /) muestra AuthPage en modo Registro */}
+                            <Route path="*" element={<AuthPage {...firebaseServices} />} /> 
+                        </Routes>
+                    );
+                    // --- FIN DEL CAMBIO ---
                 }
 
                 // --- (INICIO) CAMBIOS EN LÓGICA DE RUTAS ---
