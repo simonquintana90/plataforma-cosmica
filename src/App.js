@@ -31,37 +31,28 @@ const UserStatusBadge = ({ status }) => {
 // --- COMPONENTES DE PÁGINA ---
 
 const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
-  const location = useLocation(); // <-- AÑADE ESTA LÍNEA
-  // Si la ruta es /login, isLogin es true. Para cualquier otra ruta (como /), es false (Registro).
-  const [isLogin, setIsLogin] = useState(location.pathname === '/login'); // <-- MODIFICA ESTA LÍNEA
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate(); // Para cambiar de URL
+// CAMBIO: 'isLogin' ahora se deriva de la URL, no es un estado. const isLogin = location.pathname.startsWith('/login');
 
-  const handleAuthAction = async (e) => {
-    e.preventDefault(); setLoading(true); setError(null); setMessage('');
-    try {
-      if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
-      } else {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        await updateProfile(userCredential.user, { displayName: name });
+const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(null); const [loading, setLoading] = useState(false); const [message, setMessage] = useState('');
 
-        const userRef = doc(db, "users", userCredential.user.uid);
-        await setDoc(userRef, {
-            email: userCredential.user.email,
-            displayName: name,
-            createdAt: serverTimestamp(),
-            status: "pending_approval",
-            initialPaymentStatus: "pending", // El usuario empezará aquí
-            websiteInfoStatus: "pending",
-        });
-      }
-    } catch (error) { setError(error.message); } finally { setLoading(false); }
-  };
+const handleAuthAction = async (e) => { e.preventDefault(); setLoading(true); setError(null); setMessage(''); try { if (isLogin) { await auth.signInWithEmailAndPassword(email, password); } else { const userCredential = await auth.createUserWithEmailAndPassword(email, password); await updateProfile(userCredential.user, { displayName: name });
+
+    const userRef = doc(db, "users", userCredential.user.uid);
+    await setDoc(userRef, {
+        email: userCredential.user.email,
+        displayName: name,
+        createdAt: serverTimestamp(),
+        status: "pending_approval",
+        initialPaymentStatus: "pending",
+        websiteInfoStatus: "pending",
+    });
+  }
+} catch (error) { setError(error.message); } finally { setLoading(false); }
+};
+
+// CAMBIO: Nueva función para el botón que cambia de modo const toggleAuthMode = () => { setError(null); setMessage(''); if (isLogin) { navigate('/'); // Si estamos en login, ir a registro } else { navigate('/login'); // Si estamos en registro, ir a login } };
 
   return (
     <div className="relative flex justify-center items-center min-h-screen p-4 bg-slate-50 overflow-hidden">
