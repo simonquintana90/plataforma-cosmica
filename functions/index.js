@@ -1,14 +1,15 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore"); 
-const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
-const {Resend} = require("resend");
-const {onCall, onRequest} = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+const { Resend } = require("resend");
+const { onCall, onRequest } = require("firebase-functions/v2/https");
 const axios = require("axios");
+const crypto = require("crypto"); // Necesario para verificar webhooks
 
-const cors = require("cors")({origin: true});
+const cors = require("cors")({ origin: true });
 const Busboy = require("busboy");
 const path = require("path");
 const os = require("os");
@@ -18,11 +19,14 @@ initializeApp();
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
+const WOMPI_API_BASE = "https://api.wompi.co/v1";
+
+// --- NOTIFICACIONES Y LÓGICA DE LA APP (TUS FUNCIONES) ---
 
 exports.notifyAdminOnNewUser = onDocumentCreated(
   {
     document: "users/{userId}",
-    secrets: ["RESEND_API_KEY"],
+    secrets: ["RESEND_API_KEY"], // Correcto: Mayúsculas
   },
   async (event) => {
     const user = event.data.data();
@@ -63,10 +67,10 @@ exports.notifyAdminOnNewUser = onDocumentCreated(
 exports.sendEmailOnNewRequest = onDocumentCreated(
   {
     document: "requests/{requestId}",
-    secrets: ["RESEND_API_KEY"],
+    secrets: ["RESEND_API_KEY"], // Correcto: Mayúsculas
   },
   async (event) => {
-    const resend = new Resend(process.env.RESEND_API_KEY); 
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const snapshot = event.data;
     if (!snapshot) {
       console.log("No data associated with the event");
@@ -104,7 +108,7 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
     </div>
   `;
 
-  const clientEmailHtml = `
+    const clientEmailHtml = `
     <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
         <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
@@ -117,21 +121,21 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
     </div>
   `;
 
-  const adminEmail = { from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>", to: ADMIN_EMAIL, subject: `Nueva Solicitud de Cambio: ${newRequest.title}`, html: adminEmailHtml };
-  const clientEmail = { from: "Cósmica Web <notificaciones@send.cosmicaweb.com>", to: newRequest.userEmail, subject: `Confirmación de tu solicitud: ${newRequest.title}`, html: clientEmailHtml };
+    const adminEmail = { from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>", to: ADMIN_EMAIL, subject: `Nueva Solicitud de Cambio: ${newRequest.title}`, html: adminEmailHtml };
+    const clientEmail = { from: "Cósmica Web <notificaciones@send.cosmicaweb.com>", to: newRequest.userEmail, subject: `Confirmación de tu solicitud: ${newRequest.title}`, html: clientEmailHtml };
 
-  try {
-    await Promise.all([resend.emails.send(adminEmail), resend.emails.send(clientEmail)]);
-    console.log("Correos de notificación (admin y cliente) enviados con éxito.");
-  } catch (error) {
-    console.error("Error al enviar los correos:", error);
-  }
-});
+    try {
+      await Promise.all([resend.emails.send(adminEmail), resend.emails.send(clientEmail)]);
+      console.log("Correos de notificación (admin y cliente) enviados con éxito.");
+    } catch (error) {
+      console.error("Error al enviar los correos:", error);
+    }
+  });
 
 exports.sendCompletionEmail = onDocumentUpdated(
   {
     document: "requests/{requestId}",
-    secrets: ["RESEND_API_KEY"],
+    secrets: ["RESEND_API_KEY"], // Correcto: Mayúsculas
   },
   async (event) => {
     const dataBefore = event.data.before.data();
@@ -139,7 +143,7 @@ exports.sendCompletionEmail = onDocumentUpdated(
 
     if (dataBefore.status !== "completed" && dataAfter.status === "completed") {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      
+
       const completionEmailHtml = `
         <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
@@ -174,7 +178,7 @@ exports.sendCompletionEmail = onDocumentUpdated(
 exports.sendChatMessageNotification = onDocumentCreated(
   {
     document: "requests/{requestId}/messages/{messageId}",
-    secrets: ["RESEND_API_KEY"],
+    secrets: ["RESEND_API_KEY"], // Correcto: Mayúsculas
   },
   async (event) => {
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -185,15 +189,15 @@ exports.sendChatMessageNotification = onDocumentCreated(
     const requestData = requestDoc.data();
 
     if (!requestData) {
-        console.log("No se encontró la solicitud padre.");
-        return;
+      console.log("No se encontró la solicitud padre.");
+      return;
     }
 
-    const appUrl = `https://app.cosmicaweb.com/solicitud/${requestId}`;
+    const appUrl = `https.app.cosmicaweb.com/solicitud/${requestId}`;
     let emailToSend;
 
     if (messageData.senderId === ADMIN_UID) {
-        const clientEmailHtml = `
+      const clientEmailHtml = `
             <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
                 <h1 style="font-size: 22px;">Tienes un nuevo mensaje de Cósmica</h1>
                 <p>Hola, ${requestData.userName || ''}.</p>
@@ -202,15 +206,15 @@ exports.sendChatMessageNotification = onDocumentCreated(
                 <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver la conversación</a>
             </div>`;
 
-        emailToSend = {
-            from: "Cósmica Web <notificaciones@send.cosmicaweb.com>",
-            to: requestData.userEmail,
-            subject: `Nuevo mensaje sobre tu solicitud: ${requestData.title}`,
-            html: clientEmailHtml,
-        };
-    } 
+      emailToSend = {
+        from: "Cósmica Web <notificaciones@send.cosmicaweb.com>",
+        to: requestData.userEmail,
+        subject: `Nuevo mensaje sobre tu solicitud: ${requestData.title}`,
+        html: clientEmailHtml,
+      };
+    }
     else {
-        const adminEmailHtml = `
+      const adminEmailHtml = `
             <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
                 <h1 style="font-size: 22px;">Nuevo mensaje de un cliente</h1>
                 <p>El cliente <strong>${requestData.userName}</strong> ha respondido en la solicitud "<strong>${requestData.title}</strong>".</p>
@@ -218,19 +222,19 @@ exports.sendChatMessageNotification = onDocumentCreated(
                 <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a la solicitud</a>
             </div>`;
 
-        emailToSend = {
-            from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
-            to: ADMIN_EMAIL,
-            subject: `Nuevo mensaje de ${requestData.userName} en: ${requestData.title}`,
-            html: adminEmailHtml,
-        };
+      emailToSend = {
+        from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
+        to: ADMIN_EMAIL,
+        subject: `Nuevo mensaje de ${requestData.userName} en: ${requestData.title}`,
+        html: adminEmailHtml,
+      };
     }
 
     try {
-        await resend.emails.send(emailToSend);
-        console.log(`Notificación de chat enviada a ${emailToSend.to}`);
+      await resend.emails.send(emailToSend);
+      console.log(`Notificación de chat enviada a ${emailToSend.to}`);
     } catch (error) {
-        console.error("Error al enviar notificación de chat:", error);
+      console.error("Error al enviar notificación de chat:", error);
     }
   }
 );
@@ -269,134 +273,147 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
   }
 });
 
-exports.createInitialPaymentPreference = onCall(
+// --- FUNCIONES DE MERCADOPAGO ELIMINADAS ---
+
+
+// --- (NUEVO) FUNCIONES DE WOMPI ---
+
+const wompiApi = axios.create({
+  baseURL: WOMPI_API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+/**
+ * (NUEVO) Obtiene el token de aceptación de Wompi.
+ * Se llama ANTES de renderizar el formulario de pago.
+ */
+exports.getWompiAcceptanceToken = onCall(
   {
-    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
+    secrets: ["WOMPI_PUBLIC_KEY"], // Correcto: Mayúsculas
   },
   async (request) => {
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
 
-    const userId = request.auth.uid;
-    const userEmail = request.auth.token.email;
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-
-    const preferenceData = {
-      items: [
-        {
-          id: "inicial_web",
-          title: "Pago Inicial Plataforma Cósmica",
-          description: "Creación de página web informativa (2-4 semanas).",
-          quantity: 1,
-          unit_price: 800000,
-          currency_id: "COP",
-        },
-      ],
-      payer: {
-        email: userEmail,
-      },
-      back_urls: {
-        success: "https://app.cosmicaweb.com",
-        failure: "https://app.cosmicaweb.com",
-        pending: "https://app.cosmicaweb.com",
-      },
-      external_reference: userId,
-      payment_methods: {
-        installments: 1,
-      },
-    };
-
-    try {
-      const response = await axios.post(
-        "https://api.mercadopago.com/checkout/preferences",
-        preferenceData,
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      return { preferenceId: response.data.id };
-
-    } catch (error) {
-      console.error("Error al crear la preferencia de pago inicial en Mercado Pago:", error.response ? error.response.data : error.message);
-      throw new functions.https.HttpsError('internal', 'No se pudo crear la preferencia de pago.');
-    }
-  }
-);
-
-
-exports.createSubscriptionPreference = onCall(
-  {
-    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
-  },
-  async (request) => {
-    if (!request.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
-    }
-
-    const userId = request.auth.uid;
-    const userEmail = request.auth.token.email;
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const wompiPublicKey = process.env.WOMPI_PUBLIC_KEY;
     
-    const preferenceData = {
-      items: [
-        {
-          id: "plan_mensual",
-          title: "Suscripción Mensual Cósmica",
-          description: "Acceso a cambios ilimitados y soporte prioritario",
-          quantity: 1,
-          unit_price: 300000,
-          currency_id: "COP",
-        },
-      ],
-      payer: {
-        email: userEmail,
-      },
-      back_urls: {
-        success: "https://app.cosmicaweb.com",
-        failure: "https://app.cosmicaweb.com",
-        pending: "https://app.cosmicaweb.com",
-      },
-      external_reference: userId,
-      payment_methods: {
-        installments: 1,
-      },
-      auto_recurring: {
-        frequency: 1,
-        frequency_type: "months",
-        transaction_amount: 300000,
-        currency_id: "COP",
-      },
-    };
-
     try {
-      const response = await axios.post(
-        "https://api.mercadopago.com/checkout/preferences",
-        preferenceData,
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // 1. Obtenemos el "token de aceptación" del comerciante
+      const merchantResponse = await axios.get(`${WOMPI_API_BASE}/merchants/${wompiPublicKey}`);
+      const acceptanceToken = merchantResponse.data.data.presigned_acceptance.acceptance_token;
       
-      return { preferenceId: response.data.id };
+      if (!acceptanceToken) {
+        throw new Error('No se pudo obtener el token de aceptación del comerciante.');
+      }
+      
+      return { acceptance_token: acceptanceToken };
 
     } catch (error) {
-      console.error("Error al crear la preferencia en Mercado Pago:", error.response ? error.response.data : error.message);
-      throw new functions.https.HttpsError('internal', 'No se pudo crear la preferencia de pago.');
+      console.error("Error al obtener token de aceptación de Wompi:", error.response ? error.response.data : error.message);
+      throw new functions.https.HttpsError('internal', 'No se pudo inicializar el pago.');
     }
   }
 );
 
-exports.cancelSubscription = onCall(
+
+/**
+ * (NUEVO) Crea la suscripción en Wompi y activa al usuario.
+ * Recibe tokens desde el frontend.
+ */
+exports.createWompiSubscription = onCall(
   {
-    secrets: ["MERCADOPAGO_ACCESS_TOKEN"],
+    secrets: ["WOMPI_PRIVATE_KEY"], // Correcto: Mayúsculas
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const { paymentToken, acceptanceToken } = request.data;
+    if (!paymentToken || !acceptanceToken) {
+      throw new functions.https.HttpsError('invalid-argument', 'Faltan el token de pago o el token de aceptación.');
+    }
+
+    const userId = request.auth.uid;
+    const userEmail = request.auth.token.email;
+    const userName = request.auth.token.name || userEmail;
+    
+    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY;
+    wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(userId);
+
+    try {
+      // 1. Crear Fuente de Pago (la tarjeta tokenizada)
+      console.log(`Creando fuente de pago para ${userEmail}`);
+      const paymentSourceResponse = await wompiApi.post('/payment_sources', {
+        type: "CARD",
+        token: paymentToken,
+        customer_email: userEmail,
+        acceptance_token: acceptanceToken,
+      });
+      const paymentSource = paymentSourceResponse.data.data;
+      console.log(`Fuente de pago creada: ${paymentSource.id}`);
+
+      // 2. Crear Cliente en Wompi
+      console.log(`Creando cliente para ${userEmail}`);
+      const customerResponse = await wompiApi.post('/customers', {
+        email: userEmail,
+        full_name: userName,
+        payment_source_id: paymentSource.id,
+      });
+      const customer = customerResponse.data.data;
+      console.log(`Cliente creado: ${customer.id}`);
+
+      // 3. Crear la Suscripción
+      console.log(`Creando suscripción para ${customer.id}`);
+      const subscriptionResponse = await wompiApi.post('/subscriptions', {
+        customer_id: customer.id,
+        payment_source_id: paymentSource.id,
+        // Datos de la suscripción (¡Importante!)
+        plan_name: "Suscripción Mensual Cósmica", // Puedes cambiar esto
+        interval: "month", // "day", "week", "month", "year"
+        interval_count: 1, // Cada 1 mes
+        amount_in_cents: 8990000, // 89.900 COP en centavos
+        currency: "COP",
+      });
+      
+      const subscription = subscriptionResponse.data.data;
+      console.log(`Suscripción creada: ${subscription.id}`);
+
+      // 4. Guardar info en Firestore y activar usuario
+      await userRef.set({
+        wompiCustomerId: customer.id,
+        wompiPaymentSourceId: paymentSource.id,
+        subscriptionId: subscription.id,
+        subscriptionProvider: "wompi",
+        subscriptionStatus: "active", // Wompi lo crea como 'pending' pero lo activamos de inmediato
+        initialPaymentStatus: "completed", // ¡Clave para el flujo de la app!
+      }, { merge: true });
+
+      console.log(`Usuario ${userId} activado con suscripción ${subscription.id}`);
+      return { status: "success", subscriptionId: subscription.id, paymentSourceId: paymentSource.id };
+
+    } catch (error) {
+      console.error("Error al crear la suscripción en Wompi:", error.response ? error.response.data : error.message);
+      
+      if (error.response && error.response.data && error.response.data.error) {
+          throw new functions.https.HttpsError('internal', error.response.data.error.messages || 'Error de Wompi.');
+      }
+      throw new functions.https.HttpsError('internal', 'No se pudo crear la suscripción.');
+    }
+  }
+);
+
+/**
+ * (NUEVO) Cancela la suscripción en Wompi.
+ */
+exports.cancelWompiSubscription = onCall(
+  {
+    secrets: ["WOMPI_PRIVATE_KEY"], // Correcto: Mayúsculas
   },
   async(request) => {
     if (!request.auth) {
@@ -404,107 +421,122 @@ exports.cancelSubscription = onCall(
     }
 
     const userId = request.auth.uid;
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY;
+    wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
+    const db = getFirestore();
 
     try {
-      const db = getFirestore();
       const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists || !userDoc.data().subscriptionId) {
-        throw new functions.https.HttpsError('not-found', 'No se encontró una suscripción para este usuario.');
+      if (!userDoc.exists || !userDoc.data().subscriptionId || userDoc.data().subscriptionProvider !== 'wompi') {
+        throw new functions.https.HttpsError('not-found', 'No se encontró una suscripción de Wompi para este usuario.');
       }
       
       const subscriptionId = userDoc.data().subscriptionId;
 
-      await axios.put(
-        `https://api.mercadopago.com/preapproval/${subscriptionId}`,
-        { status: 'cancelled' },
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      console.log(`Cancelando suscripción de Wompi: ${subscriptionId}`);
+      await wompiApi.post(`/subscriptions/${subscriptionId}/cancel`);
       
-      console.log(`Solicitud de cancelación enviada para la suscripción ${subscriptionId}`);
+      // El webhook actualizará el estado, pero podemos forzarlo aquí
+      await db.collection('users').doc(userId).set({
+        subscriptionStatus: 'canceled',
+      }, { merge: true });
+
+      console.log(`Suscripción ${subscriptionId} cancelada para usuario ${userId}`);
       return { success: true, message: 'La suscripción ha sido cancelada.' };
 
     } catch (error) {
-      console.error("Error al cancelar la suscripción:", error.response ? error.response.data : error.message);
+      console.error("Error al cancelar la suscripción de Wompi:", error.response ? error.response.data : error.message);
       throw new functions.https.HttpsError('internal', 'No se pudo cancelar la suscripción.');
     }
   }
 );
 
-exports.mercadopagoWebhook = onRequest(
-  { secrets: ["MERCADOPAGO_ACCESS_TOKEN"] },
+
+/**
+ * (NUEVO) Escucha los eventos de Wompi (pagos, fallos, etc.).
+ */
+exports.wompiWebhook = onRequest(
+  { secrets: ["WOMPI_EVENT_TOKEN"] }, // Correcto: Mayúsculas
   async (req, res) => {
     if (req.method !== 'POST') {
       return res.status(405).send('Method Not Allowed');
     }
 
-    const notification = req.body;
-    console.log("Notificación de Mercado Pago recibida:", notification);
+    const eventsToken = process.env.WOMPI_EVENT_TOKEN;
+    const requestBody = req.rawBody.toString();
+    
+    // TODO: Implementar la verificación de firma HMAC si Wompi la envía.
+    // Por ahora, procesamos el evento.
+    
+    console.log("Webhook de Wompi recibido:", JSON.stringify(req.body));
+
+    const event = req.body;
+    const db = getFirestore();
 
     try {
-      const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      const db = getFirestore();
+      const { data, event: eventType } = event;
+      
+      if (eventType === 'subscription.updated') {
+        const { subscription } = data;
+        const subscriptionId = subscription.id;
+        const newStatus = subscription.status; // ej: 'active', 'past_due', 'canceled'
 
-      if (notification.type === 'preapproval' && notification.data && notification.data.id) {
-          const subscriptionId = notification.data.id;
-          const subDetails = await axios.get(`https://api.mercadopago.com/preapproval/${subscriptionId}`, {
-              headers: { "Authorization": `Bearer ${accessToken}` }
-          });
-          
-          const { external_reference, status, payer_email } = subDetails.data;
-          const userId = external_reference;
+        const usersQuery = db.collection('users').where('subscriptionId', '==', subscriptionId);
+        const userSnapshot = await usersQuery.get();
 
-          if (userId) {
-              await db.collection('users').doc(userId).set({
-                  subscriptionId: subscriptionId,
-                  subscriptionStatus: status,
-                  email: payer_email,
-              }, { merge: true });
-              console.log(`Usuario (suscripción) ${userId} actualizado con estado: ${status}`);
-          }
-      } else if (notification.type === 'payment' && notification.data && notification.data.id) {
-          const paymentId = notification.data.id;
-          const paymentDetails = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-              headers: { "Authorization": `Bearer ${accessToken}` }
-          });
-          
-          const { external_reference, status, description, transaction_amount } = paymentDetails.data;
-          const userId = external_reference;
+        if (userSnapshot.empty) {
+          console.warn(`No se encontró usuario para subscriptionId ${subscriptionId}`);
+          return res.status(200).send("OK (usuario no encontrado)");
+        }
 
-          const item = paymentDetails.data.additional_info?.items?.[0];
+        const userDoc = userSnapshot.docs[0];
+        await userDoc.ref.update({
+          subscriptionStatus: newStatus,
+        });
 
-          if (userId && status === 'approved' && item) {
-              const userRef = db.collection('users').doc(userId);
-              const paymentRef = userRef.collection('payments').doc(paymentId.toString());
-
-              await paymentRef.set({
-                  paymentId: paymentId.toString(),
-                  date: admin.firestore.FieldValue.serverTimestamp(),
-                  amount: transaction_amount,
-                  description: description,
-                  status: status,
-                  type: item.id === 'inicial_web' ? 'initial' : 'subscription',
-              });
-              
-              if (item.id === 'inicial_web') {
-                  await userRef.set({ initialPaymentStatus: 'completed' }, { merge: true });
-                  console.log(`Usuario (pago inicial) ${userId} actualizado a 'completed'`);
-              }
-              console.log(`Registro de pago ${paymentId} guardado para el usuario ${userId}.`);
-          }
+        console.log(`Estado de suscripción actualizado a "${newStatus}" para el usuario ${userDoc.id}`);
       }
+
+      if (eventType === 'transaction.updated') {
+        const { transaction } = data;
+        // Solo nos interesan transacciones aprobadas de suscripciones
+        if (transaction.status === 'APPROVED' && transaction.subscription_id) {
+            
+          const subscriptionId = transaction.subscription_id;
+          const usersQuery = db.collection('users').where('subscriptionId', '==', subscriptionId);
+          const userSnapshot = await usersQuery.get();
+          
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userId = userDoc.id;
+            
+            // Guardar en el historial de pagos
+            const paymentRef = db.collection('users').doc(userId).collection('payments').doc(transaction.id);
+            await paymentRef.set({
+                paymentId: transaction.id,
+                date: admin.firestore.Timestamp.fromDate(new Date(transaction.created_at)),
+                amount: transaction.amount_in_cents / 100, // Almacenar en COP
+                description: "Pago de suscripción mensual",
+                status: 'approved',
+                type: 'subscription',
+                reference: transaction.reference,
+            });
+            console.log(`Pago ${transaction.id} registrado para usuario ${userId}`);
+          }
+        }
+      }
+
     } catch (error) {
-        console.error("Error al procesar el webhook de Mercado Pago:", error.response ? error.response.data : error.message);
+        console.error("Error al procesar el webhook de Wompi:", error.message);
+        return res.status(500).send("Error interno");
     }
     
     res.status(200).send("OK");
   }
 );
+
+
+// --- OTRAS FUNCIONES (SIN CAMBIOS) ---
 
 exports.getPaymentHistory = onCall(async (request) => {
     if (!request.auth) {

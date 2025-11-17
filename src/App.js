@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Routes, Route, Link, useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
-// 1. AÑADE initMercadoPago A ESTA LÍNEA
-import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
+// 1. LÍNEAS DE MERCADOPAGO ELIMINADAS
 import toast, { Toaster } from 'react-hot-toast';
 
-// 2. AÑADE ESTA LÍNEA AQUÍ, REEMPLAZANDO CON TU LLAVE DE PRODUCCIÓN
-initMercadoPago('APP_USR-2b43cf78-e7af-49c4-a6ca-774e1c0774e4');
+// 2. LÍNEA DE initMercadoPago ELIMINADA
 
 // --- ID DE ADMINISTRADOR ---
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
@@ -56,7 +54,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
             displayName: name,
             createdAt: serverTimestamp(),
             status: "pending_approval",
-            initialPaymentStatus: "pending",
+            initialPaymentStatus: "pending", // El usuario empezará aquí
             websiteInfoStatus: "pending",
         });
       }
@@ -99,25 +97,107 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
   );
 };
 
-const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
-    const [preferenceId, setPreferenceId] = useState(null);
-    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
 
-    const handleInitialPayment = async () => {
-        setIsCreatingPreference(true);
+// --- (NUEVO) Hook para cargar script de Wompi ---
+const useWompiScript = () => {
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://checkout.wompi.co/widget.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+};
+
+// --- (MODIFICADO) Este componente REEMPLAZA a 'InitialPaymentPage' ---
+const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
+    useWompiScript(); // Carga el script de Wompi
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [acceptanceToken, setAcceptanceToken] = useState(null); // <-- AÑADIDO
+    const [loadingToken, setLoadingToken] = useState(true); // <-- AÑADIDO
+    const navigate = useNavigate();
+
+    // --- (NUEVO) Obtener el Token de Aceptación al cargar ---
+    useEffect(() => {
+        const fetchAcceptanceToken = async () => {
+            setLoadingToken(true);
+            try {
+                const functions = getFunctions();
+                const getWompiAcceptanceToken = httpsCallable(functions, 'getWompiAcceptanceToken');
+                const result = await getWompiAcceptanceToken();
+                
+                if (result.data.acceptance_token) {
+                    setAcceptanceToken(result.data.acceptance_token);
+                } else {
+                    throw new Error('No se recibió el token de aceptación.');
+                }
+            } catch (error) {
+                console.error("Error al obtener token de aceptación:", error);
+                toast.error("Error al inicializar el formulario de pago.");
+            } finally {
+                setLoadingToken(false);
+            }
+        };
+        fetchAcceptanceToken();
+    }, [getFunctions, httpsCallable]);
+
+    // 1. Esta función es llamada por el FORMULARIO de Wompi
+    const handleWompiResponse = async (event) => {
+        event.preventDefault();
+        setIsProcessing(true);
+        toast.loading('Procesando tu suscripción...');
+
+        const wompiToken = event.detail.token; // Token de la tarjeta
+        
         try {
             const functions = getFunctions();
-            const createInitialPaymentPreference = httpsCallable(functions, 'createInitialPaymentPreference');
-            const result = await createInitialPaymentPreference();
-            if (result.data.preferenceId) {
-                setPreferenceId(result.data.preferenceId);
+            const createWompiSubscription = httpsCallable(functions, 'createWompiSubscription');
+            
+            // 2. Enviamos AMBOS tokens al backend
+            const result = await createWompiSubscription({ 
+                paymentToken: wompiToken, 
+                acceptanceToken: acceptanceToken 
+            });
+
+            if (result.data.status === 'success') {
+                const userRef = doc(db, "users", user.uid);
+                await updateDoc(userRef, {
+                    initialPaymentStatus: "completed",
+                    subscriptionStatus: "active", // <-- CAMBIO A "active"
+                    subscriptionId: result.data.subscriptionId,
+                    paymentSourceId: result.data.paymentSourceId,
+                });
+                
+                toast.dismiss();
+                toast.success('¡Suscripción activada! Bienvenido a Cósmica.');
+                navigate('/formulario-web');
+            } else {
+                throw new Error(result.data.message || 'Error en la suscripción.');
             }
+
         } catch (error) {
-            console.error("Error al crear la preferencia de pago inicial:", error);
-            toast.error("Hubo un error al generar el checkout de pago.");
-            setIsCreatingPreference(false);
+            console.error("Error al crear la suscripción:", error);
+            toast.dismiss();
+            toast.error(`Error: ${error.message || 'No se pudo procesar el pago.'}`);
+            setIsProcessing(false);
         }
     };
+
+    // 5. Añadimos el listener para el evento del formulario de Wompi
+    useEffect(() => {
+        if (!acceptanceToken) return; // No hacer nada si no hay token
+        
+        const wompiForm = document.getElementById('wompi-form');
+        wompiForm.addEventListener('wompi:token', handleWompiResponse);
+        return () => {
+            wompiForm.removeEventListener('wompi:token', handleWompiResponse);
+        };
+    }, [acceptanceToken]); // <-- Se activa cuando el token de aceptación está listo
+    
+    // 6. DEBES PONER TU LLAVE PÚBLICA DE WOMPI AQUÍ
+    const wompiPublicKey = 'pub_prod_...pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX';
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -130,46 +210,75 @@ const InitialPaymentPage = ({ user, auth, getFunctions, httpsCallable }) => {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
                 <div className="text-center">
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Bienvenido a Cósmica, {user.displayName || user.email}!</h1>
-                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">El primer paso para lanzar tu presencia digital es la creación de tu sitio web. Realiza el pago inicial para que nuestro equipo comience a trabajar.</p>
+                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Último paso. Activa tu suscripción mensual para que nuestro equipo comience a trabajar en tu sitio web.</p>
                 </div>
-                <div className="max-w-md mx-auto mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
-                     <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
-                        Pago Inicial de Creación Web
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-2 text-center">
-                        Un pago único de <strong>$800.000 COP</strong> para construir tu universo digital.
-                    </p>
-                    
-                    <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
-                        <p className="text-sm text-blue-800">
-                            Nos especializamos en la creación de <strong className="font-bold">páginas web informativas</strong> para potenciar tu marca. No trabajamos con e-commerce.
-                        </p>
-                    </div>
-
-                    <div className="mt-4 text-center relative group">
-                        <span className="text-blue-600 text-xs cursor-help">
-                            ¿Qué incluye este pago?
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-64 bg-slate-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none mb-2">
-                                Creación de tu página web informativa. El tiempo de entrega es de 2 a 4 semanas.
-                                <svg className="absolute text-slate-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
-                            </span>
-                        </span>
-                    </div>
-
-                    <div className="mt-8">
-                        {!preferenceId ? (
-                            <button onClick={handleInitialPayment} disabled={isCreatingPreference} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                                {isCreatingPreference ? 'Generando checkout...' : 'Pagar $800.000 COP Ahora'}
-                            </button>
-                        ) : (
-                            <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+                
+                {/* 7. Formulario de Wompi */}
+                <form className="max-w-md mx-auto mt-10" id="wompi-form">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+                        
+                        {/* Mostramos 'cargando' mientras obtenemos el token de aceptación */}
+                        {loadingToken && (
+                            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+                                <p className="font-bold text-slate-600">Cargando formulario de pago...</p>
+                            </div>
                         )}
+
+                        <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
+                            Suscripción Mensual
+                        </h3>
+                        <p className="text-slate-500 mt-2 text-center">
+                            <span className="text-3xl font-bold text-slate-800">$89.900</span>
+                            <span className="text-slate-500"> COP / mes</span>
+                        </p>
+                        
+                        <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
+                            <p className="text-sm text-blue-800">
+                                Tu plan incluye <strong className="font-bold">cambios ilimitados</strong>, <strong className="font-bold">hosting</strong> y <strong className="font-bold">soporte prioritario</strong>.
+                            </p>
+                        </div>
+
+                        {/* 8. Campos del widget de Wompi */}
+                        <div className="mt-8 space-y-4">
+                            <div className="wompi-form-field">
+                                <label className="block text-sm font-medium text-slate-600 mb-2">Número de tarjeta</label>
+                                <input type="text" data-wompi="card-number" placeholder="0000 0000 0000 0000" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="wompi-form-field">
+                                    <label className="block text-sm font-medium text-slate-600 mb-2">Fecha de exp.</label>
+                                    <input type="text" data-wompi="card-exp" placeholder="MM/YY" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                </div>
+                                <div className="wompi-form-field">
+                                    <label className="block text-sm font-medium text-slate-600 mb-2">CVC</label>
+                                    <input type="text" data-wompi="card-cvc" placeholder="123" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                </div>
+                            </div>
+                            <div className="wompi-form-field">
+                                <label className="block text-sm font-medium text-slate-600 mb-2">Nombre del titular</label>
+                                <input type="text" data-wompi="card-holder" placeholder="Nombre como aparece en la tarjeta" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8">
+                            <button 
+                                type="submit" 
+                                disabled={isProcessing || loadingToken} // <-- Deshabilitado si está procesando O cargando
+                                className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                data-wompi-key={wompiPublicKey}
+                                data-wompi-currency="COP"
+                            >
+                                {isProcessing ? 'Procesando...' : 'Pagar $89.900 COP Ahora'}
+                            </button>
+                        </div>
+                        <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>
                     </div>
-                </div>
+                </form>
             </main>
         </div>
     );
 };
+
 
 const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }) => {
     const [activeSection, setActiveSection] = useState(1);
@@ -408,63 +517,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
     );
 };
 
-const SubscriptionWallPage = ({ user, auth, getFunctions, httpsCallable }) => {
-    const [preferenceId, setPreferenceId] = useState(null);
-    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
-
-    const handleSubscribe = async () => {
-        setIsCreatingPreference(true);
-        try {
-            const functions = getFunctions();
-            const createSubscriptionPreference = httpsCallable(functions, 'createSubscriptionPreference');
-            const result = await createSubscriptionPreference();
-            if (result.data.preferenceId) {
-                setPreferenceId(result.data.preferenceId);
-            }
-        } catch (error) {
-            console.error("Error al crear la preferencia:", error);
-            toast.error("Hubo un error al iniciar la suscripción.");
-            setIsCreatingPreference(false);
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-slate-50">
-             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-                    <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
-                    <div className="flex items-center gap-4">
-                        <Link to="/cuenta" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Mi Cuenta</Link>
-                        <button onClick={() => auth.signOut()} className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors">Cerrar Sesión</button>
-                    </div>
-                </div>
-            </header>
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                <div className="text-center">
-                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Hola, {user.displayName || user.email} 👋</h1>
-                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Para poder enviar solicitudes de cambio y acceder a todas las funcionalidades, necesitas una suscripción activa.</p>
-                </div>
-                <div className="max-w-md mx-auto mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
-                     <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
-                        Activa tu Suscripción
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-2 text-center">
-                        Accede a cambios ilimitados y soporte prioritario con nuestro plan mensual.
-                    </p>
-                    <div className="mt-8">
-                        {!preferenceId ? (
-                            <button onClick={handleSubscribe} disabled={isCreatingPreference} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                                {isCreatingPreference ? 'Generando checkout...' : 'Suscribirme Ahora'}
-                            </button>
-                        ) : (
-                            <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
-                        )}
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
-};
+// --- COMPONENTE 'SubscriptionWallPage' ELIMINADO ---
 
 
 const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, getFunctions, httpsCallable }) => {
@@ -473,8 +526,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [subscription, setSubscription] = useState({ status: 'loading' });
-    const [preferenceId, setPreferenceId] = useState(null);
-    const [isCreatingPreference, setIsCreatingPreference] = useState(false);
+    
+    // --- LÍNEAS DE 'preferenceId' y 'isCreatingPreference' ELIMINADAS ---
+    
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
     
@@ -485,6 +539,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         const userSubRef = doc(db, "users", user.uid);
         const unsubscribe = onSnapshot(userSubRef, (docSnap) => {
             if (docSnap.exists() && docSnap.data().subscriptionStatus) {
+                // Ahora leemos 'subscriptionStatus' en lugar de 'subscription.status'
                 setSubscription({ status: docSnap.data().subscriptionStatus });
             } else {
                 setSubscription({ status: 'inactive' });
@@ -574,24 +629,15 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         }
     };
     
-    const isSubscribed = subscription.status === 'authorized' || user.uid === ADMIN_UID;
+    // Simplificamos la lógica de suscripción
+    const isSubscribed = subscription.status === 'active' || user.uid === ADMIN_UID;
     
     if (subscription.status === 'loading') {
         return <div className="flex justify-center items-center min-h-screen">Verificando suscripción...</div>;
     }
 
-    if (!isSubscribed) {
-        return <SubscriptionWallPage 
-                    user={user}
-                    auth={auth}
-                    preferenceId={preferenceId}
-                    setPreferenceId={setPreferenceId}
-                    isCreatingPreference={isCreatingPreference}
-                    setIsCreatingPreference={setIsCreatingPreference}
-                    getFunctions={getFunctions}
-                    httpsCallable={httpsCallable}
-                />;
-    }
+    // --- BLOQUE 'if (!isSubscribed)' ELIMINADO ---
+    // La lógica de rutas (en el componente App) se encargará de esto.
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -869,8 +915,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
             setApprovingUserId(null);
         }
     };
-    
-    return (
+
+   return (
         <div className="min-h-screen bg-slate-50">
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
@@ -886,14 +932,17 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">Panel de Administrador</h1>
                 </div>
 
+                {/* --- (INICIO) CAMBIOS EN EL PANEL DE ADMIN --- */}
                 <div className="mb-8 p-4 bg-slate-100 border border-slate-200 rounded-xl">
                     <h3 className="font-bold text-slate-700 text-sm mb-3">Herramientas de Vista Previa</h3>
                     <div className="flex items-center gap-4 flex-wrap">
-                        <Link to="/?view=initial_payment" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Pago Inicial</Link>
+                        {/* 1. Ruta de pago inicial actualizada a "suscribirse" */}
+                        <Link to="/?view=suscribirse" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
                         <Link to="/?view=website_form" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Formulario Web</Link>
-                        <Link to="/?view=subscription_wall" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
+                        {/* 2. Botón de "Subscription Wall" eliminado */}
                     </div>
                 </div>
+                {/* --- (FIN) CAMBIOS EN EL PANEL DE ADMIN --- */}
 
                 <div className="border-b border-slate-200 mb-6">
                     <nav className="flex space-x-4">
@@ -957,7 +1006,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                                 <div className="flex items-center gap-2 mt-2">
                                                     <UserStatusBadge status={u.status} />
                                                     {u.status === 'approved' && <StatusBadge status={u.initialPaymentStatus} />}
-                                                    {u.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${u.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{u.subscriptionStatus}</span>}
+                                                    {/* 3. Lógica actualizada para leer 'subscriptionStatus' */}
+                                                    {u.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${u.subscriptionStatus === 'active' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{u.subscriptionStatus}</span>}
                                                 </div>
                                            </div>
                                            {u.status === 'pending_approval' && (
@@ -1149,7 +1199,8 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
                         <div className="flex flex-wrap items-center gap-2">
                             <UserStatusBadge status={userDetail.status} />
                             <StatusBadge status={userDetail.initialPaymentStatus} />
-                            {userDetail.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'authorized' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span>}
+                            {/* 4. Lógica actualizada para leer 'subscriptionStatus' */}
+                            {userDetail.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'active' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span>}
                         </div>
                     </div>
                 </div>
@@ -1324,8 +1375,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
             setIsCancelling(true);
             try {
                 const functions = getFunctions();
-                const cancelSubscription = httpsCallable(functions, 'cancelSubscription');
-                await cancelSubscription();
+                // 5. Esta función la crearemos en el backend
+                const cancelWompiSubscription = httpsCallable(functions, 'cancelWompiSubscription');
+                await cancelWompiSubscription();
                 toast.success("Tu suscripción ha sido cancelada.");
             } catch (error) {
                 console.error("Error al cancelar:", error);
@@ -1393,7 +1445,8 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                         <h2 className="text-lg font-bold text-slate-800 p-6">Suscripción</h2>
                         <div className="px-6 pb-6">
                             {subscription.status === 'loading' && <p className="text-sm text-slate-500">Cargando estado...</p>}
-                            {subscription.status === 'authorized' && (
+                            {/* 6. Lógica actualizada para leer 'subscriptionStatus' */}
+                            {subscription.status === 'active' && (
                                 <>
                                     <p className="text-sm text-slate-600">Tu plan está activo. ¡Gracias por ser parte de Cósmica!</p>
                                     <button 
@@ -1570,20 +1623,21 @@ export default function App() {
                     return <AuthPage {...firebaseServices} />;
                 }
 
+                // --- (INICIO) CAMBIOS EN LÓGICA DE RUTAS ---
                 if (user.uid === ADMIN_UID && viewAsAdmin) {
-                    if (viewAsAdmin === 'initial_payment') {
-                        return <InitialPaymentPage user={user} {...firebaseServices} />;
+                    // 7. Cambiado 'initial_payment' a 'suscribirse'
+                    if (viewAsAdmin === 'suscribirse') { 
+                        // 8. Renderiza el nuevo componente 'SubscriptionPage'
+                        return <SubscriptionPage 
+                                    user={user} 
+                                    auth={firebaseServices.auth} 
+                                    {...firebaseServices} 
+                                />;
                     }
                     if (viewAsAdmin === 'website_form') {
                         return <WebsiteInfoFormPage user={user} {...firebaseServices} />;
                     }
-                    if (viewAsAdmin === 'subscription_wall') {
-                        return <SubscriptionWallPage 
-                                    user={user}
-                                    auth={firebaseServices.auth}
-                                    {...firebaseServices} 
-                                />;
-                    }
+                    // 9. Eliminado el bloque 'subscription_wall'
                 }
                                 
                 if (userProfile === undefined) {
@@ -1598,8 +1652,13 @@ export default function App() {
                     return <PendingApprovalPage auth={firebaseServices.auth} />;
                 }
                 
+                // 10. CAMBIO CRÍTICO: Redirige a 'SubscriptionPage' en lugar de 'InitialPaymentPage'
                 if (userProfile?.status === 'approved' && userProfile?.initialPaymentStatus !== 'completed' && user.uid !== ADMIN_UID) {
-                    return <InitialPaymentPage user={user} {...firebaseServices} />;
+                    return <SubscriptionPage 
+                                user={user} 
+                                auth={firebaseServices.auth} 
+                                {...firebaseServices} 
+                            />;
                 }
 
                 if (userProfile?.status === 'approved' && userProfile?.initialPaymentStatus === 'completed' && userProfile?.websiteInfoStatus !== 'completed' && user.uid !== ADMIN_UID) {
@@ -1614,8 +1673,12 @@ export default function App() {
                         
                         <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
                         <Route path="/admin/user/:userId" element={user.uid === ADMIN_UID ? <AdminUserDetailPage {...firebaseServices} /> : <Navigate to="/" />} />
+                        
+                        {/* 11. Redirección final por si algo falla */}
+                        <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 );
+                // --- (FIN) CAMBIOS EN LÓGICA DE RUTAS ---
             })()}
         </>
       );
