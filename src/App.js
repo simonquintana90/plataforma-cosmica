@@ -33,26 +33,49 @@ const UserStatusBadge = ({ status }) => {
 const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
   const location = useLocation();
   const navigate = useNavigate(); // Para cambiar de URL
-// CAMBIO: 'isLogin' ahora se deriva de la URL, no es un estado. const isLogin = location.pathname.startsWith('/login');
 
-const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(null); const [loading, setLoading] = useState(false); const [message, setMessage] = useState('');
+  // Aquí se define 'isLogin' leyendo la URL.
+  const isLogin = location.pathname.startsWith('/login');
 
-const handleAuthAction = async (e) => { e.preventDefault(); setLoading(true); setError(null); setMessage(''); try { if (isLogin) { await auth.signInWithEmailAndPassword(email, password); } else { const userCredential = await auth.createUserWithEmailAndPassword(email, password); await updateProfile(userCredential.user, { displayName: name });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-    const userRef = doc(db, "users", userCredential.user.uid);
-    await setDoc(userRef, {
-        email: userCredential.user.email,
-        displayName: name,
-        createdAt: serverTimestamp(),
-        status: "pending_approval",
-        initialPaymentStatus: "pending",
-        websiteInfoStatus: "pending",
-    });
-  }
-} catch (error) { setError(error.message); } finally { setLoading(false); }
-};
+  const handleAuthAction = async (e) => {
+    e.preventDefault(); setLoading(true); setError(null); setMessage('');
+    try {
+      if (isLogin) {
+        await auth.signInWithEmailAndPassword(email, password);
+      } else {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await updateProfile(userCredential.user, { displayName: name });
 
-// CAMBIO: Nueva función para el botón que cambia de modo const toggleAuthMode = () => { setError(null); setMessage(''); if (isLogin) { navigate('/'); // Si estamos en login, ir a registro } else { navigate('/login'); // Si estamos en registro, ir a login } };
+        const userRef = doc(db, "users", userCredential.user.uid);
+        await setDoc(userRef, {
+            email: userCredential.user.email,
+            displayName: name,
+            createdAt: serverTimestamp(),
+            status: "pending_approval",
+            initialPaymentStatus: "pending",
+            websiteInfoStatus: "pending",
+        });
+      }
+    } catch (error) { setError(error.message); } finally { setLoading(false); }
+  };
+
+  // Esta función usa 'navigate' en lugar de 'setIsLogin'
+  const toggleAuthMode = () => {
+    setError(null);
+    setMessage('');
+    if (isLogin) {
+      navigate('/'); // Si estamos en login, ir a registro
+    } else {
+      navigate('/login'); // Si estamos en registro, ir a login
+    }
+  };
 
   return (
     <div className="relative flex justify-center items-center min-h-screen p-4 bg-slate-50 overflow-hidden">
@@ -84,7 +107,12 @@ const handleAuthAction = async (e) => { e.preventDefault(); setLoading(true); se
                     <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold rounded-lg py-3 hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50">{loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}</button>
                 </div>
             </form>
-            <p className="text-center text-sm text-slate-500 mt-8">{isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'} <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(''); }} className="font-bold text-blue-600 hover:underline ml-1">{isLogin ? 'Regístrate' : 'Inicia Sesión'}</button></p>
+            <p className="text-center text-sm text-slate-500 mt-8">{isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'} 
+                {/* El botón ahora llama a toggleAuthMode */}
+                <button onClick={toggleAuthMode} className="font-bold text-blue-600 hover:underline ml-1">
+                    {isLogin ? 'Regístrate' : 'Inicia Sesión'}
+                </button>
+            </p>
         </div>
     </div>
   );
