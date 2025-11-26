@@ -12,7 +12,7 @@ const FeaturesCapture = ({
         {
             title: 'Chef Experto',
             description: 'Platos gourmet preparados por profesionales culinarios.',
-            image: 'https://images.unsplash.com/photo-1577106263724-2c8e03bfe9f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            image: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
         },
         {
             title: 'Entrega Rápida',

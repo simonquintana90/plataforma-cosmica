@@ -35,14 +35,20 @@ const FooterImpact = ({
                     ))}
                 </div>
                 <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center">
-                    <p className="text-slate-400 text-sm">
-                        &copy; {new Date().getFullYear()} {brand}. Todos los derechos reservados.
-                    </p>
+                    <div className="flex flex-col md:flex-row items-center gap-4">
+                        <p className="text-slate-400 text-sm">
+                            &copy; {new Date().getFullYear()} {brand}. Todos los derechos reservados.
+                        </p>
+                        <a href="https://www.cosmicaweb.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                            <span className="text-xs text-slate-400">Crafted by</span>
+                            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/68052b14352271978c443cef_CO%CC%81SMICA_Blanco_L.avif" alt="Cósmica" className="h-4 invert" />
+                        </a>
+                    </div>
                     <div className="flex space-x-6 mt-4 md:mt-0">
-                        {/* Social Icons Placeholder */}
-                        <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
-                        <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
-                        <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
+                        {/* Social Icons */}
+                        <div className="w-6 h-6 bg-slate-200 rounded-full hover:bg-blue-600 transition-colors cursor-pointer"></div>
+                        <div className="w-6 h-6 bg-slate-200 rounded-full hover:bg-blue-600 transition-colors cursor-pointer"></div>
+                        <div className="w-6 h-6 bg-slate-200 rounded-full hover:bg-blue-600 transition-colors cursor-pointer"></div>
                     </div>
                 </div>
             </div>

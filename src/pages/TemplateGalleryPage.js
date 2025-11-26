@@ -145,7 +145,6 @@ const TemplateGalleryPage = () => {
                                     </span>
                                 </div>
                                 <div className="relative h-64">
-                                    <div className="absolute inset-0 flex items-center justify-center text-slate-700 font-bold">Preview Context (Dark)</div>
                                     <NavbarCinematic />
                                 </div>
                             </section>

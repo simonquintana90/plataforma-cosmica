@@ -70,6 +70,12 @@ const NavbarElegant = ({
                             </a>
                         ))}
                     </div>
+                    {/* Button for desktop, hidden on mobile */}
+                    <div className="hidden md:block">
+                        <button className={`px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
+                            {ctaText}
+                        </button>
+                    </div>
                 </div>
             )}
         </nav>
