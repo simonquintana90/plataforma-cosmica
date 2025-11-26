@@ -137,14 +137,14 @@ const TemplateGalleryPage = () => {
                     {activeTab === 'navbars' && (
                         <div className="space-y-8">
                             {renderSection("Estilo Impact (EduFlex)", NavbarImpact)}
-                            <section className="bg-slate-900 rounded-xl shadow-lg overflow-hidden mb-12 border border-slate-700">
-                                <div className="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                                    <h2 className="text-lg font-bold text-white">Estilo Cinematic (Eyebot)</h2>
-                                    <span className="text-xs font-mono text-slate-400 bg-slate-700 px-2 py-1 rounded">
+                            <section className="bg-white rounded-xl shadow-lg overflow-hidden mb-12 border border-gray-200">
+                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-gray-700">Estilo Cinematic (Eyebot)</h2>
+                                    <span className="text-xs font-mono text-gray-400 bg-gray-200 px-2 py-1 rounded">
                                         NavbarCinematic
                                     </span>
                                 </div>
-                                <div className="relative h-64">
+                                <div className="relative h-64 bg-slate-900">
                                     <NavbarCinematic />
                                 </div>
                             </section>
