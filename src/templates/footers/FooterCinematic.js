@@ -16,48 +16,49 @@ const FooterCinematic = ({
                             Construyendo el futuro de la infraestructura digital, un bloque a la vez.
                         </p>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-slate-800 pt-12 mb-12">
-                        <div>
-                            <h4 className="font-bold mb-4 text-slate-300">Plataforma</h4>
-                            <ul className="space-y-2 text-slate-500">
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Overview</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Features</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Integrations</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold mb-4 text-slate-300">Recursos</h4>
-                            <ul className="space-y-2 text-slate-500">
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Documentación</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">API Reference</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Comunidad</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold mb-4 text-slate-300">Compañía</h4>
-                            <ul className="space-y-2 text-slate-500">
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">About</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Blog</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Careers</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold mb-4 text-slate-300">Legal</h4>
-                            <ul className="space-y-2 text-slate-500">
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Privacy</a></li>
-                                <li><a href="#" className="hover:text-cyan-400 transition-colors">Terms</a></li>
-                            </ul>
-                        </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-slate-800 pt-12 mb-12">
+                    <div>
+                        <h4 className="font-bold mb-4 text-slate-300">Plataforma</h4>
+                        <ul className="space-y-2 text-slate-500">
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Overview</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Features</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Integrations</a></li>
+                        </ul>
                     </div>
-
-                    <div className="border-t border-slate-800 pt-8 flex justify-center">
-                        <a href="https://www.cosmicaweb.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-                            <span className="text-xs text-slate-400">Crafted by</span>
-                            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/68052b14352271978c443cef_CO%CC%81SMICA_Blanco_L.avif" alt="Cósmica" className="h-4" />
-                        </a>
+                    <div>
+                        <h4 className="font-bold mb-4 text-slate-300">Recursos</h4>
+                        <ul className="space-y-2 text-slate-500">
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Documentación</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">API Reference</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Comunidad</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold mb-4 text-slate-300">Compañía</h4>
+                        <ul className="space-y-2 text-slate-500">
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">About</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Blog</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Careers</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold mb-4 text-slate-300">Legal</h4>
+                        <ul className="space-y-2 text-slate-500">
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Privacy</a></li>
+                            <li><a href="#" className="hover:text-cyan-400 transition-colors">Terms</a></li>
+                        </ul>
                     </div>
                 </div>
+
+                <div className="border-t border-slate-800 pt-8 flex justify-center">
+                    <a href="https://www.cosmicaweb.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                        <span className="text-xs text-slate-400">Crafted by</span>
+                        <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/68052b14352271978c443cef_CO%CC%81SMICA_Blanco_L.avif" alt="Cósmica" className="h-4" />
+                    </a>
+                </div>
+            </div>
         </footer>
     );
 };

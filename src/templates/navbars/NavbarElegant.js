@@ -8,7 +8,8 @@ const NavbarElegant = ({
         { name: 'Nosotros', href: '#' },
         { name: 'Contacto', href: '#' }
     ],
-    theme = { bg: 'white', text: 'slate-900', primary: 'indigo-600' }
+    theme = { bg: 'white', text: 'slate-900', primary: 'indigo-600' },
+    ctaText = "Empezar"
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const midPoint = Math.ceil(links.length / 2);
@@ -53,6 +54,9 @@ const NavbarElegant = ({
                                 {link.name}
                             </a>
                         ))}
+                        <button className={`ml-4 px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
+                            {ctaText}
+                        </button>
                     </div>
 
                     {/* Placeholder for balance on mobile */}
@@ -69,12 +73,11 @@ const NavbarElegant = ({
                                 {link.name}
                             </a>
                         ))}
-                    </div>
-                    {/* Button for desktop, hidden on mobile */}
-                    <div className="hidden md:block">
-                        <button className={`px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
-                            {ctaText}
-                        </button>
+                        <div className="pt-4 pb-2">
+                            <button className={`w-full px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
+                                {ctaText}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
