@@ -60,12 +60,18 @@ import CTACinematic from '../templates/cta/CTACinematic';
 import CTACapture from '../templates/cta/CTACapture';
 import CTAElegant from '../templates/cta/CTAElegant';
 
+// Footers
+import FooterImpact from '../templates/footers/FooterImpact';
+import FooterCinematic from '../templates/footers/FooterCinematic';
+import FooterCapture from '../templates/footers/FooterCapture';
+import FooterElegant from '../templates/footers/FooterElegant';
+
 const TemplateGalleryPage = () => {
     const [activeTab, setActiveTab] = useState('heroes');
 
     const tabs = [
         'heroes', 'features', 'navbars', 'services', 'info',
-        'clients', 'guarantee', 'reviews', 'gallery', 'cta'
+        'clients', 'guarantee', 'reviews', 'gallery', 'cta', 'footers'
     ];
 
     const renderSection = (title, Component) => (
@@ -100,8 +106,8 @@ const TemplateGalleryPage = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === tab
-                                    ? 'bg-blue-600 text-white shadow-lg transform scale-105'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-500 shadow-sm'
+                                ? 'bg-blue-600 text-white shadow-lg transform scale-105'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-500 shadow-sm'
                                 }`}
                         >
                             {tab}
@@ -130,20 +136,21 @@ const TemplateGalleryPage = () => {
 
                     {activeTab === 'navbars' && (
                         <div className="space-y-8">
-                            <div className="relative h-64 bg-gray-200 rounded-xl overflow-hidden mb-8 border border-gray-300">
-                                <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-bold">Preview Context (Light)</div>
-                                <NavbarImpact />
-                            </div>
-                            <div className="relative h-64 bg-slate-900 rounded-xl overflow-hidden mb-8 border border-slate-700">
-                                <div className="absolute inset-0 flex items-center justify-center text-slate-700 font-bold">Preview Context (Dark)</div>
-                                <NavbarCinematic />
-                            </div>
-                            <div className="relative h-64 bg-white rounded-xl overflow-hidden mb-8 border border-gray-200">
-                                <NavbarCapture />
-                            </div>
-                            <div className="relative h-64 bg-white rounded-xl overflow-hidden mb-8 border border-gray-200">
-                                <NavbarElegant />
-                            </div>
+                            {renderSection("Estilo Impact (EduFlex)", NavbarImpact)}
+                            <section className="bg-slate-900 rounded-xl shadow-lg overflow-hidden mb-12 border border-slate-700">
+                                <div className="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-white">Estilo Cinematic (Eyebot)</h2>
+                                    <span className="text-xs font-mono text-slate-400 bg-slate-700 px-2 py-1 rounded">
+                                        NavbarCinematic
+                                    </span>
+                                </div>
+                                <div className="relative h-64">
+                                    <div className="absolute inset-0 flex items-center justify-center text-slate-700 font-bold">Preview Context (Dark)</div>
+                                    <NavbarCinematic />
+                                </div>
+                            </section>
+                            {renderSection("Estilo Capture (Calori)", NavbarCapture)}
+                            {renderSection("Estilo Elegant (Sensa)", NavbarElegant)}
                         </div>
                     )}
 
@@ -207,6 +214,15 @@ const TemplateGalleryPage = () => {
                             {renderSection("Estilo Cinematic (Eyebot)", CTACinematic)}
                             {renderSection("Estilo Capture (Calori)", CTACapture)}
                             {renderSection("Estilo Elegant (Sensa)", CTAElegant)}
+                        </div>
+                    )}
+
+                    {activeTab === 'footers' && (
+                        <div className="space-y-8">
+                            {renderSection("Estilo Impact (EduFlex)", FooterImpact)}
+                            {renderSection("Estilo Cinematic (Eyebot)", FooterCinematic)}
+                            {renderSection("Estilo Capture (Calori)", FooterCapture)}
+                            {renderSection("Estilo Elegant (Sensa)", FooterElegant)}
                         </div>
                     )}
                 </div>

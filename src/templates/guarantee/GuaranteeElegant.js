@@ -15,9 +15,7 @@ const GuaranteeElegant = ({
                 <p className="text-lg text-slate-600 leading-relaxed mb-10 font-light">
                     {description}
                 </p>
-                <p className="font-handwriting text-3xl text-slate-800 transform -rotate-2">
-                    {signature}
-                </p>
+
             </div>
         </div>
     );

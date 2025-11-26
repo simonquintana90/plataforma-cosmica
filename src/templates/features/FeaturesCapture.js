@@ -7,7 +7,7 @@ const FeaturesCapture = ({
         {
             title: 'Ingredientes Frescos',
             description: 'Seleccionamos lo mejor de la cosecha local cada mañana.',
-            image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1632&q=80",
         },
         {
             title: 'Chef Experto',

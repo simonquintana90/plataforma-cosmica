@@ -11,8 +11,12 @@ const HeroCinematic = ({
         <div className="relative h-screen min-h-[600px] w-full overflow-hidden bg-slate-900">
             {/* Background Image */}
             <div className="absolute inset-0">
-                <img src={backgroundImage} alt="Background" className="w-full h-full object-cover opacity-60" />
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/90"></div>
+                <img
+                    src="https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80"
+                    alt="Background"
+                    className="w-full h-full object-cover opacity-20"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
                 {/* Additional Overlay for readability */}
                 <div className="absolute inset-0 bg-blue-900/20 mix-blend-overlay"></div>
             </div>

@@ -5,7 +5,11 @@ const FeaturesCinematic = ({
     subtitle = "Herramientas de última generación para un rendimiento superior.",
     features = [
         { title: 'Análisis en Tiempo Real', description: 'Monitoreo constante de datos para decisiones instantáneas.', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-        { title: 'Seguridad Biométrica', description: 'Protección de grado militar para tus activos digitales.', icon: 'M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.131A8 8 0 008 8m0 0a8 8 0 00-8 8c0 2.472.345 4.865.99 7.131M8 8a8 8 0 0016 0c0-2.472-.345-4.865-.99-7.131M16 12V6m0 0L8 6m8 0zm-8 0v6' },
+        {
+            title: 'Seguridad Blindada',
+            description: 'Protección de grado militar para tus datos y los de tus usuarios.',
+            icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
+        },
         { title: 'Automatización IA', description: 'Algoritmos inteligentes que optimizan tus procesos.', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
     ]
 }) => {
