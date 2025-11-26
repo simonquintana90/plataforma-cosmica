@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is the admin
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == "SFYFi9u8uZYJHSNEEyGQaigIyip1";
+    }
+
+    // Helper function to check if the user is accessing their own document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Admin can read/write everything
+      // Owner can read/write their own document
+      allow read, write: if isAdmin() || isOwner(userId);
+    }
+
+    // Requests collection
+    match /requests/{requestId} {
+      // Admin can read/write everything
+      // Owner can create requests and read their own requests
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+         allow read, write: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid);
+      }
+    }
+  }
+}
