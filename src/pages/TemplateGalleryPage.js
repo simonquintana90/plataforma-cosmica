@@ -144,7 +144,7 @@ const TemplateGalleryPage = () => {
                                         NavbarCinematic
                                     </span>
                                 </div>
-                                <div className="relative h-64 bg-slate-900">
+                                <div className="relative h-24 bg-slate-900">
                                     <NavbarCinematic />
                                 </div>
                             </section>

@@ -26,7 +26,10 @@ const NavbarCapture = ({
                                 {link.name}
                             </a>
                         ))}
-                        <button className={`px-6 py-3 rounded-lg bg-${theme.primary} text-white font-bold text-lg hover:bg-red-700 transition-all shadow-lg`}>
+                        <button
+                            className="px-6 py-3 rounded-lg text-white font-bold text-lg hover:opacity-90 transition-all shadow-lg"
+                            style={{ backgroundColor: '#dc2626' }} // red-600
+                        >
                             {ctaText}
                         </button>
                     </div>
