@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import HeroModern from '../templates/heroes/HeroModern';
-import HeroSplit from '../templates/heroes/HeroSplit';
-import HeroCollage from '../templates/heroes/HeroCollage';
-import HeroOverlay from '../templates/heroes/HeroOverlay';
-import HeroForm from '../templates/heroes/HeroForm';
-import HeroMinimal from '../templates/heroes/HeroMinimal';
+import HeroImpact from '../templates/heroes/HeroImpact';
+import HeroCinematic from '../templates/heroes/HeroCinematic';
+import HeroCapture from '../templates/heroes/HeroCapture';
+import HeroElegant from '../templates/heroes/HeroElegant';
 import FeaturesGrid from '../templates/features/FeaturesGrid';
 
 const TemplateGalleryPage = () => {
@@ -22,39 +20,27 @@ const TemplateGalleryPage = () => {
             {activeTab === 'heroes' && (
                 <div className="space-y-12">
                     <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Collage (EduFlex Style)</h2>
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Impacto (Estilo EduFlex)</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroCollage />
+                            <HeroImpact />
                         </div>
                     </section>
                     <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Overlay (Eyebot Style)</h2>
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Cinemático (Estilo Eyebot)</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroOverlay />
+                            <HeroCinematic />
                         </div>
                     </section>
                     <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Form (Calori Style)</h2>
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Captura (Estilo Calori)</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroForm />
+                            <HeroCapture />
                         </div>
                     </section>
                     <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Minimal (Sensa Style)</h2>
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Elegante (Estilo Sensa)</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroMinimal />
-                        </div>
-                    </section>
-                    <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Modern (Original)</h2>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroModern />
-                        </div>
-                    </section>
-                    <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Hero Split (Original)</h2>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <HeroSplit />
+                            <HeroElegant />
                         </div>
                     </section>
                 </div>
