@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
 import Skeleton from '../components/Skeleton';
+import { motion } from 'framer-motion';
+import PageTransition from '../components/PageTransition';
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc }) => {
     const [activeTab, setActiveTab] = useState('requests');
@@ -153,7 +155,10 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                     <Link to={`/solicitud/${req.id}`} className="block p-4 sm:p-6 hover:bg-slate-50/50 transition-colors">
                                         <div className="flex flex-wrap items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-blue-600">{req.userName || 'Usuario sin nombre'}</p>
+                                                <div className="flex items-center gap-2">
+                                                    {req.adminHasUnreadMessages && <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" title="Nuevos mensajes"></span>}
+                                                    <p className="text-sm font-bold text-blue-600">{req.userName || 'Usuario sin nombre'}</p>
+                                                </div>
                                                 <p className="text-lg font-bold text-slate-800 truncate">{req.title}</p>
                                                 <p className="text-sm text-slate-500 mt-1 truncate">{req.description}</p>
                                             </div>

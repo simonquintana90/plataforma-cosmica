@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge } from '../components/Badges';
 import Skeleton from '../components/Skeleton';
+import { motion } from 'framer-motion';
+import PageTransition from '../components/PageTransition';
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
