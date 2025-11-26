@@ -7,7 +7,10 @@ import FeaturesImpact from '../templates/features/FeaturesImpact';
 import FeaturesCinematic from '../templates/features/FeaturesCinematic';
 import FeaturesCapture from '../templates/features/FeaturesCapture';
 import FeaturesElegant from '../templates/features/FeaturesElegant';
-import FeaturesGrid from '../templates/features/FeaturesGrid';
+import NavbarSimple from '../templates/navbars/NavbarSimple';
+import ServicesList from '../templates/services/ServicesList';
+import InfoSimple from '../templates/info/InfoSimple';
+import ClientsLogos from '../templates/clients/ClientsLogos';
 
 const TemplateGalleryPage = () => {
     const [activeTab, setActiveTab] = useState('heroes');
@@ -16,9 +19,16 @@ const TemplateGalleryPage = () => {
         <div className="min-h-screen bg-gray-100 p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Librería de Plantillas (LEGOs)</h1>
 
-            <div className="flex space-x-4 mb-8">
-                <button onClick={() => setActiveTab('heroes')} className={`px-4 py-2 rounded-md ${activeTab === 'heroes' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>Heroes</button>
-                <button onClick={() => setActiveTab('features')} className={`px-4 py-2 rounded-md ${activeTab === 'features' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>Features</button>
+            <div className="flex space-x-4 mb-8 overflow-x-auto pb-4">
+                {['heroes', 'features', 'navbars', 'services', 'info', 'clients'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 rounded-md capitalize whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
+                    >
+                        {tab}
+                    </button>
+                ))}
             </div>
 
             {activeTab === 'heroes' && (
@@ -80,6 +90,50 @@ const TemplateGalleryPage = () => {
                         <h2 className="text-xl font-bold mb-4 text-gray-400">Features Grid (Original)</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                             <FeaturesGrid />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'navbars' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Navbar Simple</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <NavbarSimple />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'services' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Lista de Servicios</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <ServicesList />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'info' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Información Adicional</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <InfoSimple />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'clients' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Logos de Clientes</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <ClientsLogos />
                         </div>
                     </section>
                 </div>
