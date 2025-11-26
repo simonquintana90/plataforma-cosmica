@@ -32,27 +32,25 @@ exports.notifyAdminOnNewUser = onDocumentCreated(
     const user = event.data.data();
     console.log(`Nuevo perfil de usuario creado en Firestore: ${user.email}`);
 
-    if (user.status !== 'pending_approval') {
-      return;
-    }
+    // if (user.status !== 'pending_approval') { return; } // Eliminado: Ya no requerimos aprobación manual
 
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const adminEmailHtml = `
         <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
-          <h1 style="font-size: 22px;">Nuevo Usuario Pendiente de Aprobación</h1>
-          <p>Un nuevo usuario se ha registrado en la plataforma y requiere tu aprobación.</p>
+          <h1 style="font-size: 22px;">Nuevo Usuario Registrado</h1>
+          <p>Un nuevo usuario se ha registrado en la plataforma.</p>
           <ul style="list-style: none; padding: 0;">
             <li style="padding: 5px 0;"><strong>Email:</strong> ${user.email}</li>
             <li style="padding: 5px 0;"><strong>Nombre:</strong> ${user.displayName || "No proporcionado"}</li>
           </ul>
-          <p>Puedes aprobarlo desde el panel de administrador en la aplicación.</p>
+          <p>El usuario ha sido aprobado automáticamente y puede proceder al pago.</p>
         </div>
       `;
       const adminEmail = {
         from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
         to: ADMIN_EMAIL,
-        subject: "Nuevo Usuario Registrado - Requiere Aprobación",
+        subject: "Nuevo Usuario Registrado",
         html: adminEmailHtml,
       };
 
@@ -299,16 +297,16 @@ exports.getWompiAcceptanceToken = onCall(
     }
 
     const wompiPublicKey = process.env.WOMPI_PUBLIC_KEY;
-    
+
     try {
       // 1. Obtenemos el "token de aceptación" del comerciante
       const merchantResponse = await axios.get(`${WOMPI_API_BASE}/merchants/${wompiPublicKey}`);
       const acceptanceToken = merchantResponse.data.data.presigned_acceptance.acceptance_token;
-      
+
       if (!acceptanceToken) {
         throw new Error('No se pudo obtener el token de aceptación del comerciante.');
       }
-      
+
       return { acceptance_token: acceptanceToken };
 
     } catch (error) {
@@ -340,7 +338,7 @@ exports.createWompiSubscription = onCall(
     const userId = request.auth.uid;
     const userEmail = request.auth.token.email;
     const userName = request.auth.token.name || userEmail;
-    
+
     const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY;
     wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
     const db = getFirestore();
@@ -380,7 +378,7 @@ exports.createWompiSubscription = onCall(
         amount_in_cents: 8990000, // 89.900 COP en centavos
         currency: "COP",
       });
-      
+
       const subscription = subscriptionResponse.data.data;
       console.log(`Suscripción creada: ${subscription.id}`);
 
@@ -399,9 +397,9 @@ exports.createWompiSubscription = onCall(
 
     } catch (error) {
       console.error("Error al crear la suscripción en Wompi:", error.response ? error.response.data : error.message);
-      
+
       if (error.response && error.response.data && error.response.data.error) {
-          throw new functions.https.HttpsError('internal', error.response.data.error.messages || 'Error de Wompi.');
+        throw new functions.https.HttpsError('internal', error.response.data.error.messages || 'Error de Wompi.');
       }
       throw new functions.https.HttpsError('internal', 'No se pudo crear la suscripción.');
     }
@@ -415,7 +413,7 @@ exports.cancelWompiSubscription = onCall(
   {
     secrets: ["WOMPI_PRIVATE_KEY"], // Correcto: Mayúsculas
   },
-  async(request) => {
+  async (request) => {
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
@@ -430,12 +428,12 @@ exports.cancelWompiSubscription = onCall(
       if (!userDoc.exists || !userDoc.data().subscriptionId || userDoc.data().subscriptionProvider !== 'wompi') {
         throw new functions.https.HttpsError('not-found', 'No se encontró una suscripción de Wompi para este usuario.');
       }
-      
+
       const subscriptionId = userDoc.data().subscriptionId;
 
       console.log(`Cancelando suscripción de Wompi: ${subscriptionId}`);
       await wompiApi.post(`/subscriptions/${subscriptionId}/cancel`);
-      
+
       // El webhook actualizará el estado, pero podemos forzarlo aquí
       await db.collection('users').doc(userId).set({
         subscriptionStatus: 'canceled',
@@ -464,10 +462,10 @@ exports.wompiWebhook = onRequest(
 
     const eventsToken = process.env.WOMPI_EVENT_TOKEN;
     const requestBody = req.rawBody.toString();
-    
+
     // TODO: Implementar la verificación de firma HMAC si Wompi la envía.
     // Por ahora, procesamos el evento.
-    
+
     console.log("Webhook de Wompi recibido:", JSON.stringify(req.body));
 
     const event = req.body;
@@ -475,7 +473,7 @@ exports.wompiWebhook = onRequest(
 
     try {
       const { data, event: eventType } = event;
-      
+
       if (eventType === 'subscription.updated') {
         const { subscription } = data;
         const subscriptionId = subscription.id;
@@ -501,25 +499,25 @@ exports.wompiWebhook = onRequest(
         const { transaction } = data;
         // Solo nos interesan transacciones aprobadas de suscripciones
         if (transaction.status === 'APPROVED' && transaction.subscription_id) {
-            
+
           const subscriptionId = transaction.subscription_id;
           const usersQuery = db.collection('users').where('subscriptionId', '==', subscriptionId);
           const userSnapshot = await usersQuery.get();
-          
+
           if (!userSnapshot.empty) {
             const userDoc = userSnapshot.docs[0];
             const userId = userDoc.id;
-            
+
             // Guardar en el historial de pagos
             const paymentRef = db.collection('users').doc(userId).collection('payments').doc(transaction.id);
             await paymentRef.set({
-                paymentId: transaction.id,
-                date: admin.firestore.Timestamp.fromDate(new Date(transaction.created_at)),
-                amount: transaction.amount_in_cents / 100, // Almacenar en COP
-                description: "Pago de suscripción mensual",
-                status: 'approved',
-                type: 'subscription',
-                reference: transaction.reference,
+              paymentId: transaction.id,
+              date: admin.firestore.Timestamp.fromDate(new Date(transaction.created_at)),
+              amount: transaction.amount_in_cents / 100, // Almacenar en COP
+              description: "Pago de suscripción mensual",
+              status: 'approved',
+              type: 'subscription',
+              reference: transaction.reference,
             });
             console.log(`Pago ${transaction.id} registrado para usuario ${userId}`);
           }
@@ -527,10 +525,10 @@ exports.wompiWebhook = onRequest(
       }
 
     } catch (error) {
-        console.error("Error al procesar el webhook de Wompi:", error.message);
-        return res.status(500).send("Error interno");
+      console.error("Error al procesar el webhook de Wompi:", error.message);
+      return res.status(500).send("Error interno");
     }
-    
+
     res.status(200).send("OK");
   }
 );
@@ -539,42 +537,42 @@ exports.wompiWebhook = onRequest(
 // --- OTRAS FUNCIONES (SIN CAMBIOS) ---
 
 exports.getPaymentHistory = onCall(async (request) => {
-    if (!request.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+  if (!request.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+  }
+
+  const callerUid = request.auth.uid;
+  const targetUserId = request.data?.userId;
+
+  if (targetUserId && callerUid !== ADMIN_UID) {
+    throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para ver este historial.');
+  }
+
+  const finalUserId = targetUserId || callerUid;
+
+  try {
+    const db = getFirestore();
+    const paymentsRef = db.collection('users').doc(finalUserId).collection('payments');
+    const snapshot = await paymentsRef.orderBy('date', 'desc').get();
+
+    if (snapshot.empty) {
+      return [];
     }
 
-    const callerUid = request.auth.uid;
-    const targetUserId = request.data?.userId; 
+    const payments = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        date: data.date ? data.date.toDate().toISOString() : null,
+      };
+    });
 
-    if (targetUserId && callerUid !== ADMIN_UID) {
-        throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para ver este historial.');
-    }
+    return payments;
 
-    const finalUserId = targetUserId || callerUid;
-
-    try {
-        const db = getFirestore();
-        const paymentsRef = db.collection('users').doc(finalUserId).collection('payments');
-        const snapshot = await paymentsRef.orderBy('date', 'desc').get();
-        
-        if (snapshot.empty) {
-            return [];
-        }
-
-        const payments = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                ...data,
-                date: data.date ? data.date.toDate().toISOString() : null,
-            };
-        });
-
-        return payments;
-
-    } catch (error) {
-        console.error("Error al obtener el historial de pagos:", error);
-        throw new functions.https.HttpsError('internal', 'No se pudo obtener el historial de pagos.');
-    }
+  } catch (error) {
+    console.error("Error al obtener el historial de pagos:", error);
+    throw new functions.https.HttpsError('internal', 'No se pudo obtener el historial de pagos.');
+  }
 });
 
 
@@ -582,22 +580,22 @@ exports.getPaymentHistory = onCall(async (request) => {
 exports.uploadFile = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     if (req.method !== "POST") {
-      return res.status(405).json({message: "Método no permitido"});
-    }
-    
-    const userId = req.query.userId;
-    if (!userId) {
-        return res.status(400).json({message: "Falta el ID del usuario."});
+      return res.status(405).json({ message: "Método no permitido" });
     }
 
-    const busboy = Busboy({headers: req.headers});
+    const userId = req.query.userId;
+    if (!userId) {
+      return res.status(400).json({ message: "Falta el ID del usuario." });
+    }
+
+    const busboy = Busboy({ headers: req.headers });
     const uploads = {};
     const tmpdir = os.tmpdir();
     let fileWrites = [];
 
     busboy.on("file", (fieldname, file, filename) => {
       const filepath = path.join(tmpdir, filename.filename);
-      uploads[fieldname] = {filepath, filename: filename.filename};
+      uploads[fieldname] = { filepath, filename: filename.filename };
       const writeStream = fs.createWriteStream(filepath);
       file.pipe(writeStream);
       const promise = new Promise((resolve, reject) => {
@@ -612,7 +610,7 @@ exports.uploadFile = functions.https.onRequest((req, res) => {
       await Promise.all(fileWrites);
       const bucket = admin.storage().bucket();
       const fileField = Object.keys(uploads)[0];
-      const {filepath, filename} = uploads[fileField];
+      const { filepath, filename } = uploads[fileField];
       const destination = `requests/${userId}/${Date.now()}-${filename}`;
       try {
         const [uploadedFile] = await bucket.upload(filepath, { destination: destination, resumable: false });
@@ -622,7 +620,7 @@ exports.uploadFile = functions.https.onRequest((req, res) => {
         res.status(200).json({ fileURL: downloadURL, fileName: filename });
       } catch (error) {
         console.error("Error al subir el archivo a Storage:", error);
-        res.status(500).json({message: "Error al subir el archivo."});
+        res.status(500).json({ message: "Error al subir el archivo." });
       }
     });
 
@@ -634,22 +632,22 @@ exports.uploadFile = functions.https.onRequest((req, res) => {
 exports.uploadLogo = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     if (req.method !== "POST") {
-      return res.status(405).json({message: "Método no permitido"});
-    }
-    
-    const userId = req.query.userId;
-    if (!userId) {
-        return res.status(400).json({message: "Falta el ID del usuario."});
+      return res.status(405).json({ message: "Método no permitido" });
     }
 
-    const busboy = Busboy({headers: req.headers});
+    const userId = req.query.userId;
+    if (!userId) {
+      return res.status(400).json({ message: "Falta el ID del usuario." });
+    }
+
+    const busboy = Busboy({ headers: req.headers });
     const uploads = {};
     const tmpdir = os.tmpdir();
     let fileWrites = [];
 
     busboy.on("file", (fieldname, file, filename) => {
       const filepath = path.join(tmpdir, filename.filename);
-      uploads[fieldname] = {filepath, filename: filename.filename};
+      uploads[fieldname] = { filepath, filename: filename.filename };
       const writeStream = fs.createWriteStream(filepath);
       file.pipe(writeStream);
       const promise = new Promise((resolve, reject) => {
@@ -664,7 +662,7 @@ exports.uploadLogo = functions.https.onRequest((req, res) => {
       await Promise.all(fileWrites);
       const bucket = admin.storage().bucket();
       const fileField = Object.keys(uploads)[0];
-      const {filepath, filename} = uploads[fileField];
+      const { filepath, filename } = uploads[fileField];
       // Guardamos en una carpeta diferente para logos
       const destination = `logos/${userId}/${Date.now()}-${filename}`;
       try {
@@ -675,7 +673,7 @@ exports.uploadLogo = functions.https.onRequest((req, res) => {
         res.status(200).json({ fileURL: downloadURL, fileName: filename });
       } catch (error) {
         console.error("Error al subir el logo a Storage:", error);
-        res.status(500).json({message: "Error al subir el logo."});
+        res.status(500).json({ message: "Error al subir el logo." });
       }
     });
 

@@ -58,7 +58,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
             email: userCredential.user.email,
             displayName: name,
             createdAt: serverTimestamp(),
-            status: "pending_approval",
+            status: "approved",
             initialPaymentStatus: "pending",
             websiteInfoStatus: "pending",
         });
