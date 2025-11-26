@@ -11,6 +11,10 @@ import NavbarSimple from '../templates/navbars/NavbarSimple';
 import ServicesList from '../templates/services/ServicesList';
 import InfoSimple from '../templates/info/InfoSimple';
 import ClientsLogos from '../templates/clients/ClientsLogos';
+import GuaranteeSimple from '../templates/guarantee/GuaranteeSimple';
+import ReviewsSlider from '../templates/reviews/ReviewsSlider';
+import GalleryGrid from '../templates/gallery/GalleryGrid';
+import CTACentered from '../templates/cta/CTACentered';
 
 const TemplateGalleryPage = () => {
     const [activeTab, setActiveTab] = useState('heroes');
@@ -20,7 +24,7 @@ const TemplateGalleryPage = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Librería de Plantillas (LEGOs)</h1>
 
             <div className="flex space-x-4 mb-8 overflow-x-auto pb-4">
-                {['heroes', 'features', 'navbars', 'services', 'info', 'clients'].map(tab => (
+                {['heroes', 'features', 'navbars', 'services', 'info', 'clients', 'guarantee', 'reviews', 'gallery', 'cta'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -86,12 +90,7 @@ const TemplateGalleryPage = () => {
                             <FeaturesElegant />
                         </div>
                     </section>
-                    <section className="bg-white p-4 rounded-xl shadow">
-                        <h2 className="text-xl font-bold mb-4 text-gray-400">Features Grid (Original)</h2>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                            <FeaturesGrid />
-                        </div>
-                    </section>
+
                 </div>
             )}
 
@@ -134,6 +133,50 @@ const TemplateGalleryPage = () => {
                         <h2 className="text-xl font-bold mb-4 text-gray-400">Logos de Clientes</h2>
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                             <ClientsLogos />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'guarantee' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Garantía Simple</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <GuaranteeSimple />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'reviews' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Slider de Testimonios</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <ReviewsSlider />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'gallery' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">Grid de Galería</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <GalleryGrid />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeTab === 'cta' && (
+                <div className="space-y-12">
+                    <section className="bg-white p-4 rounded-xl shadow">
+                        <h2 className="text-xl font-bold mb-4 text-gray-400">CTA Centrado</h2>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <CTACentered />
                         </div>
                     </section>
                 </div>
