@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -83,12 +83,10 @@ const AppRoutes = () => {
 function App() {
     return (
         <AuthProvider>
-            <Router>
-                <Toaster position="bottom-right" />
-                <Suspense fallback={<div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Cargando...</div>}>
-                    <AppRoutes />
-                </Suspense>
-            </Router>
+            <Toaster position="bottom-right" />
+            <Suspense fallback={<div className="flex justify-center items-center min-h-screen font-heading bg-slate-50 text-slate-600">Cargando...</div>}>
+                <AppRoutes />
+            </Suspense>
         </AuthProvider>
     );
 }
