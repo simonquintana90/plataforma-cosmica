@@ -116,6 +116,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                         {/* 1. Ruta de pago inicial actualizada a "suscribirse" */}
                         <Link to="/?view=suscribirse" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
                         <Link to="/?view=website_form" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Formulario Web</Link>
+                        <Link to="/admin/templates" className="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 border border-indigo-600 transition-colors">Ver Librería de Plantillas (LEGOs)</Link>
                         {/* 2. Botón de "Subscription Wall" eliminado */}
                     </div>
                 </div>

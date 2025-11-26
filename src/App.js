@@ -12,6 +12,7 @@ const RequestDetailPage = lazy(() => import('./pages/RequestDetailPage'));
 const MyAccountPage = lazy(() => import('./pages/MyAccountPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminUserDetailPage = lazy(() => import('./pages/AdminUserDetailPage'));
+const TemplateGalleryPage = lazy(() => import('./pages/TemplateGalleryPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const ProfileErrorPage = lazy(() => import('./pages/ProfileErrorPage'));
 
