@@ -74,6 +74,7 @@ const AppRoutes = () => {
             <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
 
             <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
+            <Route path="/admin/templates" element={user.uid === ADMIN_UID ? <TemplateGalleryPage /> : <Navigate to="/" />} />
             <Route path="/admin/user/:userId" element={user.uid === ADMIN_UID ? <AdminUserDetailPage {...firebaseServices} /> : <Navigate to="/" />} />
 
             <Route path="*" element={<Navigate to="/" />} />
