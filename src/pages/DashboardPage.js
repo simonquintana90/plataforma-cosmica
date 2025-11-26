@@ -18,8 +18,13 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
 
+    const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
+
     const activeRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
     const completedRequestsCount = useMemo(() => requests.filter(r => r.status === 'completed').length, [requests]);
+
+    const activeRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
+    const historyRequests = useMemo(() => requests.filter(r => r.status === 'completed'), [requests]);
 
     useEffect(() => {
         const userSubRef = doc(db, "users", user.uid);
@@ -50,7 +55,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         e.preventDefault();
         setLoading(true);
 
-        const { 'change-title': title, 'change-type': type, 'change-description': description } = e.target.elements;
+        const { 'change-title': title, 'change-description': description } = e.target.elements;
         let uploadResponse = {};
 
         if (file) {
@@ -82,7 +87,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         try {
             const requestData = {
                 title: title.value,
-                type: type.value,
+                type: 'General', // Default type since field is removed
                 description: description.value,
                 userId: user.uid,
                 userEmail: user.email,
@@ -119,7 +124,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <PageTransition>
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
@@ -167,7 +172,6 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                         <div className="p-6 md:p-8">{changeRequestSent ? (<div className="flex flex-col items-center justify-center text-center h-96"><div className="bg-green-100 p-4 rounded-full mb-4"><svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg></div><h2 className="text-2xl font-heading font-bold text-slate-900">¡Solicitud Enviada!</h2><p className="mt-2 text-slate-500 max-w-sm">Hemos recibido tu solicitud y nos pondremos en marcha pronto. Te notificaremos cualquier novedad.</p></div>) : (<> <h2 className="text-xl font-heading font-bold text-slate-900 mb-1">Nueva Solicitud de Cambio</h2> <p className="text-sm text-slate-500 mb-6">Describe el cambio que necesitas para tu página web de la forma más detallada posible.</p>
                             <form onSubmit={handleRequestSubmit} className="space-y-6">
                                 <div><label htmlFor="change-title" className="block text-sm font-medium text-slate-600 mb-2">Título del Cambio</label><input type="text" id="change-title" name="change-title" required placeholder="Ej: Cambiar número de teléfono" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" /></div>
-                                <div><label htmlFor="change-type" className="block text-sm font-medium text-slate-600 mb-2">Tipo de Cambio</label><select id="change-type" name="change-type" required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"><option>Cambio de Texto</option><option>Añadir/Cambiar Imagen</option><option>Corregir Error Visual</option><option>Nueva Funcionalidad</option><option>Otro</option></select></div>
                                 <div><label htmlFor="change-description" className="block text-sm font-medium text-slate-600 mb-2">Descripción Detallada</label><textarea id="change-description" name="change-description" rows="5" required placeholder="Por favor, sé lo más específico posible. Si aplica, menciona en qué página se debe realizar el cambio." className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"></textarea></div>
 
                                 <div>
@@ -195,20 +199,46 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                                 </div>
                             </form></>)}</div>
                     </div>
-                    <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                        <h3 className="font-heading font-bold text-slate-900">Mis Solicitudes</h3>
-                        <ul className="mt-4 space-y-2">
-                            {loadingRequests ? (
-                                <>
-                                    <li className="p-3"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></li>
-                                    <li className="p-3"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></li>
-                                    <li className="p-3"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></li>
-                                </>
-                            ) : requests.length === 0 ? (<p className="text-sm text-slate-500">Aún no has enviado solicitudes.</p>) : (requests.map(req => (<li key={req.id}><Link to={`/solicitud/${req.id}`} className="block p-3 rounded-lg hover:bg-slate-100 transition-colors"><div className="flex justify-between items-center"><p className="font-bold text-slate-700 truncate">{req.title}</p><StatusBadge status={req.status} /></div></Link></li>)))}</ul>
+                    <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div className="flex border-b border-slate-200">
+                            <button onClick={() => setActiveTab('active')} className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${activeTab === 'active' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Activas ({activeRequests.length})</button>
+                            <button onClick={() => setActiveTab('history')} className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${activeTab === 'history' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Historial ({historyRequests.length})</button>
+                        </div>
+                        <div className="p-6">
+                            <ul className="space-y-2">
+                                {loadingRequests ? (
+                                    <>
+                                        <li className="p-3"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></li>
+                                        <li className="p-3"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></li>
+                                    </>
+                                ) : (activeTab === 'active' ? activeRequests : historyRequests).length === 0 ? (
+                                    <p className="text-sm text-slate-500 text-center py-4">No hay solicitudes {activeTab === 'active' ? 'activas' : 'en el historial'}.</p>
+                                ) : (
+                                    (activeTab === 'active' ? activeRequests : historyRequests).map((req, index) => (
+                                        <motion.li
+                                            key={req.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.1 }}
+                                        >
+                                            <Link to={`/solicitud/${req.id}`} className="block p-3 rounded-lg hover:bg-slate-100 transition-colors">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-2 truncate">
+                                                        {req.userHasUnreadMessages && <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0"></span>}
+                                                        <p className="font-bold text-slate-700 truncate">{req.title}</p>
+                                                    </div>
+                                                    <StatusBadge status={req.status} />
+                                                </div>
+                                            </Link>
+                                        </motion.li>
+                                    ))
+                                )}
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </main>
-        </div>
+        </PageTransition>
     );
 };
 
