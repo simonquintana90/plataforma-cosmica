@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GuaranteeSplit = ({
+const GuaranteeCapture = ({
     title = "Garantía de Calidad",
     description = "Nuestro compromiso es total. Si no cumplimos con los objetivos establecidos en el plan inicial, te devolvemos tu inversión. Sin preguntas, sin letra pequeña.",
     image = "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -51,4 +51,4 @@ const GuaranteeSplit = ({
     );
 };
 
-export default GuaranteeSplit;
+export default GuaranteeCapture;

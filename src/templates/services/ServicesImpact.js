@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ServicesCards = ({
+const ServicesImpact = ({
     title = "Nuestros Servicios",
     subtitle = "Soluciones diseñadas para cada etapa de tu crecimiento.",
     services = [
@@ -65,4 +65,4 @@ const ServicesCards = ({
     );
 };
 
-export default ServicesCards;
+export default ServicesImpact;

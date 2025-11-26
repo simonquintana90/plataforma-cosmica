@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GuaranteeSimple = ({
+const GuaranteeImpact = ({
     title = "Garantía de Satisfacción",
     description = "Estamos tan seguros de la calidad de nuestro trabajo que ofrecemos una garantía de devolución del 100% si no estás satisfecho con los resultados en los primeros 30 días.",
     icon = "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
@@ -22,4 +22,4 @@ const GuaranteeSimple = ({
     );
 };
 
-export default GuaranteeSimple;
+export default GuaranteeImpact;

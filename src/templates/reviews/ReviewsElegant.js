@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ReviewsMinimal = ({
+const ReviewsElegant = ({
     quote = "Trabajar con este equipo ha sido una de las mejores decisiones que hemos tomado. Su atención al detalle y compromiso con la excelencia son incomparables.",
     author = "Sofía Vergara",
     role = "Directora Creativa, Studio X",
@@ -27,4 +27,4 @@ const ReviewsMinimal = ({
     );
 };
 
-export default ReviewsMinimal;
+export default ReviewsElegant;

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CTASplit = ({
+const CTACapture = ({
     title = "Lleva tu negocio al siguiente nivel",
     subtitle = "Agenda una llamada gratuita con nuestros expertos y descubre cómo podemos ayudarte a crecer.",
     ctaText = "Agendar Llamada",
@@ -29,4 +29,4 @@ const CTASplit = ({
     );
 };
 
-export default CTASplit;
+export default CTACapture;

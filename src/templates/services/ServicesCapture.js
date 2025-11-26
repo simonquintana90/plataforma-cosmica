@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ServicesList = ({
+const ServicesCapture = ({
     title = "Nuestras Soluciones",
     subtitle = "Descubre cómo podemos ayudarte a escalar tu negocio.",
     services = [
@@ -64,4 +64,4 @@ const ServicesList = ({
     );
 };
 
-export default ServicesList;
+export default ServicesCapture;

@@ -1,42 +1,39 @@
 import React, { useState } from 'react';
 
-const NavbarSimple = ({
+const NavbarCapture = ({
     logo = "Brand",
     links = [
-        { name: 'Inicio', href: '#' },
-        { name: 'Servicios', href: '#' },
-        { name: 'Nosotros', href: '#' },
-        { name: 'Contacto', href: '#' }
+        { name: 'Beneficios', href: '#' },
+        { name: 'Testimonios', href: '#' },
+        { name: 'FAQ', href: '#' }
     ],
-    ctaText = "Empezar",
-    theme = { bg: 'white', text: 'slate-900', primary: 'indigo-600' }
+    ctaText = "¡Oferta Especial!",
+    theme = { bg: 'white', text: 'slate-900', primary: 'red-600' }
 }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <nav className={`bg-${theme.bg} border-b border-slate-100`}>
+        <nav className={`bg-${theme.bg} shadow-md sticky top-0 z-50`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex items-center">
-                        <span className={`text-2xl font-bold text-${theme.text}`}>{logo}</span>
+                <div className="flex justify-between h-20 items-center">
+                    <div className="flex-shrink-0 flex items-center">
+                        <span className={`text-3xl font-extrabold text-${theme.text} uppercase tracking-wider`}>{logo}</span>
                     </div>
 
-                    {/* Desktop Menu */}
                     <div className="hidden md:flex items-center space-x-8">
                         {links.map((link, index) => (
-                            <a key={index} href={link.href} className={`text-sm font-medium text-${theme.text} hover:text-${theme.primary} transition-colors`}>
+                            <a key={index} href={link.href} className={`text-base font-bold text-${theme.text} hover:text-${theme.primary} transition-colors`}>
                                 {link.name}
                             </a>
                         ))}
-                        <button className={`px-5 py-2 rounded-full bg-${theme.primary} text-white text-sm font-bold hover:opacity-90 transition-opacity`}>
+                        <button className={`px-6 py-3 rounded-lg bg-${theme.primary} text-white font-bold text-lg hover:bg-opacity-90 transition-all shadow-lg transform hover:-translate-y-1`}>
                             {ctaText}
                         </button>
                     </div>
 
-                    {/* Mobile Menu Button */}
                     <div className="flex items-center md:hidden">
                         <button onClick={() => setIsOpen(!isOpen)} className={`text-${theme.text} hover:text-${theme.primary}`}>
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 {isOpen ? (
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                 ) : (
@@ -48,16 +45,15 @@ const NavbarSimple = ({
                 </div>
             </div>
 
-            {/* Mobile Menu */}
             {isOpen && (
-                <div className="md:hidden bg-white border-t border-slate-100">
-                    <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <div className="md:hidden bg-white border-t border-gray-200 absolute w-full shadow-xl">
+                    <div className="px-4 pt-4 pb-6 space-y-2">
                         {links.map((link, index) => (
-                            <a key={index} href={link.href} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-50">
+                            <a key={index} href={link.href} className="block px-3 py-3 rounded-md text-lg font-bold text-slate-800 hover:bg-slate-50 hover:text-red-600">
                                 {link.name}
                             </a>
                         ))}
-                        <button className={`w-full mt-4 px-5 py-3 rounded-md bg-${theme.primary} text-white text-base font-bold`}>
+                        <button className={`w-full mt-4 px-6 py-4 rounded-lg bg-${theme.primary} text-white font-bold text-xl shadow-md`}>
                             {ctaText}
                         </button>
                     </div>
@@ -67,4 +63,4 @@ const NavbarSimple = ({
     );
 };
 
-export default NavbarSimple;
+export default NavbarCapture;

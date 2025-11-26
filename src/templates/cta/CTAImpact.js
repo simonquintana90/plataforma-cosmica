@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CTACentered = ({
+const CTAImpact = ({
     title = "¿Listo para empezar?",
     subtitle = "Únete a cientos de empresas que ya están creciendo con nosotros.",
     ctaText = "Comenzar Ahora",
@@ -23,4 +23,4 @@ const CTACentered = ({
     );
 };
 
-export default CTACentered;
+export default CTAImpact;

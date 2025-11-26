@@ -1,6 +1,7 @@
+
 import React from 'react';
 
-const GalleryGrid = ({
+const GalleryImpact = ({
     title = "Nuestro Trabajo",
     images = [
         "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -21,7 +22,7 @@ const GalleryGrid = ({
                         <div key={index} className="relative aspect-square overflow-hidden rounded-lg group cursor-pointer">
                             <img
                                 src={img}
-                                alt={`Gallery ${index}`}
+                                alt={`Gallery ${index} `}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300"></div>
@@ -33,4 +34,4 @@ const GalleryGrid = ({
     );
 };
 
-export default GalleryGrid;
+export default GalleryImpact;

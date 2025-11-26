@@ -1,6 +1,7 @@
+
 import React from 'react';
 
-const ServicesMinimal = ({
+const ServicesElegant = ({
     title = "Expertise",
     services = [
         { title: 'Brand Strategy', description: 'Positioning, Voice & Tone, Brand Architecture' },
@@ -34,4 +35,4 @@ const ServicesMinimal = ({
     );
 };
 
-export default ServicesMinimal;
+export default ServicesElegant;

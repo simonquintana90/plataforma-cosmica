@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const NavbarTransparent = ({
+const NavbarCinematic = ({
     logo = "Brand",
     links = [
         { name: 'Inicio', href: '#' },
@@ -22,7 +22,7 @@ const NavbarTransparent = ({
     }, []);
 
     return (
-        <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-900/90 backdrop-blur-md py-2 shadow-lg' : 'bg-transparent py-6'}`}>
+        <nav className={`absolute w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-900/90 backdrop-blur-md py-2 shadow-lg' : 'bg-transparent py-6'}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center">
@@ -75,4 +75,4 @@ const NavbarTransparent = ({
     );
 };
 
-export default NavbarTransparent;
+export default NavbarCinematic;

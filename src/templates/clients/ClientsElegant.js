@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ClientsGrid = ({
+const ClientsElegant = ({
     title = "Empresas que confían en nosotros",
     logos = [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png",
@@ -34,4 +34,4 @@ const ClientsGrid = ({
     );
 };
 
-export default ClientsGrid;
+export default ClientsElegant;

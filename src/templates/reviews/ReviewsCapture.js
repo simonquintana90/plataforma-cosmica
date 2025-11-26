@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ReviewsGrid = ({
+const ReviewsCapture = ({
     title = "Historias de Éxito",
     reviews = [
         {
@@ -74,4 +74,4 @@ const ReviewsGrid = ({
     );
 };
 
-export default ReviewsGrid;
+export default ReviewsCapture;

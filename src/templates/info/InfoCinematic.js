@@ -1,6 +1,6 @@
 import React from 'react';
 
-const InfoStats = ({
+const InfoCinematic = ({
     title = "Nuestros números hablan por sí mismos",
     stats = [
         { value: '500+', label: 'Proyectos Completados', description: 'En más de 10 industrias diferentes.' },
@@ -35,4 +35,4 @@ const InfoStats = ({
     );
 };
 
-export default InfoStats;
+export default InfoCinematic;

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ClientsLogos = ({
+const ClientsImpact = ({
     title = "Confían en nosotros",
     logos = [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png",
@@ -31,4 +31,4 @@ const ClientsLogos = ({
     );
 };
 
-export default ClientsLogos;
+export default ClientsImpact;

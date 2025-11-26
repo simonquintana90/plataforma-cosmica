@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ReviewsSlider = ({
+const ReviewsImpact = ({
     title = "Lo que dicen nuestros clientes",
     reviews = [
         {
@@ -54,4 +54,4 @@ const ReviewsSlider = ({
     );
 };
 
-export default ReviewsSlider;
+export default ReviewsImpact;

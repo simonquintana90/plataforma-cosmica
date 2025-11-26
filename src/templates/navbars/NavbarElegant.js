@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const NavbarCentered = ({
+const NavbarElegant = ({
     logo = "Brand",
     links = [
         { name: 'Inicio', href: '#' },
@@ -76,4 +76,4 @@ const NavbarCentered = ({
     );
 };
 
-export default NavbarCentered;
+export default NavbarElegant;
