@@ -20,7 +20,10 @@ const CTACinematic = ({
                 <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
                     {subtitle}
                 </p>
-                <button className={`px-10 py-4 rounded-full bg-${theme.accent} text-slate-900 font-bold text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] transition-all duration-300`}>
+                <button
+                    className="px-10 py-4 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] transition-all duration-300"
+                    style={{ backgroundColor: '#06b6d4', color: '#0f172a' }}
+                >
                     {ctaText}
                 </button>
             </div>
