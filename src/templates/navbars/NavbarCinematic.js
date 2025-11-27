@@ -22,9 +22,9 @@ const NavbarCinematic = ({
     }, []);
 
     return (
-        <nav className={`absolute w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-900/90 backdrop-blur-md py-2 shadow-lg' : 'bg-transparent py-6'}`}>
+        <nav className={`absolute w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-900/90 backdrop-blur-md shadow-lg' : 'bg-transparent'}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center h-20">
                     <div className="flex items-center">
                         <span className="text-2xl font-bold text-white">{logo}</span>
                     </div>
