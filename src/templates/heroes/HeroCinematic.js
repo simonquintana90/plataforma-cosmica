@@ -16,9 +16,9 @@ const HeroCinematic = ({
                     alt="Background"
                     className="w-full h-full object-cover opacity-20"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
                 {/* Additional Overlay for readability */}
-                <div className="absolute inset-0 bg-blue-900/20 mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-blue-900/5 mix-blend-overlay"></div>
             </div>
 
             {/* Main Content */}

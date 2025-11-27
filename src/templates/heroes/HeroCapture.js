@@ -19,47 +19,17 @@ const HeroCapture = ({
                     {/* Gradient Mesh */}
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-stone-900/90 via-stone-900/50 to-transparent z-0"></div>
 
-                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        {/* Left Text */}
-                        <div className="flex flex-col justify-center">
-                            <p className="text-xs font-bold tracking-widest text-stone-400 uppercase mb-4">Atención Personalizada</p>
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                                {title}
-                            </h1>
-                            <p className="text-stone-300 text-sm md:text-base max-w-md">
-                                {subtitle}
-                            </p>
-                        </div>
-
-                        {/* Right Form Controls */}
-                        <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                            <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Name */}
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-stone-400 mb-2">Nombre Completo</label>
-                                    <input type="text" placeholder="Tu nombre" className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:border-white/50 transition-colors" />
-                                </div>
-
-                                {/* Email */}
-                                <div>
-                                    <label className="block text-xs font-bold text-stone-400 mb-2">Correo Electrónico</label>
-                                    <input type="email" placeholder="tu@correo.com" className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:border-white/50 transition-colors" />
-                                </div>
-
-                                {/* Phone */}
-                                <div>
-                                    <label className="block text-xs font-bold text-stone-400 mb-2">Teléfono</label>
-                                    <input type="tel" placeholder="+57 300..." className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:border-white/50 transition-colors" />
-                                </div>
-
-                                {/* Submit Button */}
-                                <div className="md:col-span-2 mt-2">
-                                    <button type="button" className="w-full bg-white text-stone-900 font-bold py-4 rounded-lg hover:bg-stone-200 transition-colors shadow-lg">
-                                        Enviar Mensaje
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                    <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto">
+                        <p className="text-xs font-bold tracking-widest text-stone-400 uppercase mb-4">Atención Personalizada</p>
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                            {title}
+                        </h1>
+                        <p className="text-stone-300 text-sm md:text-base mb-8">
+                            {subtitle}
+                        </p>
+                        <button className="bg-white text-stone-900 font-bold py-4 px-8 rounded-lg hover:bg-stone-200 transition-colors shadow-lg">
+                            Empezar Ahora
+                        </button>
                     </div>
                 </div>
             </div>
