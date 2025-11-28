@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WebsiteBuilder from '../components/builder/WebsiteBuilder';
+import { generateWebsiteConfig } from '../utils/aiGenerator';
+import { toast } from 'react-hot-toast';
 
 const DEFAULT_CONFIG = {
     "meta": {
@@ -13,58 +15,33 @@ const DEFAULT_CONFIG = {
     },
     "sections": [
         {
-            "id": "navbar",
-            "type": "NavbarImpact",
-            "content": {
-                "logo": "Cosmica AI",
-                "links": [
-                    { "name": "Features", "href": "#features" },
-                    { "name": "Services", "href": "#services" },
-                    { "name": "Pricing", "href": "#pricing" }
-                ],
-                "ctaText": "Get Started"
-            }
-        },
-        {
             "id": "hero",
             "type": "HeroImpact",
             "content": {
-                "title": "Build Your Dream Website in Minutes",
-                "subtitle": "Leverage the power of AI to generate stunning, high-performance websites tailored to your brand.",
-                "ctaText": "Start Building Free"
-            }
-        },
-        {
-            "id": "features",
-            "type": "FeaturesImpact",
-            "content": {
-                "title": "Why Choose Cosmica?",
-                "subtitle": "We combine design excellence with AI efficiency."
-            }
-        },
-        {
-            "id": "cta",
-            "type": "CTAImpact",
-            "content": {
-                "title": "Ready to Transform Your Online Presence?",
-                "subtitle": "Join thousands of satisfied users who have built their sites with Cosmica.",
-                "ctaText": "Launch Now"
-            }
-        },
-        {
-            "id": "footer",
-            "type": "FooterImpact",
-            "content": {
-                "brand": "Cosmica AI"
+                "title": "Build Your Dream Website",
+                "subtitle": "Leverage the power of AI to generate stunning websites.",
+                "ctaText": "Start Building"
             }
         }
     ]
 };
 
 const AIBuilderPage = () => {
+    // State for JSON Editor
     const [jsonConfig, setJsonConfig] = useState(JSON.stringify(DEFAULT_CONFIG, null, 2));
     const [parsedConfig, setParsedConfig] = useState(DEFAULT_CONFIG);
     const [error, setError] = useState(null);
+
+    // State for UI
+    const [activeTab, setActiveTab] = useState('generator'); // 'editor' | 'generator'
+
+    // State for Generator Form
+    const [formData, setFormData] = useState({
+        businessName: '',
+        industry: 'general',
+        description: '',
+        style: 'impact'
+    });
 
     useEffect(() => {
         try {
@@ -76,35 +53,148 @@ const AIBuilderPage = () => {
         }
     }, [jsonConfig]);
 
+    const handleGenerate = () => {
+        try {
+            const newConfig = generateWebsiteConfig(formData);
+            setJsonConfig(JSON.stringify(newConfig, null, 2));
+            toast.success("Website generated successfully!");
+            // Optional: Switch to editor to show the result code
+            // setActiveTab('editor'); 
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to generate website.");
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
     return (
-        <div className="flex h-screen overflow-hidden">
-            {/* Left Panel: JSON Editor */}
-            <div className="w-1/3 bg-slate-900 text-white flex flex-col border-r border-slate-700">
-                <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
-                    <h2 className="font-bold text-lg">AI Configuration</h2>
-                    <span className={`text-xs px-2 py-1 rounded ${error ? 'bg-red-500' : 'bg-green-500'}`}>
-                        {error ? 'Invalid JSON' : 'Valid'}
-                    </span>
+        <div className="flex h-screen overflow-hidden font-sans">
+            {/* Left Panel: Controls */}
+            <div className="w-1/3 bg-slate-900 text-white flex flex-col border-r border-slate-700 shadow-xl z-10">
+
+                {/* Tabs */}
+                <div className="flex border-b border-slate-700">
+                    <button
+                        onClick={() => setActiveTab('generator')}
+                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'generator' ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        AI Generator
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('editor')}
+                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'editor' ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        JSON Editor
+                    </button>
                 </div>
-                <div className="flex-1 relative">
-                    <textarea
-                        className="w-full h-full bg-slate-900 p-4 font-mono text-sm text-green-400 focus:outline-none resize-none"
-                        value={jsonConfig}
-                        onChange={(e) => setJsonConfig(e.target.value)}
-                        spellCheck="false"
-                    />
+
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto">
+
+                    {/* Generator Form */}
+                    {activeTab === 'generator' && (
+                        <div className="p-6 space-y-6 animate-fade-in">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Business Name</label>
+                                <input
+                                    type="text"
+                                    name="businessName"
+                                    value={formData.businessName}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors"
+                                    placeholder="e.g. Acme Corp"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Industry</label>
+                                <select
+                                    name="industry"
+                                    value={formData.industry}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors"
+                                >
+                                    <option value="general">General</option>
+                                    <option value="technology">Technology & SaaS</option>
+                                    <option value="health">Health & Wellness</option>
+                                    <option value="legal">Legal & Finance</option>
+                                    <option value="restaurant">Restaurant & Food</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
+                                <textarea
+                                    name="description"
+                                    value={formData.description}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors h-32 resize-none"
+                                    placeholder="Describe your business..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Visual Style</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['impact', 'cinematic', 'capture', 'elegant'].map(style => (
+                                        <button
+                                            key={style}
+                                            onClick={() => setFormData(prev => ({ ...prev, style }))}
+                                            className={`p-3 rounded border text-sm font-medium capitalize transition-all ${formData.style === style
+                                                ? 'bg-blue-600 border-blue-600 text-white'
+                                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                                        >
+                                            {style}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleGenerate}
+                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] transition-all transform"
+                            >
+                                ✨ Generate Website
+                            </button>
+                        </div>
+                    )}
+
+                    {/* JSON Editor */}
+                    {activeTab === 'editor' && (
+                        <div className="h-full flex flex-col">
+                            <div className="p-2 bg-slate-800 text-xs text-slate-400 flex justify-between items-center">
+                                <span>config.json</span>
+                                <span className={error ? 'text-red-400' : 'text-green-400'}>
+                                    {error ? 'Invalid JSON' : 'Valid'}
+                                </span>
+                            </div>
+                            <textarea
+                                className="flex-1 w-full bg-slate-900 p-4 font-mono text-sm text-green-400 focus:outline-none resize-none"
+                                value={jsonConfig}
+                                onChange={(e) => setJsonConfig(e.target.value)}
+                                spellCheck="false"
+                            />
+                            {error && (
+                                <div className="p-4 bg-red-900/50 text-red-200 text-xs border-t border-red-800">
+                                    {error}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-                {error && (
-                    <div className="p-4 bg-red-900/50 text-red-200 text-xs border-t border-red-800">
-                        {error}
-                    </div>
-                )}
             </div>
 
             {/* Right Panel: Live Preview */}
-            <div className="w-2/3 bg-gray-100 overflow-y-auto relative">
-                <div className="absolute top-4 right-4 z-50 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-gray-200 text-gray-500">
-                    Live Preview
+            <div className="w-2/3 bg-gray-100 overflow-y-auto relative scroll-smooth">
+                <div className="sticky top-4 right-4 z-50 float-right mr-4">
+                    <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-bold shadow-lg border border-gray-200 text-gray-600 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        Live Preview
+                    </div>
                 </div>
                 <WebsiteBuilder siteConfig={parsedConfig} />
             </div>
