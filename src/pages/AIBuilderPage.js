@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import WebsiteBuilder from '../components/builder/WebsiteBuilder';
+import VisualEditorSidebar from '../components/builder/VisualEditorSidebar';
 import { generateWebsiteConfig } from '../utils/aiGenerator';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+
 const DEFAULT_CONFIG = {
     "meta": {
         "title": "Cosmica Demo Site",
@@ -29,16 +31,11 @@ const DEFAULT_CONFIG = {
 const AIBuilderPage = () => {
     const { user, db, doc, getDoc } = useAuth();
 
-    // State for JSON Editor
-    const [jsonConfig, setJsonConfig] = useState(JSON.stringify(DEFAULT_CONFIG, null, 2));
+    // State for Website Config
     const [parsedConfig, setParsedConfig] = useState(DEFAULT_CONFIG);
-    const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // State for UI
-    const [activeTab, setActiveTab] = useState('generator'); // 'editor' | 'generator'
-
-    // State for Generator Form
+    // State for Generator Form (kept for reference or future re-generation)
     const [formData, setFormData] = useState({
         businessName: '',
         industry: 'general',
@@ -59,7 +56,7 @@ const AIBuilderPage = () => {
     useEffect(() => {
         const loadUserConfig = async () => {
             if (!user || !db) {
-                setIsLoading(false); // If no user or db, stop loading immediately
+                setIsLoading(false);
                 return;
             }
 
@@ -72,7 +69,6 @@ const AIBuilderPage = () => {
 
                     // 1. Load the generated website config
                     if (userData.websiteConfig) {
-                        setJsonConfig(JSON.stringify(userData.websiteConfig, null, 2));
                         setParsedConfig(userData.websiteConfig);
                         toast.success("Loaded your generated website!");
                     }
@@ -108,209 +104,27 @@ const AIBuilderPage = () => {
         loadUserConfig();
     }, [user, db]);
 
-    useEffect(() => {
-        try {
-            const parsed = JSON.parse(jsonConfig);
-            setParsedConfig(parsed);
-            setError(null);
-        } catch (e) {
-            setError(e.message);
-        }
-    }, [jsonConfig]);
-
-    const handleGenerate = () => {
-        try {
-            const newConfig = generateWebsiteConfig(formData);
-            setJsonConfig(JSON.stringify(newConfig, null, 2));
-            toast.success("Website generated successfully!");
-            // Optional: Switch to editor to show the result code
-            // setActiveTab('editor'); 
-        } catch (err) {
-            console.error(err);
-            toast.error("Failed to generate website.");
-        }
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
     return (
-        <div className="flex h-screen overflow-hidden font-sans">
-            {/* Left Panel: Controls */}
-            <div className="w-1/3 bg-slate-900 text-white flex flex-col border-r border-slate-700 shadow-xl z-10">
-
-                {/* Tabs */}
-                <div className="flex border-b border-slate-700">
-                    <button
-                        onClick={() => setActiveTab('generator')}
-                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'generator' ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        AI Generator
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('editor')}
-                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'editor' ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        JSON Editor
-                    </button>
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto">
-
-                    {/* Generator Form */}
-                    {activeTab === 'generator' && (
-                        <div className="p-6 space-y-6 animate-fade-in">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Business Name</label>
-                                <input
-                                    type="text"
-                                    name="businessName"
-                                    value={formData.businessName}
-                                    onChange={handleInputChange}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors"
-                                    placeholder="e.g. Acme Corp"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Industry</label>
-                                <select
-                                    name="industry"
-                                    value={formData.industry}
-                                    onChange={handleInputChange}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors"
-                                >
-                                    <option value="general">General</option>
-                                    <option value="technology">Technology & SaaS</option>
-                                    <option value="health">Health & Wellness</option>
-                                    <option value="legal">Legal & Finance</option>
-                                    <option value="restaurant">Restaurant & Food</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Description</label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleInputChange}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-blue-500 focus:outline-none transition-colors h-32 resize-none"
-                                    placeholder="Describe your business..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Visual Style</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {['impact', 'cinematic', 'capture', 'elegant'].map(style => (
-                                        <button
-                                            key={style}
-                                            onClick={() => setFormData(prev => ({ ...prev, style }))}
-                                            className={`p-3 rounded border text-sm font-medium capitalize transition-all ${formData.style === style
-                                                ? 'bg-blue-600 border-blue-600 text-white'
-                                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}`}
-                                        >
-                                            {style}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Brand Palette</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <input
-                                                type="color"
-                                                value={formData.brandColors.primary}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, primary: e.target.value } }))}
-                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
-                                            />
-                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Primary</span>
-                                        </div>
-                                        <div>
-                                            <input
-                                                type="color"
-                                                value={formData.brandColors.secondary}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, secondary: e.target.value } }))}
-                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
-                                            />
-                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Secondary</span>
-                                        </div>
-                                        <div>
-                                            <input
-                                                type="color"
-                                                value={formData.brandColors.accent}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, accent: e.target.value } }))}
-                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
-                                            />
-                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Accent</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Typography</label>
-                                    <select
-                                        name="fontPairing"
-                                        value={formData.fontPairing}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
-                                    >
-                                        <option value="modern">Modern</option>
-                                        <option value="elegant">Elegant</option>
-                                        <option value="bold">Bold</option>
-                                        <option value="friendly">Friendly</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleGenerate}
-                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] transition-all transform"
-                            >
-                                ✨ Generate Website
-                            </button>
-                        </div>
-                    )}
-
-                    {/* JSON Editor */}
-                    {activeTab === 'editor' && (
-                        <div className="h-full flex flex-col">
-                            <div className="p-2 bg-slate-800 text-xs text-slate-400 flex justify-between items-center">
-                                <span>config.json</span>
-                                <span className={error ? 'text-red-400' : 'text-green-400'}>
-                                    {error ? 'Invalid JSON' : 'Valid'}
-                                </span>
-                            </div>
-                            <textarea
-                                className="flex-1 w-full bg-slate-900 p-4 font-mono text-sm text-green-400 focus:outline-none resize-none"
-                                value={jsonConfig}
-                                onChange={(e) => setJsonConfig(e.target.value)}
-                                spellCheck="false"
-                            />
-                            {error && (
-                                <div className="p-4 bg-red-900/50 text-red-200 text-xs border-t border-red-800">
-                                    {error}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+        <div className="flex h-screen overflow-hidden font-sans bg-slate-50">
+            {/* Left Panel: Visual Editor Sidebar */}
+            <VisualEditorSidebar
+                config={parsedConfig}
+                setConfig={setParsedConfig}
+            />
 
             {/* Right Panel: Live Preview */}
-            <div className="w-2/3 bg-gray-100 overflow-y-auto relative scroll-smooth">
-                <div className="sticky top-4 right-4 z-50 float-right mr-4">
+            <div className="flex-1 overflow-y-auto relative scroll-smooth bg-slate-100">
+                <div className="sticky top-4 right-4 z-50 float-right mr-4 pointer-events-none">
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-bold shadow-lg border border-gray-200 text-gray-600 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         Live Preview
                     </div>
                 </div>
-                <WebsiteBuilder siteConfig={parsedConfig} />
+
+                {/* Preview Container with shadow for "page" effect */}
+                <div className="min-h-screen bg-white shadow-2xl mx-auto max-w-[1600px] transition-all duration-300">
+                    <WebsiteBuilder siteConfig={parsedConfig} />
+                </div>
             </div>
         </div>
     );
