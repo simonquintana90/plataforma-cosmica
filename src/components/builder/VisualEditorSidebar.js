@@ -3,10 +3,10 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 // Helper to define editable fields for each component type
 const getComponentSchema = (type) => {
-    // Default schema for unknown types
-    const defaultSchema = [
-        { key: 'title', label: 'Título', type: 'text' },
-        { key: 'subtitle', label: 'Subtítulo', type: 'textarea' }
+    // Common style overrides
+    const styleFields = [
+        { key: 'theme.bg', label: 'Color de Fondo', type: 'color' },
+        { key: 'theme.text', label: 'Color de Texto', type: 'color' }
     ];
 
     if (type.includes('Hero')) {
@@ -14,23 +14,201 @@ const getComponentSchema = (type) => {
             { key: 'title', label: 'Título Principal', type: 'text' },
             { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
             { key: 'ctaText', label: 'Texto Botón Principal', type: 'text' },
-            { key: 'secondaryCtaText', label: 'Texto Botón Secundario', type: 'text' }
+            { key: 'secondaryCtaText', label: 'Texto Botón Secundario', type: 'text' },
+            { key: 'images', label: 'Imágenes de Fondo', type: 'image-list' },
+            ...styleFields
         ];
     }
-    if (type.includes('Features') || type.includes('Services')) {
+    if (type.includes('Features') || type.includes('Services') || type.includes('USP')) {
+        // Determine the key for the list (features or services)
+        const listKey = type.includes('Services') ? 'services' : 'features';
         return [
             { key: 'title', label: 'Título de Sección', type: 'text' },
-            { key: 'description', label: 'Descripción', type: 'textarea' },
-            { key: 'features', label: 'Lista de Elementos', type: 'list' }
+            { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+            {
+                key: listKey, label: 'Elementos', type: 'list', itemSchema: [
+                    { key: 'title', label: 'Título', type: 'text' },
+                    { key: 'description', label: 'Descripción', type: 'textarea' },
+                    { key: 'icon', label: 'Icono (SVG Path)', type: 'text' }
+                ]
+            },
+            ...styleFields
         ];
     }
     if (type.includes('Navbar')) {
         return [
-            { key: 'ctaText', label: 'Texto Botón', type: 'text' }
+            { key: 'logo', label: 'Texto del Logo', type: 'text' },
+            { key: 'ctaText', label: 'Texto Botón', type: 'text' },
+            ...styleFields
         ];
     }
-    return defaultSchema;
+    if (type.includes('Footer')) {
+        return [
+            { key: 'businessName', label: 'Nombre Negocio', type: 'text' },
+            { key: 'description', label: 'Descripción', type: 'textarea' },
+            ...styleFields
+        ];
+    }
+
+    // Default fallback
+    return [
+        { key: 'title', label: 'Título', type: 'text' },
+        { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+        ...styleFields
+    ];
 };
+
+// ... (inside component)
+
+{
+    getComponentSchema(section.type).map((field) => (
+        <div key={field.key} className="mb-4">
+            <label className="block text-xs font-bold text-slate-500 mb-1">{field.label}</label>
+
+            {field.type === 'textarea' ? (
+                <textarea
+                    value={section.content[field.key] || ''}
+                    onChange={(e) => handleContentChange(section.id, field.key, e.target.value)}
+                    rows={3}
+                    className="w-full text-sm border border-slate-200 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+            ) : field.type === 'list' ? (
+                <div className="space-y-3">
+                    {(section.content[field.key] || []).map((item, i) => (
+                        <div key={i} className="border p-3 rounded bg-slate-50 relative group">
+                            <button
+                                onClick={() => {
+                                    const newItems = [...(section.content[field.key] || [])];
+                                    newItems.splice(i, 1);
+                                    handleContentChange(section.id, field.key, newItems);
+                                }}
+                                className="absolute top-2 right-2 text-slate-400 hover:text-red-500"
+                            >
+                                ×
+                            </button>
+                            <div className="space-y-2 pr-6">
+                                {field.itemSchema.map(subField => (
+                                    <div key={subField.key}>
+                                        {subField.type === 'textarea' ? (
+                                            <textarea
+                                                placeholder={subField.label}
+                                                value={item[subField.key] || ''}
+                                                onChange={(e) => {
+                                                    const newItems = [...(section.content[field.key] || [])];
+                                                    newItems[i] = { ...item, [subField.key]: e.target.value };
+                                                    handleContentChange(section.id, field.key, newItems);
+                                                }}
+                                                rows={2}
+                                                className="w-full text-xs border border-slate-200 rounded p-1"
+                                            />
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                placeholder={subField.label}
+                                                value={item[subField.key] || ''}
+                                                onChange={(e) => {
+                                                    const newItems = [...(section.content[field.key] || [])];
+                                                    newItems[i] = { ...item, [subField.key]: e.target.value };
+                                                    handleContentChange(section.id, field.key, newItems);
+                                                }}
+                                                className="w-full text-xs border border-slate-200 rounded p-1"
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                    <button
+                        onClick={() => {
+                            const newItem = field.itemSchema.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {});
+                            const newItems = [...(section.content[field.key] || []), newItem];
+                            handleContentChange(section.id, field.key, newItems);
+                        }}
+                        className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                        Agregar Item
+                    </button>
+                </div>
+            ) : field.type === 'image-list' ? (
+                <div className="space-y-2">
+                    {(section.content[field.key] || []).map((url, i) => (
+                        <div key={i} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={(e) => {
+                                    const newUrls = [...(section.content[field.key] || [])];
+                                    newUrls[i] = e.target.value;
+                                    handleContentChange(section.id, field.key, newUrls);
+                                }}
+                                className="flex-1 text-xs border border-slate-200 rounded p-1"
+                            />
+                            <button
+                                onClick={() => {
+                                    const newUrls = [...(section.content[field.key] || [])];
+                                    newUrls.splice(i, 1);
+                                    handleContentChange(section.id, field.key, newUrls);
+                                }}
+                                className="text-red-400 hover:text-red-600"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        onClick={() => {
+                            const newUrls = [...(section.content[field.key] || []), 'https://source.unsplash.com/random/800x600'];
+                            handleContentChange(section.id, field.key, newUrls);
+                        }}
+                        className="text-xs text-blue-600 font-bold hover:underline"
+                    >
+                        + Agregar Imagen
+                    </button>
+                </div>
+            ) : field.type === 'color' ? (
+                <div className="flex gap-2">
+                    <input
+                        type="color"
+                        value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '#ffffff') : (section.content[field.key] || '#ffffff')}
+                        onChange={(e) => {
+                            if (field.key.includes('theme')) {
+                                const themeKey = field.key.split('.')[1];
+                                const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
+                                handleContentChange(section.id, 'theme', newTheme);
+                            } else {
+                                handleContentChange(section.id, field.key, e.target.value);
+                            }
+                        }}
+                        className="h-8 w-8 rounded cursor-pointer border-0"
+                    />
+                    <input
+                        type="text"
+                        value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '') : (section.content[field.key] || '')}
+                        onChange={(e) => {
+                            if (field.key.includes('theme')) {
+                                const themeKey = field.key.split('.')[1];
+                                const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
+                                handleContentChange(section.id, 'theme', newTheme);
+                            } else {
+                                handleContentChange(section.id, field.key, e.target.value);
+                            }
+                        }}
+                        className="flex-1 text-xs border border-slate-200 rounded p-1"
+                    />
+                </div>
+            ) : (
+                <input
+                    type="text"
+                    value={section.content[field.key] || ''}
+                    onChange={(e) => handleContentChange(section.id, field.key, e.target.value)}
+                    className="w-full text-sm border border-slate-200 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+            )}
+        </div>
+    ))
+}
 
 const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
     const [activeTab, setActiveTab] = useState('sections'); // 'sections' | 'design'
@@ -260,17 +438,47 @@ const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
                             </Droppable>
                         </DragDropContext>
 
-                        {/* Add Section Button */}
+                        {/* Add Section UI */}
                         <div className="mt-4 pt-4 border-t border-slate-100">
+                            <h3 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Agregar Nueva Sección</h3>
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                <select id="new-section-type" className="text-xs border border-slate-200 rounded p-2">
+                                    <option value="Hero">Hero</option>
+                                    <option value="Features">Características</option>
+                                    <option value="Services">Servicios</option>
+                                    <option value="Gallery">Galería</option>
+                                    <option value="CTA">Llamada a la Acción</option>
+                                    <option value="Footer">Footer</option>
+                                </select>
+                                <select id="new-section-style" className="text-xs border border-slate-200 rounded p-2">
+                                    <option value="Impact">Impact</option>
+                                    <option value="Cinematic">Cinematic</option>
+                                    <option value="Capture">Capture</option>
+                                    <option value="Elegant">Elegant</option>
+                                </select>
+                            </div>
                             <button
                                 onClick={() => {
+                                    const type = document.getElementById('new-section-type').value;
+                                    const style = document.getElementById('new-section-style').value;
+                                    const componentType = `${type}${style}`;
+
                                     const newSection = {
-                                        id: `section-${Date.now()}`,
-                                        type: 'FeaturesImpact',
+                                        id: `${type.toLowerCase()}-${Date.now()}`,
+                                        type: componentType,
                                         content: {
-                                            title: 'Nueva Sección',
-                                            description: 'Descripción de la nueva sección.',
-                                            features: []
+                                            title: `Nuevo ${type}`,
+                                            subtitle: 'Descripción de la nueva sección.',
+                                            // Default content based on type
+                                            ...(type === 'Services' || type === 'Features' ? {
+                                                [type.toLowerCase()]: [
+                                                    { title: 'Item 1', description: 'Descripción...', icon: '' },
+                                                    { title: 'Item 2', description: 'Descripción...', icon: '' },
+                                                    { title: 'Item 3', description: 'Descripción...', icon: '' }
+                                                ]
+                                            } : {}),
+                                            ...(type === 'Hero' ? { ctaText: 'Empezar', secondaryCtaText: 'Saber más' } : {}),
+                                            ...(type === 'Navbar' ? { links: [{ name: 'Inicio', href: '#' }] } : {})
                                         }
                                     };
                                     setConfig({ ...config, sections: [...config.sections, newSection] });
@@ -278,7 +486,7 @@ const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
                                 className="w-full py-3 bg-blue-50 text-blue-600 font-bold rounded-lg border-2 border-dashed border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all flex items-center justify-center gap-2"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                                Agregar Nueva Sección
+                                Agregar {activeTab === 'sections' ? '' : 'Sección'}
                             </button>
                         </div>
                     </>
