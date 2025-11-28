@@ -15,7 +15,7 @@ const HeroImpact = ({
         "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
         "https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
     ],
-    theme = { primary: 'indigo-600', secondary: 'indigo-100', text: 'slate-900', bg: 'white' }
+    theme = { primary: '#3B82F6', secondary: '#1E293B', text: 'slate-900', bg: 'white' }
 }) => {
     return (
         <div className={`bg-${theme.bg} overflow-hidden relative py-16 lg:py-24`}>
@@ -23,7 +23,7 @@ const HeroImpact = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                     {/* Left Content */}
                     <div>
-                        <h2 className="text-indigo-600 font-bold tracking-wide uppercase text-sm mb-4">Innovación & Estrategia</h2>
+                        <h2 className="font-bold tracking-wide uppercase text-sm mb-4" style={{ color: theme.primary }}>Innovación & Estrategia</h2>
                         <h1 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold text-${theme.text} leading-tight mb-6`}>
                             {title}
                         </h1>
@@ -32,7 +32,10 @@ const HeroImpact = ({
                         </p>
                         <div className="flex flex-wrap gap-4 mb-12">
                             {/* Improved contrast: darker background for primary button */}
-                            <button className={`px-8 py-3 rounded-full bg-${theme.primary} text-white font-bold hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/30`}>
+                            <button
+                                className="px-8 py-3 rounded-full text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
+                                style={{ backgroundColor: theme.primary, boxShadow: `0 10px 15px -3px ${theme.primary}40` }}
+                            >
                                 {ctaText}
                             </button>
                             <button className={`px-8 py-3 rounded-full bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors`}>

@@ -41,6 +41,8 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
             accent: '#F59E0B'     // 10% - Accent
         },
         fontPairing: 'Inter',
+        tone: 'friendly', // 'friendly' | 'serious'
+        keywords: '',
         clientType: [],
         commonReasonsNotToChoose: '',
         mainService: '',
@@ -92,25 +94,41 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         }));
     };
 
-    // Load fonts for preview
+    const FONT_OPTIONS = [
+        // Sans Serif (Modern/Clean)
+        { id: 'Inter', name: 'Inter', category: 'Modern Sans' },
+        { id: 'Roboto', name: 'Roboto', category: 'Neutral Sans' },
+        { id: 'Open Sans', name: 'Open Sans', category: 'Legible Sans' },
+        { id: 'Lato', name: 'Lato', category: 'Corporate Sans' },
+        { id: 'Montserrat', name: 'Montserrat', category: 'Geometric Sans' },
+        { id: 'Oswald', name: 'Oswald', category: 'Bold Condensed' },
+        { id: 'Raleway', name: 'Raleway', category: 'Elegant Sans' },
+        { id: 'Poppins', name: 'Poppins', category: 'Friendly Sans' },
+        { id: 'Nunito', name: 'Nunito', category: 'Rounded Sans' },
+        { id: 'Ubuntu', name: 'Ubuntu', category: 'Tech Sans' },
+
+        // Serif (Elegant/Trust)
+        { id: 'Playfair Display', name: 'Playfair Display', category: 'Elegant Serif' },
+        { id: 'Merriweather', name: 'Merriweather', category: 'Readable Serif' },
+        { id: 'Lora', name: 'Lora', category: 'Artistic Serif' },
+        { id: 'PT Serif', name: 'PT Serif', category: 'Formal Serif' },
+        { id: 'Spectral', name: 'Spectral', category: 'Modern Serif' },
+
+        // Display/Handwriting (Creative)
+        { id: 'Lobster', name: 'Lobster', category: 'Creative Display' },
+        { id: 'Pacifico', name: 'Pacifico', category: 'Handwriting' },
+        { id: 'Abril Fatface', name: 'Abril Fatface', category: 'Bold Display' }
+    ];
+
+    // Load all fonts
     useEffect(() => {
         const link = document.createElement('link');
-        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@400;700&family=Oswald:wght@400;700&family=Nunito:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&display=swap';
+        const families = FONT_OPTIONS.map(f => f.id.replace(' ', '+') + ':wght@400;700').join('&family=');
+        link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
         link.rel = 'stylesheet';
         document.head.appendChild(link);
         return () => document.head.removeChild(link);
     }, []);
-
-    const FONT_OPTIONS = [
-        { id: 'Inter', name: 'Inter (Moderna)', category: 'Sans Serif' },
-        { id: 'Playfair Display', name: 'Playfair Display (Elegante)', category: 'Serif' },
-        { id: 'Oswald', name: 'Oswald (Impactante)', category: 'Sans Serif' },
-        { id: 'Nunito', name: 'Nunito (Amigable)', category: 'Sans Serif' },
-        { id: 'Roboto', name: 'Roboto (Neutral)', category: 'Sans Serif' },
-        { id: 'Open Sans', name: 'Open Sans (Legible)', category: 'Sans Serif' },
-        { id: 'Montserrat', name: 'Montserrat (Geométrica)', category: 'Sans Serif' },
-        { id: 'Lato', name: 'Lato (Corporativa)', category: 'Sans Serif' }
-    ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -286,16 +304,32 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                                 </div>
 
                                 <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Tono de Comunicación</label>
+                                    <div className="flex gap-4 mb-4">
+                                        <label className={`flex-1 cursor-pointer p-3 rounded-lg border text-center transition-all ${formData.tone === 'friendly' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                            <input type="radio" name="tone" value="friendly" onChange={handleInputChange} checked={formData.tone === 'friendly'} className="hidden" />
+                                            <span className="block font-bold text-slate-900">Amigable 👋</span>
+                                            <span className="text-xs text-slate-500">Cercano, usa "tú", emojis opcionales.</span>
+                                        </label>
+                                        <label className={`flex-1 cursor-pointer p-3 rounded-lg border text-center transition-all ${formData.tone === 'serious' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                            <input type="radio" name="tone" value="serious" onChange={handleInputChange} checked={formData.tone === 'serious'} className="hidden" />
+                                            <span className="block font-bold text-slate-900">Serio / Corporativo 👔</span>
+                                            <span className="text-xs text-slate-500">Profesional, usa "usted", sin emojis.</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Tipografía</label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 border border-slate-100 rounded-lg custom-scrollbar">
                                         {FONT_OPTIONS.map((font) => (
                                             <div
                                                 key={font.id}
                                                 onClick={() => setFormData(prev => ({ ...prev, fontPairing: font.id }))}
-                                                className={`cursor-pointer p-3 rounded-lg border transition-all ${formData.fontPairing === font.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+                                                className={`cursor-pointer p-2 rounded border transition-all ${formData.fontPairing === font.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
                                             >
-                                                <div className="text-sm font-medium text-slate-900" style={{ fontFamily: font.id }}>{font.name}</div>
-                                                <div className="text-xs text-slate-500 mt-1" style={{ fontFamily: font.id }}>The quick brown fox jumps over the lazy dog.</div>
+                                                <div className="text-sm font-medium text-slate-900 truncate" style={{ fontFamily: font.id }}>{font.name}</div>
+                                                <div className="text-[10px] text-slate-500 truncate" style={{ fontFamily: font.id }}>{font.category}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -342,6 +376,13 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                     >
                         <div className="space-y-6">
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es el principal servicio que ofrecen? <span className="text-red-500">*</span></label><input type="text" name="mainService" value={formData.mainService} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Palabras Clave (SEO) <span className="text-blue-500 text-xs font-normal">(Recomendado)</span></label>
+                                <p className="text-xs text-slate-500 mb-2">Pega aquí tu lista de palabras clave o escríbelas separadas por comas. La IA las usará para optimizar tu sitio.</p>
+                                <textarea name="keywords" value={formData.keywords} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" placeholder="Ej: limpieza de hogar, limpieza profunda, desinfección..."></textarea>
+                            </div>
+
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué incluyen tus servicios? <span className="text-red-500">*</span></label><textarea name="servicesInclude" value={formData.servicesInclude} onChange={handleInputChange} rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Describe tu proceso paso a paso desde el principio hasta el final. <span className="text-red-500">*</span></label><textarea name="processStepByStep" value={formData.processStepByStep} onChange={handleInputChange} rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Enumera todos los servicios adicionales que deseas mostrar en tu sitio. (Opcional)</label><input type="text" name="additionalServices" value={formData.additionalServices} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
