@@ -43,7 +43,12 @@ const AIBuilderPage = () => {
         businessName: '',
         industry: 'general',
         description: '',
-        style: 'impact'
+        style: 'impact',
+        brandColor: '#3B82F6',
+        fontPairing: 'modern',
+        mainCity: '',
+        mainService: '',
+        logoUrl: ''
     });
 
     // Load User Config on Mount
@@ -70,11 +75,17 @@ const AIBuilderPage = () => {
 
                     // 2. Pre-fill the generator form with their data
                     if (userData.websiteInfo) {
+                        const info = userData.websiteInfo;
                         setFormData({
-                            businessName: userData.websiteInfo.domain || '',
-                            industry: 'general', // We could try to map this from clientType
-                            description: (userData.websiteInfo.mainService || '') + ". " + (userData.websiteInfo.uniqueAspect || ''),
-                            style: 'impact' // Default
+                            businessName: info.businessName || info.domain || '',
+                            industry: 'general',
+                            description: (info.mainService || '') + ". " + (info.uniqueAspect || ''),
+                            style: 'impact',
+                            brandColor: info.brandColor || '#3B82F6',
+                            fontPairing: info.fontPairing || 'modern',
+                            mainCity: info.mainCity || '',
+                            mainService: info.mainService || '',
+                            logoUrl: info.logoUrl || ''
                         });
                     }
                 }
@@ -197,6 +208,35 @@ const AIBuilderPage = () => {
                                             {style}
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Brand Color</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            name="brandColor"
+                                            value={formData.brandColor}
+                                            onChange={handleInputChange}
+                                            className="h-10 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Typography</label>
+                                    <select
+                                        name="fontPairing"
+                                        value={formData.fontPairing}
+                                        onChange={handleInputChange}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2.5 text-white text-sm focus:border-blue-500 focus:outline-none"
+                                    >
+                                        <option value="modern">Modern</option>
+                                        <option value="elegant">Elegant</option>
+                                        <option value="bold">Bold</option>
+                                        <option value="friendly">Friendly</option>
+                                    </select>
                                 </div>
                             </div>
 

@@ -34,6 +34,9 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
     const [activeSection, setActiveSection] = useState(1);
     const [formData, setFormData] = useState({
         domain: '',
+        businessName: '',
+        brandColor: '#3B82F6', // Default blue
+        fontPairing: 'modern',
         clientType: [],
         commonReasonsNotToChoose: '',
         mainService: '',
@@ -46,9 +49,6 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         guarantees: '',
         certifications: '',
         civilInsurance: '',
-        exampleSite1: '',
-        exampleSite2: '',
-        exampleSite3: '',
         logoUrl: '',
         logoFileName: ''
     });
@@ -80,6 +80,30 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Strict Validation
+        const requiredFields = [
+            { name: 'businessName', label: 'Nombre de la Empresa' },
+            { name: 'domain', label: 'Dominio' },
+            { name: 'mainService', label: 'Servicio Principal' },
+            { name: 'servicesInclude', label: 'Qué incluyen tus servicios' },
+            { name: 'processStepByStep', label: 'Proceso paso a paso' },
+            { name: 'mainCity', label: 'Ciudad Principal' },
+            { name: 'uniqueAspect', label: 'Qué hace tu negocio único' }
+        ];
+
+        const missingFields = requiredFields.filter(field => !formData[field.name]);
+
+        if (missingFields.length > 0) {
+            toast.error(`Por favor completa: ${missingFields.map(f => f.label).join(', ')}`);
+            return;
+        }
+
+        if (formData.clientType.length === 0) {
+            toast.error("Por favor selecciona al menos un tipo de cliente.");
+            return;
+        }
+
         setIsSaving(true);
         toast.loading('Guardando tu información...');
 
@@ -169,19 +193,54 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                 <form onSubmit={handleSubmit} className="mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm">
                     <AccordionSection
                         sectionNumber={1}
-                        title="Sección 1: Dominio y Logo"
+                        title="Sección 1: Identidad de Marca"
                         activeSection={activeSection}
                         setActiveSection={setActiveSection}
                     >
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Tu dominio</label>
-                                <p className="text-xs text-slate-500 mb-2">Tu empresa solo debe tener un dominio. Tener varios dominios puede diluir tus esfuerzos de SEO y causar problemas de contenido duplicado.</p>
-                                <input type="text" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Nombre de la Empresa <span className="text-red-500">*</span></label>
+                                <input type="text" name="businessName" value={formData.businessName} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="Ej: Soluciones Legales S.A.S" />
                             </div>
                             <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Tu dominio <span className="text-red-500">*</span></label>
+                                <p className="text-xs text-slate-500 mb-2">Tu empresa solo debe tener un dominio.</p>
+                                <input type="text" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="Ej: solucioneslegales.com" />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Color de Marca</label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            name="brandColor"
+                                            value={formData.brandColor}
+                                            onChange={handleInputChange}
+                                            className="h-10 w-20 rounded cursor-pointer border border-slate-300"
+                                        />
+                                        <span className="text-sm text-slate-500">{formData.brandColor}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Tipografía</label>
+                                    <select
+                                        name="fontPairing"
+                                        value={formData.fontPairing}
+                                        onChange={handleInputChange}
+                                        className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    >
+                                        <option value="modern">Moderna (Inter)</option>
+                                        <option value="elegant">Elegante (Playfair Display)</option>
+                                        <option value="bold">Impactante (Oswald)</option>
+                                        <option value="friendly">Amigable (Nunito)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">Adjuntar logo</label>
-                                <p className="text-xs text-slate-500 mb-2">Adjunta tu logo en formato PNG con fondo transparente, no mayor a 1000px por el lado más largo.</p>
+                                <p className="text-xs text-slate-500 mb-2">Adjunta tu logo en formato PNG con fondo transparente.</p>
                                 <button type="button" onClick={() => fileInputRef.current.click()} className="bg-slate-100 text-slate-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors">Seleccionar Archivo</button>
                                 {logoFile && <span className="text-sm text-slate-500 ml-4">{logoFile.name}</span>}
                                 <input type="file" ref={fileInputRef} onChange={handleLogoChange} accept=".png" className="hidden" />
@@ -205,7 +264,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">¿Cuáles son las razones más comunes por las que los clientes potenciales podrían no elegir tu empresa?</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">¿Cuáles son las razones más comunes por las que los clientes potenciales podrían no elegir tu empresa? (Opcional)</label>
                                 <input type="text" name="commonReasonsNotToChoose" value={formData.commonReasonsNotToChoose} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
                             </div>
                         </div>
@@ -218,10 +277,10 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         setActiveSection={setActiveSection}
                     >
                         <div className="space-y-6">
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es el principal servicio que ofrecen? <span className="text-red-500">*</span></label><input type="text" name="mainService" value={formData.mainService} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué incluyen tus servicios? <span className="text-red-500">*</span></label><textarea name="servicesInclude" value={formData.servicesInclude} onChange={handleInputChange} required rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Describe tu proceso paso a paso desde el principio hasta el final. <span className="text-red-500">*</span></label><textarea name="processStepByStep" value={formData.processStepByStep} onChange={handleInputChange} required rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Enumera todos los servicios adicionales que deseas mostrar en tu sitio. <span className="text-red-500">*</span></label><input type="text" name="additionalServices" value={formData.additionalServices} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es el principal servicio que ofrecen? <span className="text-red-500">*</span></label><input type="text" name="mainService" value={formData.mainService} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué incluyen tus servicios? <span className="text-red-500">*</span></label><textarea name="servicesInclude" value={formData.servicesInclude} onChange={handleInputChange} rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Describe tu proceso paso a paso desde el principio hasta el final. <span className="text-red-500">*</span></label><textarea name="processStepByStep" value={formData.processStepByStep} onChange={handleInputChange} rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Enumera todos los servicios adicionales que deseas mostrar en tu sitio. (Opcional)</label><input type="text" name="additionalServices" value={formData.additionalServices} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                         </div>
                     </AccordionSection>
 
@@ -232,8 +291,8 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         setActiveSection={setActiveSection}
                     >
                         <div className="space-y-6">
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es la ciudad principal donde te gustaría conseguir más negocios? <span className="text-red-500">*</span></label><input type="text" name="mainCity" value={formData.mainCity} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿A qué otras ciudades prestan servicio? <span className="text-red-500">*</span></label><input type="text" name="otherCities" value={formData.otherCities} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es la ciudad principal donde te gustaría conseguir más negocios? <span className="text-red-500">*</span></label><input type="text" name="mainCity" value={formData.mainCity} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿A qué otras ciudades prestan servicio? <span className="text-red-500">*</span></label><input type="text" name="otherCities" value={formData.otherCities} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                         </div>
                     </AccordionSection>
 
@@ -244,30 +303,16 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         setActiveSection={setActiveSection}
                     >
                         <div className="space-y-6">
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué hace tu negocio único? <span className="text-red-500">*</span></label><input type="text" name="uniqueAspect" value={formData.uniqueAspect} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué garantías ofreces a tus clientes? <span className="text-red-500">*</span></label><input type="text" name="guarantees" value={formData.guarantees} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué certificaciones o premios has obtenido?</label><input type="text" name="certifications" value={formData.certifications} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué hace tu negocio único? <span className="text-red-500">*</span></label><input type="text" name="uniqueAspect" value={formData.uniqueAspect} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué garantías ofreces a tus clientes? (Opcional)</label><input type="text" name="guarantees" value={formData.guarantees} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
+                            <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué certificaciones o premios has obtenido? (Opcional)</label><input type="text" name="certifications" value={formData.certifications} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">¿Tus clientes necesitan saber que tienes seguro de responsabilidad civil? <span className="text-red-500">*</span></label>
                                 <div className="flex gap-4">
-                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="Sí" onChange={handleInputChange} checked={formData.civilInsurance === 'Sí'} required className="mr-2" /> Sí</label>
-                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="No" onChange={handleInputChange} checked={formData.civilInsurance === 'No'} required className="mr-2" /> No</label>
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="Sí" onChange={handleInputChange} checked={formData.civilInsurance === 'Sí'} className="mr-2" /> Sí</label>
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="No" onChange={handleInputChange} checked={formData.civilInsurance === 'No'} className="mr-2" /> No</label>
                                 </div>
                             </div>
-                        </div>
-                    </AccordionSection>
-
-                    <AccordionSection
-                        sectionNumber={6}
-                        title="Sección 6: Ejemplos de Sitios"
-                        activeSection={activeSection}
-                        setActiveSection={setActiveSection}
-                    >
-                        <div className="space-y-6">
-                            <p className="text-sm text-slate-500">Ayúdanos a comprender tus preferencias. Esto nos ayudará a crear un sitio que se ajuste a tu visión.</p>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 1 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite1" value={formData.exampleSite1} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 2 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite2" value={formData.exampleSite2} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 3 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite3" value={formData.exampleSite3} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
                         </div>
                     </AccordionSection>
 
