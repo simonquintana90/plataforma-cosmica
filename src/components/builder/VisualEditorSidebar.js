@@ -33,9 +33,20 @@ const getComponentSchema = (type) => {
     return defaultSchema;
 };
 
-const VisualEditorSidebar = ({ config, setConfig }) => {
+const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
     const [activeTab, setActiveTab] = useState('sections'); // 'sections' | 'design'
     const [expandedSection, setExpandedSection] = useState(null);
+
+    // Effect to handle external selection (from preview click)
+    React.useEffect(() => {
+        if (selectedSectionId) {
+            setExpandedSection(selectedSectionId);
+            setActiveTab('sections');
+            // Optional: Scroll to the section in the sidebar
+            const element = document.getElementById(`sidebar-section-${selectedSectionId}`);
+            if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [selectedSectionId]);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -104,7 +115,8 @@ const VisualEditorSidebar = ({ config, setConfig }) => {
                                                 <div
                                                     ref={provided.innerRef}
                                                     {...provided.draggableProps}
-                                                    className="bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                                                    id={`sidebar-section-${section.id}`}
+                                                    className={`bg-white border transition-all ${expandedSection === section.id ? 'border-blue-500 ring-2 ring-blue-100 shadow-md' : 'border-slate-200 shadow-sm hover:shadow-md'} rounded-lg`}
                                                 >
                                                     {/* Section Header */}
                                                     <div

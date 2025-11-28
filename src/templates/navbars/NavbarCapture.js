@@ -8,27 +8,34 @@ const NavbarCapture = ({
         { name: 'FAQ', href: '#' }
     ],
     ctaText = "¡Oferta Especial!",
-    theme = { bg: 'white', text: 'slate-900', primary: 'red-600' }
+    theme = { bg: 'white', text: 'slate-900', primary: 'red-600', secondary: '#1c1917' } // Added secondary to default theme
 }) => {
     const [isOpen, setIsOpen] = useState(false);
 
+    const isImageLogo = logo && (logo.includes('http') || logo.includes('data:image'));
+
     return (
-        <nav className={`bg-${theme.bg} shadow-md sticky top-0 z-50`}>
+        <nav className="border-b border-stone-200" style={{ backgroundColor: theme.bg || 'white' }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-20 items-center">
-                    <div className="flex-shrink-0 flex items-center">
-                        <span className={`text-3xl font-extrabold text-${theme.text} uppercase tracking-wider`}>{logo}</span>
+                <div className="flex justify-between h-24">
+                    <div className="flex items-center">
+                        {isImageLogo ? (
+                            <img src={logo} alt="Logo" className="h-10 w-auto object-contain" />
+                        ) : (
+                            <span className="text-3xl font-serif italic text-stone-800">{logo}</span>
+                        )}
                     </div>
 
-                    <div className="hidden md:flex items-center space-x-8">
+                    {/* Desktop Menu */}
+                    <div className="hidden md:flex items-center space-x-12">
                         {links.map((link, index) => (
-                            <a key={index} href={link.href} className={`text-base font-bold text-${theme.text} hover:text-${theme.primary} transition-colors`}>
+                            <a key={index} href={link.href} className="text-sm uppercase tracking-widest text-stone-600 hover:text-stone-900 transition-colors">
                                 {link.name}
                             </a>
                         ))}
                         <button
-                            className="px-6 py-3 rounded-lg text-white font-bold text-lg hover:opacity-90 transition-all shadow-lg"
-                            style={{ backgroundColor: '#dc2626' }} // red-600
+                            className="px-8 py-3 text-white text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                            style={{ backgroundColor: theme.secondary || '#1c1917' }}
                         >
                             {ctaText}
                         </button>

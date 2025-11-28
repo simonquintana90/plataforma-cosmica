@@ -91,7 +91,7 @@ const COMPONENT_MAP = {
     FooterImpact, FooterCinematic, FooterCapture, FooterElegant
 };
 
-const WebsiteBuilder = ({ siteConfig }) => {
+const WebsiteBuilder = ({ siteConfig, onSectionClick }) => {
     if (!siteConfig || !siteConfig.sections) {
         return <div className="text-center p-10 text-gray-500">No site configuration provided.</div>;
     }
@@ -111,7 +111,20 @@ const WebsiteBuilder = ({ siteConfig }) => {
                 }
 
                 return (
-                    <div key={section.id || index} id={section.id}>
+                    <div
+                        key={section.id || index}
+                        id={section.id}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSectionClick) onSectionClick(section.id);
+                        }}
+                        className="relative group cursor-pointer transition-all hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 hover:z-10"
+                    >
+                        {/* Hover Overlay Label */}
+                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                            Click to Edit: {section.type}
+                        </div>
+
                         <Component {...section.content} theme={siteConfig.theme} />
                     </div>
                 );

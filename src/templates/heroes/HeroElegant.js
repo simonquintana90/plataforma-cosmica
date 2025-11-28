@@ -11,28 +11,37 @@ const HeroElegant = ({
     ]
 }) => {
     return (
-        <div className="min-h-screen bg-[#FFFBF0] flex flex-col justify-between font-serif relative overflow-hidden">
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col items-center justify-center text-center px-4 max-w-5xl mx-auto z-10 py-20">
-                <h1 className="text-4xl md:text-6xl lg:text-7xl text-slate-900 leading-tight mb-12">
+        <div className="relative py-32 lg:py-48 bg-stone-50 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+                <span className="block text-sm uppercase tracking-[0.3em] text-stone-500 mb-6">
+                    Bienvenido a la Excelencia
+                </span>
+                <h1 className="text-5xl md:text-7xl font-serif text-stone-900 mb-8 leading-tight">
                     {title}
                 </h1>
-                <button className="bg-[#F4F678] px-10 py-4 text-lg font-medium text-slate-900 hover:bg-[#eaea60] transition-colors rounded-sm">
-                    {ctaText}
-                </button>
-            </main>
+                <p className="text-xl text-stone-600 mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+                    {subtitle}
+                </p>
+                <div className="flex justify-center gap-6">
+                    <button
+                        className="px-10 py-4 text-white text-sm uppercase tracking-widest hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: theme.secondary || '#1c1917' }}
+                    >
+                        {ctaText}
+                    </button>
+                    <button className="px-10 py-4 border border-stone-300 text-stone-600 text-sm uppercase tracking-widest hover:border-stone-900 hover:text-stone-900 transition-colors">
+                        {secondaryCtaText}
+                    </button>
+                </div>
+            </div>
 
-            {/* Bottom Images */}
-            <div className="grid grid-cols-2 md:grid-cols-4 w-full h-48 md:h-64 mt-auto">
-                {images.map((img, i) => (
-                    <div key={i} className="relative overflow-hidden group h-full">
-                        <img
-                            src={img}
-                            alt={`Galería ${i}`}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale group-hover:grayscale-0"
-                        />
-                    </div>
-                ))}
+            {/* Decorative Image */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+                <img
+                    src={images[0] || "https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&w=2000&q=80"}
+                    alt="Background Pattern"
+                    className="w-full h-full object-cover grayscale"
+                />
             </div>
         </div>
     );

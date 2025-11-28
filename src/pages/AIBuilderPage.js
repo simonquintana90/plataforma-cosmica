@@ -34,6 +34,7 @@ const AIBuilderPage = () => {
     // State for Website Config
     const [parsedConfig, setParsedConfig] = useState(DEFAULT_CONFIG);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedSectionId, setSelectedSectionId] = useState(null);
 
     // State for Generator Form (kept for reference or future re-generation)
     const [formData, setFormData] = useState({
@@ -110,6 +111,7 @@ const AIBuilderPage = () => {
             <VisualEditorSidebar
                 config={parsedConfig}
                 setConfig={setParsedConfig}
+                selectedSectionId={selectedSectionId}
             />
 
             {/* Right Panel: Live Preview */}
@@ -123,7 +125,10 @@ const AIBuilderPage = () => {
 
                 {/* Preview Container with shadow for "page" effect */}
                 <div className="min-h-screen bg-white shadow-2xl mx-auto max-w-[1600px] transition-all duration-300">
-                    <WebsiteBuilder siteConfig={parsedConfig} />
+                    <WebsiteBuilder
+                        siteConfig={parsedConfig}
+                        onSectionClick={setSelectedSectionId}
+                    />
                 </div>
             </div>
         </div>

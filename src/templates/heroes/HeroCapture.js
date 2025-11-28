@@ -3,33 +3,47 @@ import React from 'react';
 const HeroCapture = ({
     title = "Contáctanos hoy mismo",
     subtitle = "Estamos listos para ayudarte a alcanzar tus objetivos. Déjanos tus datos y te contactaremos pronto.",
-    backgroundImage = "https://images.unsplash.com/photo-1543353071-873f17a7a088?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80",
+    theme = { primary: '#dc2626' }, // Default theme with a primary color
+    ctaText = "Empezar Ahora",
+    images = ["https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=800&q=80"],
 }) => {
     return (
-        <div className="relative min-h-screen w-full bg-stone-900 text-white font-sans flex flex-col justify-end">
-            {/* Background Image */}
-            <div className="absolute inset-0 z-0">
-                <img src={backgroundImage} alt="Background" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/30"></div>
-            </div>
-
-            {/* Bottom Card Overlay */}
-            <div className="relative z-10 p-4 md:p-8 w-full">
-                <div className="max-w-7xl mx-auto bg-black/70 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 overflow-hidden relative shadow-2xl">
-                    {/* Gradient Mesh */}
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-stone-900/90 via-stone-900/50 to-transparent z-0"></div>
-
-                    <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto">
-                        <p className="text-xs font-bold tracking-widest text-stone-400 uppercase mb-4">Atención Personalizada</p>
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+        <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">
                             {title}
                         </h1>
-                        <p className="text-stone-300 text-sm md:text-base mb-8">
+                        <p className="text-xl text-slate-600 mb-8">
                             {subtitle}
                         </p>
-                        <button className="bg-white text-stone-900 font-bold py-4 px-8 rounded-lg hover:bg-stone-200 transition-colors shadow-lg">
-                            Empezar Ahora
-                        </button>
+
+                        {/* Email Capture Form */}
+                        <div className="flex flex-col sm:flex-row gap-3 max-w-md">
+                            <input
+                                type="email"
+                                placeholder="Tu correo electrónico"
+                                className="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                            />
+                            <button
+                                className="px-6 py-3 rounded-lg text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
+                                style={{ backgroundColor: theme.primary || '#dc2626' }}
+                            >
+                                {ctaText}
+                            </button>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-3">
+                            Prueba gratis de 14 días. Sin tarjeta de crédito.
+                        </p>
+                    </div>
+                    <div className="relative">
+                        <div className="absolute -inset-4 bg-gradient-to-r from-red-100 to-orange-100 rounded-full blur-3xl opacity-70"></div>
+                        <img
+                            src={images[0] || "https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=800&q=80"}
+                            alt="Hero"
+                            className="relative rounded-2xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-500"
+                        />
                     </div>
                 </div>
             </div>

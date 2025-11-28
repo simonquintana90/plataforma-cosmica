@@ -34,33 +34,6 @@ const NavbarElegant = ({
                     </div>
 
                     {/* Desktop Left Links */}
-                    <div className="hidden md:flex items-center space-x-8 flex-1 justify-end pr-8">
-                        {leftLinks.map((link, index) => (
-                            <a key={index} href={link.href} className={`text-sm font-medium text-${theme.text} hover:text-${theme.primary} transition-colors`}>
-                                {link.name}
-                            </a>
-                        ))}
-                    </div>
-
-                    {/* Logo */}
-                    <div className="flex-shrink-0 flex items-center justify-center mx-auto md:mx-0">
-                        <span className={`text-3xl font-bold text-${theme.text} tracking-tight`}>{logo}</span>
-                    </div>
-
-                    {/* Desktop Right Links */}
-                    <div className="hidden md:flex items-center space-x-8 flex-1 justify-start pl-8">
-                        {rightLinks.map((link, index) => (
-                            <a key={index} href={link.href} className={`text-sm font-medium text-${theme.text} hover:text-${theme.primary} transition-colors`}>
-                                {link.name}
-                            </a>
-                        ))}
-                        <button className={`ml-4 px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
-                            {ctaText}
-                        </button>
-                    </div>
-
-                    {/* Placeholder for balance on mobile */}
-                    <div className="w-6 md:hidden"></div>
                 </div>
             </div>
 
