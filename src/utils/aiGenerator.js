@@ -177,10 +177,12 @@ export const generateWebsiteConfig = (formData) => {
     const serviceDesc = `${pas.problem} ${pas.agitate} ${pas.solution}`;
 
     // 3. Section Assembly
+    const selectedStyle = STYLES[style] || STYLES.impact;
+
     const sections = [
         {
             id: "hero",
-            type: STYLES[style]?.components.hero || "HeroImpact",
+            type: selectedStyle.hero || "HeroImpact",
             content: {
                 title: heroTitle,
                 subtitle: heroSubtitle,
@@ -200,7 +202,7 @@ export const generateWebsiteConfig = (formData) => {
         },
         {
             id: "usp",
-            type: STYLES[style]?.components.features || "FeaturesImpact", // Use style-specific component
+            type: selectedStyle.features || "FeaturesImpact",
             content: {
                 title: uspTitle,
                 subtitle: uspText,
@@ -214,7 +216,7 @@ export const generateWebsiteConfig = (formData) => {
         },
         {
             id: "services",
-            type: STYLES[style]?.components.services || "ServicesImpact", // Use style-specific component
+            type: selectedStyle.services || "ServicesImpact",
             content: {
                 title: serviceTitle,
                 description: serviceDesc,
@@ -226,7 +228,7 @@ export const generateWebsiteConfig = (formData) => {
         },
         {
             id: "cta",
-            type: STYLES[style]?.components.cta || "CTAImpact",
+            type: selectedStyle.cta || "CTAImpact",
             content: {
                 title: applyCasing(`¿Listo para empezar con tu ${mainService}?`, toneSettings.casing),
                 subtitle: `Contáctanos hoy mismo en ${mainCity}.`,
@@ -238,7 +240,7 @@ export const generateWebsiteConfig = (formData) => {
     // Add Navbar and Footer
     const navbar = {
         id: "navbar",
-        type: STYLES[style]?.components.navbar || "NavbarImpact",
+        type: selectedStyle.navbar || "NavbarImpact",
         content: {
             logo: logoUrl || businessName,
             isImageLogo: !!logoUrl,
