@@ -60,10 +60,22 @@ const AIBuilderPage = () => {
 
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
+
+                    // 1. Load the generated website config
                     if (userData.websiteConfig) {
                         setJsonConfig(JSON.stringify(userData.websiteConfig, null, 2));
                         setParsedConfig(userData.websiteConfig);
                         toast.success("Loaded your generated website!");
+                    }
+
+                    // 2. Pre-fill the generator form with their data
+                    if (userData.websiteInfo) {
+                        setFormData({
+                            businessName: userData.websiteInfo.domain || '',
+                            industry: 'general', // We could try to map this from clientType
+                            description: (userData.websiteInfo.mainService || '') + ". " + (userData.websiteInfo.uniqueAspect || ''),
+                            style: 'impact' // Default
+                        });
                     }
                 }
             } catch (err) {
