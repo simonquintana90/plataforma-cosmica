@@ -17,7 +17,7 @@ const NavbarElegant = ({
     const rightLinks = links.slice(midPoint);
 
     return (
-        <nav className={`bg-${theme.bg} border-b border-slate-100`}>
+        <nav className="border-b border-slate-100" style={{ backgroundColor: theme.bg || 'white' }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-20 items-center relative">
                     {/* Mobile Menu Button */}
@@ -47,7 +47,16 @@ const NavbarElegant = ({
                             </a>
                         ))}
                         <div className="pt-4 pb-2">
-                            <button className={`w-full px-6 py-2 border border-${theme.text} text-${theme.text} hover:bg-${theme.text} hover:text-white transition-all uppercase tracking-widest text-xs`}>
+                            <button
+                                className="w-full px-6 py-2 border hover:text-white transition-all uppercase tracking-widest text-xs"
+                                style={{
+                                    borderColor: theme.text || 'slate-900',
+                                    color: theme.text || 'slate-900',
+                                    '--hover-bg': theme.text || 'slate-900'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = theme.text || 'slate-900'; e.currentTarget.style.color = 'white'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = theme.text || 'slate-900'; }}
+                            >
                                 {ctaText}
                             </button>
                         </div>

@@ -2,13 +2,16 @@ import React from 'react';
 
 const HeroElegant = ({
     title = "Asesoría experta para individuos y organizaciones.",
+    subtitle = "Soluciones estratégicas para tu crecimiento.",
     ctaText = "Agendar Cita",
+    secondaryCtaText = "Más Información",
     images = [
         "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
         "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
         "https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" // Replaced broken image
-    ]
+        "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+    ],
+    theme = { secondary: '#1c1917' }
 }) => {
     return (
         <div className="relative py-32 lg:py-48 bg-stone-50 overflow-hidden">

@@ -9,6 +9,7 @@ const NavbarCinematic = ({
         { name: 'Contacto', href: '#' }
     ],
     ctaText = "Empezar",
+    theme = { primary: '#3b82f6', secondary: '#0f172a' }
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
