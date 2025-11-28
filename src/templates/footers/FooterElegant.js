@@ -1,4 +1,4 @@
-```javascript
+
 import React from 'react';
 
 const FooterElegant = ({
@@ -9,8 +9,8 @@ const FooterElegant = ({
     theme = { text: 'slate-900', secondary: 'stone-50' },
 }) => {
     // New theme variables and dark background check
-    const { 
-        bg = theme.bg || "#ffffff", 
+    const {
+        bg = theme.bg || "#ffffff",
         text = theme.text || "#0f172a",
         primary = theme.primary || "#0f172a"
     } = theme;
@@ -25,9 +25,9 @@ const FooterElegant = ({
                     <div className="col-span-1 md:col-span-2">
                         <div className="mb-6">
                             {(logo && (logo.includes('http') || logo.includes('data:'))) ? (
-                                <img 
-                                    src={logo} 
-                                    alt={businessName} 
+                                <img
+                                    src={logo}
+                                    alt={businessName}
                                     className="h-12 object-contain"
                                     style={{ filter: isDarkBg ? 'brightness(0) invert(1)' : 'none' }}
                                 />
@@ -39,12 +39,12 @@ const FooterElegant = ({
                             {description}
                         </p>
                     </div>
-                    
+
                     <div className="col-span-1 md:col-span-2 flex justify-end items-start gap-8 flex-wrap">
                         {links.map((link, index) => (
-                            <a 
-                                key={index} 
-                                href={link.href || '#'} 
+                            <a
+                                key={index}
+                                href={link.href || '#'}
                                 className="text-sm uppercase tracking-widest hover:opacity-70 transition-opacity"
                                 style={{ color: text }}
                             >
@@ -60,9 +60,9 @@ const FooterElegant = ({
                     </p>
                     <a href="https://www.cosmicaweb.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:opacity-100 transition-opacity">
                         <span className="text-[10px] uppercase tracking-widest">Crafted by</span>
-                        <img 
-                            src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/68052b14352271978c443cef_CO%CC%81SMICA_Blanco_L.avif" 
-                            alt="Cósmica" 
+                        <img
+                            src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/68052b14352271978c443cef_CO%CC%81SMICA_Blanco_L.avif"
+                            alt="Cósmica"
                             className="h-3"
                             style={{ filter: isDarkBg ? 'brightness(0) invert(1)' : 'none' }}
                         />
@@ -74,4 +74,4 @@ const FooterElegant = ({
 };
 
 export default FooterElegant;
-```
+
