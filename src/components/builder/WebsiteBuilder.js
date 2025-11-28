@@ -97,7 +97,7 @@ const WebsiteBuilder = ({ siteConfig, onSectionClick }) => {
     }
 
     return (
-        <div className="w-full min-h-screen bg-white">
+        <div className="w-full min-h-screen bg-white" style={{ fontFamily: siteConfig.theme.font || 'sans-serif' }}>
             {siteConfig.sections.map((section, index) => {
                 const Component = COMPONENT_MAP[section.type];
 

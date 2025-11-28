@@ -19,20 +19,39 @@ const FooterImpact = ({
                             {description}
                         </p>
                     </div>
-                    {links.map((column, index) => (
-                        <div key={index}>
-                            <h4 className="font-bold text-slate-900 mb-4">{column.title}</h4>
-                            <ul className="space-y-2">
-                                {column.items.map((item, i) => (
-                                    <li key={i}>
-                                        <a href="#" className="text-slate-500 hover:text-blue-600 transition-colors">
-                                            {item}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
+                    {links && links.length > 0 && links[0].items ? (
+                        // Multi-column layout (default props)
+                        links.map((column, index) => (
+                            <div key={index}>
+                                <h4 className="font-bold text-slate-900 mb-4">{column.title}</h4>
+                                <ul className="space-y-2">
+                                    {column.items.map((item, i) => (
+                                        <li key={i}>
+                                            <a href="#" className="text-slate-500 hover:text-blue-600 transition-colors">
+                                                {item}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))
+                    ) : (
+                        // Simple list layout (from AI generator)
+                        <div className="col-span-1 md:col-span-3 flex flex-wrap gap-8 justify-end items-start">
+                            <div>
+                                <h4 className="font-bold text-slate-900 mb-4">Enlaces</h4>
+                                <ul className="space-y-2">
+                                    {links && links.map((link, i) => (
+                                        <li key={i}>
+                                            <a href={link.href || '#'} className="text-slate-500 hover:text-blue-600 transition-colors">
+                                                {link.name || link}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
-                    ))}
+                    )}
                 </div>
                 <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center">
                     <div className="flex flex-col md:flex-row items-center gap-4">
