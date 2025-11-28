@@ -1,22 +1,23 @@
+```javascript
 import React from 'react';
 
 const FooterElegant = ({
-    businessName = "Brand",
-    description = "Simplicity is the ultimate sophistication.",
+    businessName = "Elegant Brand",
+    logo = "", // Added logo prop
+    description = "Elevating standards with every interaction.",
     links = [],
-    theme = { text: 'slate-900', secondary: 'stone-50' }
+    theme = { text: 'slate-900', secondary: 'stone-50' },
 }) => {
+    // New theme variables and dark background check
+        bg = theme.bg || "#ffffff", 
+        text = theme.text || "#0f172a",
+        primary = theme.primary || "#0f172a"
+    } = theme;
+
+    // Simple check for dark background to invert logo if needed (basic heuristic)
+    const isDarkBg = bg.includes('#00') || bg.includes('#1') || bg.includes('#2') || bg === '#0f172a';
+
     return (
-        <footer className="py-24" style={{ backgroundColor: theme.secondary || '#fafaf9' }}>
-            <div className="max-w-3xl mx-auto px-4 text-center">
-                <h2 className="text-3xl font-serif mb-6 tracking-tight" style={{ color: theme.text || '#0f172a' }}>{businessName}</h2>
-                <p className="font-light italic mb-12" style={{ color: theme.textSecondary || '#64748b' }}>
-                    {description}
-                </p>
-                <div className="flex justify-center space-x-8 mb-12">
-                    {links.map((link, index) => (
-                        <a
-                            key={index}
                             href={link.href || '#'}
                             className="uppercase tracking-widest text-xs transition-colors hover:opacity-70"
                             style={{ color: theme.text || '#94a3b8' }}

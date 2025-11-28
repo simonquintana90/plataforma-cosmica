@@ -60,155 +60,7 @@ const getComponentSchema = (type) => {
 
 // ... (inside component)
 
-{
-    getComponentSchema(section.type).map((field) => (
-        <div key={field.key} className="mb-4">
-            <label className="block text-xs font-bold text-slate-500 mb-1">{field.label}</label>
 
-            {field.type === 'textarea' ? (
-                <textarea
-                    value={section.content[field.key] || ''}
-                    onChange={(e) => handleContentChange(section.id, field.key, e.target.value)}
-                    rows={3}
-                    className="w-full text-sm border border-slate-200 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-            ) : field.type === 'list' ? (
-                <div className="space-y-3">
-                    {(section.content[field.key] || []).map((item, i) => (
-                        <div key={i} className="border p-3 rounded bg-slate-50 relative group">
-                            <button
-                                onClick={() => {
-                                    const newItems = [...(section.content[field.key] || [])];
-                                    newItems.splice(i, 1);
-                                    handleContentChange(section.id, field.key, newItems);
-                                }}
-                                className="absolute top-2 right-2 text-slate-400 hover:text-red-500"
-                            >
-                                ×
-                            </button>
-                            <div className="space-y-2 pr-6">
-                                {field.itemSchema.map(subField => (
-                                    <div key={subField.key}>
-                                        {subField.type === 'textarea' ? (
-                                            <textarea
-                                                placeholder={subField.label}
-                                                value={item[subField.key] || ''}
-                                                onChange={(e) => {
-                                                    const newItems = [...(section.content[field.key] || [])];
-                                                    newItems[i] = { ...item, [subField.key]: e.target.value };
-                                                    handleContentChange(section.id, field.key, newItems);
-                                                }}
-                                                rows={2}
-                                                className="w-full text-xs border border-slate-200 rounded p-1"
-                                            />
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                placeholder={subField.label}
-                                                value={item[subField.key] || ''}
-                                                onChange={(e) => {
-                                                    const newItems = [...(section.content[field.key] || [])];
-                                                    newItems[i] = { ...item, [subField.key]: e.target.value };
-                                                    handleContentChange(section.id, field.key, newItems);
-                                                }}
-                                                className="w-full text-xs border border-slate-200 rounded p-1"
-                                            />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                    <button
-                        onClick={() => {
-                            const newItem = field.itemSchema.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {});
-                            const newItems = [...(section.content[field.key] || []), newItem];
-                            handleContentChange(section.id, field.key, newItems);
-                        }}
-                        className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"
-                    >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                        Agregar Item
-                    </button>
-                </div>
-            ) : field.type === 'image-list' ? (
-                <div className="space-y-2">
-                    {(section.content[field.key] || []).map((url, i) => (
-                        <div key={i} className="flex gap-2">
-                            <input
-                                type="text"
-                                value={url}
-                                onChange={(e) => {
-                                    const newUrls = [...(section.content[field.key] || [])];
-                                    newUrls[i] = e.target.value;
-                                    handleContentChange(section.id, field.key, newUrls);
-                                }}
-                                className="flex-1 text-xs border border-slate-200 rounded p-1"
-                            />
-                            <button
-                                onClick={() => {
-                                    const newUrls = [...(section.content[field.key] || [])];
-                                    newUrls.splice(i, 1);
-                                    handleContentChange(section.id, field.key, newUrls);
-                                }}
-                                className="text-red-400 hover:text-red-600"
-                            >
-                                ×
-                            </button>
-                        </div>
-                    ))}
-                    <button
-                        onClick={() => {
-                            const newUrls = [...(section.content[field.key] || []), 'https://source.unsplash.com/random/800x600'];
-                            handleContentChange(section.id, field.key, newUrls);
-                        }}
-                        className="text-xs text-blue-600 font-bold hover:underline"
-                    >
-                        + Agregar Imagen
-                    </button>
-                </div>
-            ) : field.type === 'color' ? (
-                <div className="flex gap-2">
-                    <input
-                        type="color"
-                        value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '#ffffff') : (section.content[field.key] || '#ffffff')}
-                        onChange={(e) => {
-                            if (field.key.includes('theme')) {
-                                const themeKey = field.key.split('.')[1];
-                                const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
-                                handleContentChange(section.id, 'theme', newTheme);
-                            } else {
-                                handleContentChange(section.id, field.key, e.target.value);
-                            }
-                        }}
-                        className="h-8 w-8 rounded cursor-pointer border-0"
-                    />
-                    <input
-                        type="text"
-                        value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '') : (section.content[field.key] || '')}
-                        onChange={(e) => {
-                            if (field.key.includes('theme')) {
-                                const themeKey = field.key.split('.')[1];
-                                const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
-                                handleContentChange(section.id, 'theme', newTheme);
-                            } else {
-                                handleContentChange(section.id, field.key, e.target.value);
-                            }
-                        }}
-                        className="flex-1 text-xs border border-slate-200 rounded p-1"
-                    />
-                </div>
-            ) : (
-                <input
-                    type="text"
-                    value={section.content[field.key] || ''}
-                    onChange={(e) => handleContentChange(section.id, field.key, e.target.value)}
-                    className="w-full text-sm border border-slate-200 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-            )}
-        </div>
-    ))
-}
 
 const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
     const [activeTab, setActiveTab] = useState('sections'); // 'sections' | 'design'
@@ -259,6 +111,26 @@ const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
                 [field]: value
             }
         });
+    };
+
+    const handleImageUpload = (e, sectionId, field, index = null) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const dataUrl = reader.result;
+            if (index !== null) {
+                // Update specific item in a list (e.g., image-list)
+                const newUrls = [...(config.sections.find(s => s.id === sectionId).content[field] || [])];
+                newUrls[index] = dataUrl;
+                handleContentChange(sectionId, field, newUrls);
+            } else {
+                // Update single field
+                handleContentChange(sectionId, field, dataUrl);
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     return (
@@ -400,6 +272,93 @@ const VisualEditorSidebar = ({ config, setConfig, selectedSectionId }) => {
                                                                                 >
                                                                                     + Agregar Item
                                                                                 </button>
+                                                                            </div>
+                                                                        ) : field.type === 'image-list' ? (
+                                                                            <div className="space-y-2">
+                                                                                {(section.content[field.key] || []).map((url, i) => (
+                                                                                    <div key={i} className="flex flex-col gap-2 border p-2 rounded bg-slate-50">
+                                                                                        <div className="flex gap-2">
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                value={url}
+                                                                                                onChange={(e) => {
+                                                                                                    const newUrls = [...(section.content[field.key] || [])];
+                                                                                                    newUrls[i] = e.target.value;
+                                                                                                    handleContentChange(section.id, field.key, newUrls);
+                                                                                                }}
+                                                                                                className="flex-1 text-xs border border-slate-200 rounded p-1"
+                                                                                                placeholder="URL de la imagen"
+                                                                                            />
+                                                                                            <button
+                                                                                                onClick={() => {
+                                                                                                    const newUrls = [...(section.content[field.key] || [])];
+                                                                                                    newUrls.splice(i, 1);
+                                                                                                    handleContentChange(section.id, field.key, newUrls);
+                                                                                                }}
+                                                                                                className="text-red-400 hover:text-red-600"
+                                                                                            >
+                                                                                                ×
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <label className="flex-1 cursor-pointer bg-white border border-slate-200 text-slate-500 text-xs py-1 px-2 rounded hover:bg-slate-50 text-center">
+                                                                                                <span>Subir Imagen</span>
+                                                                                                <input
+                                                                                                    type="file"
+                                                                                                    accept="image/*"
+                                                                                                    className="hidden"
+                                                                                                    onChange={(e) => handleImageUpload(e, section.id, field.key, i)}
+                                                                                                />
+                                                                                            </label>
+                                                                                            {url && url.startsWith('data:') && (
+                                                                                                <span className="text-[10px] text-green-600 font-bold">Subida</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {url && (
+                                                                                            <img src={url} alt="Preview" className="w-full h-20 object-cover rounded border border-slate-200" />
+                                                                                        )}
+                                                                                    </div>
+                                                                                ))}
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const newUrls = [...(section.content[field.key] || []), 'https://source.unsplash.com/random/800x600'];
+                                                                                        handleContentChange(section.id, field.key, newUrls);
+                                                                                    }}
+                                                                                    className="text-xs text-blue-600 font-bold hover:underline"
+                                                                                >
+                                                                                    + Agregar Imagen
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : field.type === 'color' ? (
+                                                                            <div className="flex gap-2">
+                                                                                <input
+                                                                                    type="color"
+                                                                                    value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '#ffffff') : (section.content[field.key] || '#ffffff')}
+                                                                                    onChange={(e) => {
+                                                                                        if (field.key.includes('theme')) {
+                                                                                            const themeKey = field.key.split('.')[1];
+                                                                                            const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
+                                                                                            handleContentChange(section.id, 'theme', newTheme);
+                                                                                        } else {
+                                                                                            handleContentChange(section.id, field.key, e.target.value);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="h-8 w-8 rounded cursor-pointer border-0"
+                                                                                />
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={field.key.includes('theme') ? (section.content.theme?.[field.key.split('.')[1]] || '') : (section.content[field.key] || '')}
+                                                                                    onChange={(e) => {
+                                                                                        if (field.key.includes('theme')) {
+                                                                                            const themeKey = field.key.split('.')[1];
+                                                                                            const newTheme = { ...(section.content.theme || {}), [themeKey]: e.target.value };
+                                                                                            handleContentChange(section.id, 'theme', newTheme);
+                                                                                        } else {
+                                                                                            handleContentChange(section.id, field.key, e.target.value);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="flex-1 text-xs border border-slate-200 rounded p-1"
+                                                                                />
                                                                             </div>
                                                                         ) : (
                                                                             <input

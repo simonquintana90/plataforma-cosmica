@@ -28,9 +28,9 @@ const FeaturesImpact = ({
                         <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-slate-100 relative overflow-hidden group">
                             <div className={`absolute top-0 right-0 w-32 h-32 bg-${theme.primary} opacity-5 rounded-bl-full transform translate-x-8 -translate-y-8 group-hover:scale-110 transition-transform`}></div>
 
-                            <div className={`w-14 h-14 rounded-2xl bg-${theme.primary} bg-opacity-10 flex items-center justify-center mb-6 text-${theme.primary}`}>
-                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={feature.icon} />
+                            <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={feature.icon || "M5 13l4 4L19 7"} />
                                 </svg>
                             </div>
 

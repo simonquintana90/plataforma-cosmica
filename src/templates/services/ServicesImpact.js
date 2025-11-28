@@ -48,10 +48,12 @@ const ServicesImpact = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {services.map((service, index) => (
                         <div key={index} className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 group">
-                            <div className={`w-12 h-12 rounded-lg bg-${theme.primary} bg-opacity-10 flex items-center justify-center mb-6 text-${theme.primary} group-hover:scale-110 transition-transform`}>
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={service.icon} />
-                                </svg>
+                            <div className="flex-shrink-0">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={service.icon || "M13 10V3L4 14h7v7l9-11h-7z"} />
+                                    </svg>
+                                </div>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">{service.title}</h3>
                             <p className="text-slate-600 leading-relaxed">

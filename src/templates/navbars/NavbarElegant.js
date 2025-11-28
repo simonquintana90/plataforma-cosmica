@@ -46,10 +46,14 @@ const NavbarElegant = ({
                         ))}
                     </div>
 
-                    {/* Logo (Center) */}
-                    <div className="flex-shrink-0 flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
-                        <span className="font-serif text-2xl tracking-widest font-bold" style={{ color: theme.text || 'slate-900' }}>
-                            {logo}
+                    {/* Logo Centered */}
+                    <div className="flex-shrink-0 flex items-center justify-center">
+                        <span className="text-2xl font-serif font-bold text-slate-900">
+                            {(logo && (logo.includes('http') || logo.includes('data:'))) ? (
+                                <img src={logo} alt="Logo" className="h-10 object-contain" />
+                            ) : (
+                                logo
+                            )}
                         </span>
                     </div>
 
