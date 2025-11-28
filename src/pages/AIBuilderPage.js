@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WebsiteBuilder from '../components/builder/WebsiteBuilder';
 import { generateWebsiteConfig } from '../utils/aiGenerator';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
 
 const DEFAULT_CONFIG = {
     "meta": {
@@ -27,10 +29,13 @@ const DEFAULT_CONFIG = {
 };
 
 const AIBuilderPage = () => {
+    const { user, db } = useAuth();
+
     // State for JSON Editor
     const [jsonConfig, setJsonConfig] = useState(JSON.stringify(DEFAULT_CONFIG, null, 2));
     const [parsedConfig, setParsedConfig] = useState(DEFAULT_CONFIG);
     const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // State for UI
     const [activeTab, setActiveTab] = useState('generator'); // 'editor' | 'generator'
@@ -42,6 +47,37 @@ const AIBuilderPage = () => {
         description: '',
         style: 'impact'
     });
+
+    // Load User Config on Mount
+    useEffect(() => {
+        const loadUserConfig = async () => {
+            if (!user || !db) {
+                setIsLoading(false); // If no user or db, stop loading immediately
+                return;
+            }
+
+            try {
+                const userRef = doc(db, "users", user.uid);
+                const userSnap = await getDoc(userRef);
+
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    if (userData.websiteConfig) {
+                        setJsonConfig(JSON.stringify(userData.websiteConfig, null, 2));
+                        setParsedConfig(userData.websiteConfig);
+                        toast.success("Loaded your generated website!");
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading user config:", err);
+                toast.error("Could not load your website configuration.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadUserConfig();
+    }, [user, db]);
 
     useEffect(() => {
         try {

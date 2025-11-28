@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { generateWebsiteConfig } from '../utils/aiGenerator';
 
 const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }) => {
     const [activeSection, setActiveSection] = useState(1);
@@ -88,16 +89,33 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         }
 
         try {
+            // 1. Generate Website Config based on Form Data
+            // We map the form fields to the generator's expected input
+            const generatorInput = {
+                businessName: finalData.domain || "My Business", // Fallback
+                industry: 'general', // We could infer this from clientType or add a field
+                description: finalData.mainService + ". " + finalData.uniqueAspect,
+                style: 'impact' // Default style for now, or could be randomized/inferred
+            };
+
+            const generatedConfig = generateWebsiteConfig(generatorInput);
+
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, {
                 websiteInfo: {
                     ...finalData,
                     lastEdited: serverTimestamp()
                 },
-                websiteInfoStatus: 'completed'
+                websiteInfoStatus: 'completed',
+                websiteConfig: generatedConfig // Save the generated site
             });
+
             toast.dismiss();
-            toast.success('¡Información guardada con éxito! Ya casi terminamos.');
+            toast.success('¡Sitio web generado con éxito!');
+
+            // Redirect to the builder
+            window.location.href = '/admin/builder';
+
         } catch (error) {
             console.error("Error al guardar el formulario:", error);
             toast.dismiss();
