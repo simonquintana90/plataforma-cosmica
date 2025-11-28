@@ -2,6 +2,34 @@ import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { generateWebsiteConfig } from '../utils/aiGenerator';
 
+const AccordionSection = ({ sectionNumber, title, children, activeSection, setActiveSection }) => (
+    <div className="border-b border-slate-200">
+        <h2>
+            <button
+                type="button"
+                className="flex items-center justify-between w-full p-5 font-medium text-left text-slate-700"
+                onClick={() => setActiveSection(activeSection === sectionNumber ? 0 : sectionNumber)}
+            >
+                <span className="text-lg">{title}</span>
+                <svg className={`w-6 h-6 shrink-0 transition-transform ${activeSection === sectionNumber ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+        </h2>
+        <div className={`${activeSection === sectionNumber ? '' : 'hidden'}`}>
+            <div className="p-5 border-t border-slate-200">
+                {children}
+                <div className="flex justify-between mt-6">
+                    {sectionNumber > 1 ? (
+                        <button type="button" onClick={() => setActiveSection(sectionNumber - 1)} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300">Anterior</button>
+                    ) : <div></div>}
+                    {sectionNumber < 7 && (
+                        <button type="button" onClick={() => setActiveSection(sectionNumber + 1)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Siguiente</button>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }) => {
     const [activeSection, setActiveSection] = useState(1);
     const [formData, setFormData] = useState({
@@ -125,34 +153,6 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         }
     };
 
-    const AccordionSection = ({ sectionNumber, title, children }) => (
-        <div className="border-b border-slate-200">
-            <h2>
-                <button
-                    type="button"
-                    className="flex items-center justify-between w-full p-5 font-medium text-left text-slate-700"
-                    onClick={() => setActiveSection(activeSection === sectionNumber ? 0 : sectionNumber)}
-                >
-                    <span className="text-lg">{title}</span>
-                    <svg className={`w-6 h-6 shrink-0 transition-transform ${activeSection === sectionNumber ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-            </h2>
-            <div className={`${activeSection === sectionNumber ? '' : 'hidden'}`}>
-                <div className="p-5 border-t border-slate-200">
-                    {children}
-                    <div className="flex justify-between mt-6">
-                        {sectionNumber > 1 ? (
-                            <button type="button" onClick={() => setActiveSection(sectionNumber - 1)} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300">Anterior</button>
-                        ) : <div></div>}
-                        {sectionNumber < 7 && (
-                            <button type="button" onClick={() => setActiveSection(sectionNumber + 1)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Siguiente</button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <div className="min-h-screen bg-slate-50">
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
@@ -167,7 +167,12 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                     <p className="mt-4 max-w-2xl mx-auto text-slate-500">Por favor, completa la siguiente información para que podamos empezar a construir tu sitio web. Puedes tomarte tu tiempo, la información se guardará al final.</p>
                 </div>
                 <form onSubmit={handleSubmit} className="mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    <AccordionSection sectionNumber={1} title="Sección 1: Dominio y Logo">
+                    <AccordionSection
+                        sectionNumber={1}
+                        title="Sección 1: Dominio y Logo"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">Tu dominio</label>
@@ -184,14 +189,19 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection sectionNumber={2} title="Sección 2: Tus Clientes">
+                    <AccordionSection
+                        sectionNumber={2}
+                        title="Sección 2: Tus Clientes"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">¿A qué tipo de clientes atienden? <span className="text-red-500">*</span></label>
                                 <div className="space-y-2">
-                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Residencial" onChange={handleCheckboxChange} className="mr-2" /> Residencial</label>
-                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Comercial" onChange={handleCheckboxChange} className="mr-2" /> Comercial</label>
-                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Otro" onChange={handleCheckboxChange} className="mr-2" /> Otro...</label>
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Residencial" onChange={handleCheckboxChange} checked={formData.clientType.includes('Residencial')} className="mr-2" /> Residencial</label>
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Comercial" onChange={handleCheckboxChange} checked={formData.clientType.includes('Comercial')} className="mr-2" /> Comercial</label>
+                                    <label className="flex items-center"><input type="checkbox" name="clientType" value="Otro" onChange={handleCheckboxChange} checked={formData.clientType.includes('Otro')} className="mr-2" /> Otro...</label>
                                 </div>
                             </div>
                             <div>
@@ -201,7 +211,12 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection sectionNumber={3} title="Sección 3: Tus Servicios">
+                    <AccordionSection
+                        sectionNumber={3}
+                        title="Sección 3: Tus Servicios"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es el principal servicio que ofrecen? <span className="text-red-500">*</span></label><input type="text" name="mainService" value={formData.mainService} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué incluyen tus servicios? <span className="text-red-500">*</span></label><textarea name="servicesInclude" value={formData.servicesInclude} onChange={handleInputChange} required rows="4" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
@@ -210,14 +225,24 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection sectionNumber={4} title="Sección 4: Áreas de Servicio">
+                    <AccordionSection
+                        sectionNumber={4}
+                        title="Sección 4: Áreas de Servicio"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Cuál es la ciudad principal donde te gustaría conseguir más negocios? <span className="text-red-500">*</span></label><input type="text" name="mainCity" value={formData.mainCity} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿A qué otras ciudades prestan servicio? <span className="text-red-500">*</span></label><input type="text" name="otherCities" value={formData.otherCities} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection sectionNumber={5} title="Sección 5: Acerca de tu Negocio">
+                    <AccordionSection
+                        sectionNumber={5}
+                        title="Sección 5: Acerca de tu Negocio"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué hace tu negocio único? <span className="text-red-500">*</span></label><input type="text" name="uniqueAspect" value={formData.uniqueAspect} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">¿Qué garantías ofreces a tus clientes? <span className="text-red-500">*</span></label><input type="text" name="guarantees" value={formData.guarantees} onChange={handleInputChange} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5" /></div>
@@ -225,14 +250,19 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">¿Tus clientes necesitan saber que tienes seguro de responsabilidad civil? <span className="text-red-500">*</span></label>
                                 <div className="flex gap-4">
-                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="Sí" onChange={handleInputChange} required className="mr-2" /> Sí</label>
-                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="No" onChange={handleInputChange} required className="mr-2" /> No</label>
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="Sí" onChange={handleInputChange} checked={formData.civilInsurance === 'Sí'} required className="mr-2" /> Sí</label>
+                                    <label className="flex items-center"><input type="radio" name="civilInsurance" value="No" onChange={handleInputChange} checked={formData.civilInsurance === 'No'} required className="mr-2" /> No</label>
                                 </div>
                             </div>
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection sectionNumber={6} title="Sección 6: Ejemplos de Sitios">
+                    <AccordionSection
+                        sectionNumber={6}
+                        title="Sección 6: Ejemplos de Sitios"
+                        activeSection={activeSection}
+                        setActiveSection={setActiveSection}
+                    >
                         <div className="space-y-6">
                             <p className="text-sm text-slate-500">Ayúdanos a comprender tus preferencias. Esto nos ayudará a crear un sitio que se ajuste a tu visión.</p>
                             <div><label className="block text-sm font-bold text-slate-700 mb-2">Sitio 1 – ¿Qué te gusta de este ejemplo?</label><textarea name="exampleSite1" value={formData.exampleSite1} onChange={handleInputChange} rows="3" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5"></textarea></div>
