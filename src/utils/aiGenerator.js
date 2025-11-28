@@ -191,7 +191,7 @@ export const generateWebsiteConfig = (formData) => {
         industry,
         description,
         style,
-        brandColor,
+        brandColors, // Now an object { primary, secondary, accent }
         fontPairing,
         mainCity,
         mainService,
@@ -201,11 +201,19 @@ export const generateWebsiteConfig = (formData) => {
         servicesInclude
     } = formData;
 
-    // 1. Determine Global Theme based on User Preference & Brand Color
+    // 1. Determine Global Theme based on User Preference & Brand Colors
     const baseTheme = STYLES[style]?.theme || STYLES.impact.theme;
+
+    // Robust Fallback Logic
+    const primaryColor = brandColors?.primary || baseTheme.primary || '#3B82F6';
+    const secondaryColor = brandColors?.secondary || baseTheme.secondary || '#1E293B';
+    const accentColor = brandColors?.accent || '#F59E0B';
+
     const globalTheme = {
         ...baseTheme,
-        primary: brandColor || baseTheme.primary, // Use user's brand color
+        primary: primaryColor,
+        secondary: secondaryColor,
+        accent: accentColor,
         font: FONTS[fontPairing] || FONTS.modern
     };
 

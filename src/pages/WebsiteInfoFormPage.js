@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { generateWebsiteConfig } from '../utils/aiGenerator';
 
@@ -21,7 +21,7 @@ const AccordionSection = ({ sectionNumber, title, children, activeSection, setAc
                     {sectionNumber > 1 ? (
                         <button type="button" onClick={() => setActiveSection(sectionNumber - 1)} className="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300">Anterior</button>
                     ) : <div></div>}
-                    {sectionNumber < 7 && (
+                    {sectionNumber < 5 && (
                         <button type="button" onClick={() => setActiveSection(sectionNumber + 1)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Siguiente</button>
                     )}
                 </div>
@@ -35,8 +35,12 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
     const [formData, setFormData] = useState({
         domain: '',
         businessName: '',
-        brandColor: '#3B82F6', // Default blue
-        fontPairing: 'modern',
+        brandColors: {
+            primary: '#3B82F6', // 60% - Dominant
+            secondary: '#1E293B', // 30% - Secondary
+            accent: '#F59E0B'     // 10% - Accent
+        },
+        fontPairing: 'Inter',
         clientType: [],
         commonReasonsNotToChoose: '',
         mainService: '',
@@ -77,6 +81,36 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
             setLogoFile(e.target.files[0]);
         }
     };
+
+    const handleColorChange = (type, value) => {
+        setFormData(prev => ({
+            ...prev,
+            brandColors: {
+                ...prev.brandColors,
+                [type]: value
+            }
+        }));
+    };
+
+    // Load fonts for preview
+    useEffect(() => {
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@400;700&family=Oswald:wght@400;700&family=Nunito:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+        return () => document.head.removeChild(link);
+    }, []);
+
+    const FONT_OPTIONS = [
+        { id: 'Inter', name: 'Inter (Moderna)', category: 'Sans Serif' },
+        { id: 'Playfair Display', name: 'Playfair Display (Elegante)', category: 'Serif' },
+        { id: 'Oswald', name: 'Oswald (Impactante)', category: 'Sans Serif' },
+        { id: 'Nunito', name: 'Nunito (Amigable)', category: 'Sans Serif' },
+        { id: 'Roboto', name: 'Roboto (Neutral)', category: 'Sans Serif' },
+        { id: 'Open Sans', name: 'Open Sans (Legible)', category: 'Sans Serif' },
+        { id: 'Montserrat', name: 'Montserrat (Geométrica)', category: 'Sans Serif' },
+        { id: 'Lato', name: 'Lato (Corporativa)', category: 'Sans Serif' }
+    ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -142,12 +176,12 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
 
         try {
             // 1. Generate Website Config based on Form Data
-            // We map the form fields to the generator's expected input
             const generatorInput = {
-                businessName: finalData.domain || "My Business", // Fallback
-                industry: 'general', // We could infer this from clientType or add a field
+                ...finalData,
+                businessName: finalData.businessName || finalData.domain || "Mi Negocio",
+                industry: 'general',
                 description: finalData.mainService + ". " + finalData.uniqueAspect,
-                style: 'impact' // Default style for now, or could be randomized/inferred
+                style: 'impact'
             };
 
             const generatedConfig = generateWebsiteConfig(generatorInput);
@@ -208,33 +242,63 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                                 <input type="text" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="Ej: solucioneslegales.com" />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Color de Marca</label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="color"
-                                            name="brandColor"
-                                            value={formData.brandColor}
-                                            onChange={handleInputChange}
-                                            className="h-10 w-20 rounded cursor-pointer border border-slate-300"
-                                        />
-                                        <span className="text-sm text-slate-500">{formData.brandColor}</span>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Paleta de Colores (Regla 60-30-10)</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Dominante (60%)</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={formData.brandColors.primary}
+                                                    onChange={(e) => handleColorChange('primary', e.target.value)}
+                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
+                                                />
+                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.primary}</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Secundario (30%)</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={formData.brandColors.secondary}
+                                                    onChange={(e) => handleColorChange('secondary', e.target.value)}
+                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
+                                                />
+                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.secondary}</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Acento (10%)</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={formData.brandColors.accent}
+                                                    onChange={(e) => handleColorChange('accent', e.target.value)}
+                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
+                                                />
+                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.accent}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Tipografía</label>
-                                    <select
-                                        name="fontPairing"
-                                        value={formData.fontPairing}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                    >
-                                        <option value="modern">Moderna (Inter)</option>
-                                        <option value="elegant">Elegante (Playfair Display)</option>
-                                        <option value="bold">Impactante (Oswald)</option>
-                                        <option value="friendly">Amigable (Nunito)</option>
-                                    </select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {FONT_OPTIONS.map((font) => (
+                                            <div
+                                                key={font.id}
+                                                onClick={() => setFormData(prev => ({ ...prev, fontPairing: font.id }))}
+                                                className={`cursor-pointer p-3 rounded-lg border transition-all ${formData.fontPairing === font.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+                                            >
+                                                <div className="text-sm font-medium text-slate-900" style={{ fontFamily: font.id }}>{font.name}</div>
+                                                <div className="text-xs text-slate-500 mt-1" style={{ fontFamily: font.id }}>The quick brown fox jumps over the lazy dog.</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 

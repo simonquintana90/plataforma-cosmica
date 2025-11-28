@@ -44,7 +44,11 @@ const AIBuilderPage = () => {
         industry: 'general',
         description: '',
         style: 'impact',
-        brandColor: '#3B82F6',
+        brandColors: {
+            primary: '#3B82F6',
+            secondary: '#1E293B',
+            accent: '#F59E0B'
+        },
         fontPairing: 'modern',
         mainCity: '',
         mainService: '',
@@ -81,7 +85,11 @@ const AIBuilderPage = () => {
                             industry: 'general',
                             description: (info.mainService || '') + ". " + (info.uniqueAspect || ''),
                             style: 'impact',
-                            brandColor: info.brandColor || '#3B82F6',
+                            brandColors: info.brandColors || {
+                                primary: info.brandColor || '#3B82F6',
+                                secondary: '#1E293B',
+                                accent: '#F59E0B'
+                            },
                             fontPairing: info.fontPairing || 'modern',
                             mainCity: info.mainCity || '',
                             mainService: info.mainService || '',
@@ -211,17 +219,37 @@ const AIBuilderPage = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Brand Color</label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="color"
-                                            name="brandColor"
-                                            value={formData.brandColor}
-                                            onChange={handleInputChange}
-                                            className="h-10 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
-                                        />
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Brand Palette</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <input
+                                                type="color"
+                                                value={formData.brandColors.primary}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, primary: e.target.value } }))}
+                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
+                                            />
+                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Primary</span>
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="color"
+                                                value={formData.brandColors.secondary}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, secondary: e.target.value } }))}
+                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
+                                            />
+                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Secondary</span>
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="color"
+                                                value={formData.brandColors.accent}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, brandColors: { ...prev.brandColors, accent: e.target.value } }))}
+                                                className="h-8 w-full rounded cursor-pointer bg-slate-800 border border-slate-700"
+                                            />
+                                            <span className="text-[10px] text-slate-500 block text-center mt-1">Accent</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
