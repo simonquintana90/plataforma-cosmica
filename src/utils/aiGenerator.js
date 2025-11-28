@@ -209,8 +209,7 @@ export const generateWebsiteConfig = (formData) => {
                 features: [
                     { title: "Experiencia", description: `Años sirviendo a ${mainCity}.` },
                     { title: "Calidad", description: "Resultados garantizados." },
-                    { title: "Rapidez", description: "Atención inmediata." },
-                    { title: "Confianza", description: "Miles de clientes felices." }
+                    { title: "Rapidez", description: "Atención inmediata." }
                 ]
             }
         },
@@ -254,12 +253,26 @@ export const generateWebsiteConfig = (formData) => {
         }
     };
 
+    const footer = {
+        id: "footer",
+        type: selectedStyle.footer || "FooterImpact",
+        content: {
+            businessName: businessName,
+            description: description || `Expertos en ${mainService} en ${mainCity}.`,
+            links: [
+                { name: "Inicio", href: "#" },
+                { name: "Servicios", href: "#services" },
+                { name: "Contacto", href: "#cta" }
+            ]
+        }
+    };
+
     return {
         meta: {
             title: `${mainService} en ${mainCity} | ${businessName}`,
             description: `Expertos en ${mainService} en ${mainCity}. ${uniqueAspect}. Contáctanos hoy.`
         },
         theme: globalTheme,
-        sections: [navbar, ...sections]
+        sections: [navbar, ...sections, footer]
     };
 };

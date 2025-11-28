@@ -130,6 +130,27 @@ const VisualEditorSidebar = ({ config, setConfig }) => {
                                                     {/* Section Editor (Expanded) */}
                                                     {expandedSection === section.id && (
                                                         <div className="p-3 border-t border-slate-100 space-y-3">
+                                                            {/* Style Selector */}
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 mb-1">Estilo de Sección</label>
+                                                                <select
+                                                                    value={section.type}
+                                                                    onChange={(e) => {
+                                                                        const newType = e.target.value;
+                                                                        const newSections = config.sections.map(s => s.id === section.id ? { ...s, type: newType } : s);
+                                                                        setConfig({ ...config, sections: newSections });
+                                                                    }}
+                                                                    className="w-full text-sm border border-slate-200 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                >
+                                                                    {['Impact', 'Cinematic', 'Capture', 'Elegant'].map(style => {
+                                                                        // Construct the type name based on the section category (e.g., HeroImpact, HeroCinematic)
+                                                                        const category = section.type.replace(/Impact|Cinematic|Capture|Elegant/g, '');
+                                                                        const typeName = `${category}${style}`;
+                                                                        return <option key={style} value={typeName}>{style}</option>;
+                                                                    })}
+                                                                </select>
+                                                            </div>
+
                                                             {getComponentSchema(section.type).map((field) => (
                                                                 <div key={field.key}>
                                                                     <label className="block text-xs font-bold text-slate-500 mb-1">{field.label}</label>
