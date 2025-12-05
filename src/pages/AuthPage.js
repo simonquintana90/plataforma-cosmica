@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { generateReferralCode } from '../utils/referralUtils';
 
 const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
     const location = useLocation();
@@ -11,6 +12,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [referralCodeInput, setReferralCodeInput] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -25,6 +27,8 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
                 await updateProfile(userCredential.user, { displayName: name });
 
                 const userRef = doc(db, "users", userCredential.user.uid);
+                const newReferralCode = generateReferralCode(name);
+
                 await setDoc(userRef, {
                     email: userCredential.user.email,
                     displayName: name,
@@ -32,6 +36,8 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
                     status: "approved",
                     initialPaymentStatus: "pending",
                     websiteInfoStatus: "pending",
+                    referralCode: newReferralCode,
+                    referredBy: referralCodeInput.trim().toUpperCase() || null
                 });
             }
         } catch (error) { setError(error.message); } finally { setLoading(false); }
@@ -74,6 +80,12 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
                         <label htmlFor="password" className="block text-sm font-medium text-slate-600 mb-2">Contraseña</label>
                         <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
                     </div>
+                    {!isLogin && (
+                        <div>
+                            <label htmlFor="referral" className="block text-sm font-medium text-slate-600 mb-2">Código de Referido (Opcional)</label>
+                            <input id="referral" type="text" value={referralCodeInput} onChange={(e) => setReferralCodeInput(e.target.value)} placeholder="Ej: JUAN1234" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                        </div>
+                    )}
                     <div className="pt-2">
                         <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold rounded-lg py-3 hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50">{loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}</button>
                     </div>

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
-const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword, getFunctions, httpsCallable, onSnapshot }) => {
+const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword, getFunctions, httpsCallable, onSnapshot, collection, query, where }) => {
     const [name, setName] = useState(user.displayName || '');
     const [companyName, setCompanyName] = useState(userProfile?.companyName || '');
     const [phone, setPhone] = useState(userProfile?.phone || '');
@@ -20,6 +20,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [isCancelling, setIsCancelling] = useState(false);
     const [paymentHistory, setPaymentHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
+
+    const [referralCount, setReferralCount] = useState(0);
+    const [referralEarnings, setReferralEarnings] = useState(0);
 
     useEffect(() => {
         if (userProfile) {
@@ -56,6 +59,18 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         };
         fetchHistory();
     }, [getFunctions, httpsCallable]);
+
+    useEffect(() => {
+        if (userProfile?.referralCode) {
+            const q = query(collection(db, "users"), where("referredBy", "==", userProfile.referralCode));
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const count = querySnapshot.size;
+                setReferralCount(count);
+                setReferralEarnings(count * 20000);
+            });
+            return () => unsubscribe();
+        }
+    }, [userProfile, db, collection, query, where]);
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -227,6 +242,45 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                     ))
                                 )}
                         </ul>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-800">Cuenta Recompensa</h2>
+                        <p className="text-sm text-slate-500 mt-1">Gana $20.000 COP mensuales por cada cliente que traigas a Cósmica.</p>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Tu Código de Referido</p>
+                                <div className="mt-2 flex items-center gap-3">
+                                    <span className="text-2xl font-mono font-bold text-slate-900 tracking-wider">
+                                        {userProfile?.referralCode || "NO DISPONIBLE"}
+                                    </span>
+                                    {userProfile?.referralCode && (
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(userProfile.referralCode);
+                                                toast.success("Código copiado al portapapeles");
+                                            }}
+                                            className="p-2 bg-white rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+                                            title="Copiar código"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">Comparte este código con tus amigos.</p>
+                            </div>
+
+                            <div className="bg-green-50 p-5 rounded-xl border border-green-100">
+                                <p className="text-xs font-bold text-green-600 uppercase tracking-wider">Ganancia Mensual Estimada</p>
+                                <p className="mt-2 text-3xl font-bold text-slate-900">
+                                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(referralEarnings)}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-2">Basado en {referralCount} cliente{referralCount !== 1 ? 's' : ''} activo{referralCount !== 1 ? 's' : ''}.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
