@@ -384,30 +384,30 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                 amount={referralEarnings}
                             />
 
-                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                                <div className="border-b border-slate-200 p-6">
-                                    <h2 className="text-lg font-bold text-slate-800">Cambiar Contraseña</h2>
-                                </div>
-                                <div className="p-6">
-                                    <form onSubmit={handleUpdatePassword} className="space-y-4">
-                                        <div>
-                                            <label htmlFor="newPassword" className="block text-sm font-medium text-slate-600 mb-2">Nueva Contraseña</label>
-                                            <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 mb-2">Confirmar Nueva Contraseña</label>
-                                            <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
-                                        </div>
-                                        {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
-                                        <div className="flex justify-end pt-2">
-                                            <button type="submit" disabled={passwordLoading} className="inline-flex justify-center py-2 px-5 border border-transparent text-sm font-bold rounded-lg text-white bg-slate-800 hover:bg-slate-900 disabled:opacity-50 transition-colors">
-                                                {passwordLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
+                        </div>
+                    </div>
 
-                            </div>
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div className="border-b border-slate-200 p-6">
+                            <h2 className="text-lg font-bold text-slate-800">Cambiar Contraseña</h2>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={handleUpdatePassword} className="space-y-4">
+                                <div>
+                                    <label htmlFor="newPassword" className="block text-sm font-medium text-slate-600 mb-2">Nueva Contraseña</label>
+                                    <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 mb-2">Confirmar Nueva Contraseña</label>
+                                    <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                                </div>
+                                {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+                                <div className="flex justify-end pt-2">
+                                    <button type="submit" disabled={passwordLoading} className="inline-flex justify-center py-2 px-5 border border-transparent text-sm font-bold rounded-lg text-white bg-slate-800 hover:bg-slate-900 disabled:opacity-50 transition-colors">
+                                        {passwordLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
 
