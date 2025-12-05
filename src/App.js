@@ -70,7 +70,11 @@ const AppRoutes = () => {
 
     return (
         <Routes>
-            <Route path="/" element={<DashboardPage user={user} {...firebaseServices} />} />
+            <Route path="/" element={
+                userProfile?.role === 'partner'
+                    ? <Navigate to="/cuenta" />
+                    : <DashboardPage user={user} {...firebaseServices} />
+            } />
             <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
             <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
 

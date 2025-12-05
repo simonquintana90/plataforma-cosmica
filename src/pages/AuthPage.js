@@ -13,6 +13,7 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [referralCodeInput, setReferralCodeInput] = useState('');
+    const [isPartner, setIsPartner] = useState(false);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -34,8 +35,9 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
                     displayName: name,
                     createdAt: serverTimestamp(),
                     status: "approved",
-                    initialPaymentStatus: "pending",
-                    websiteInfoStatus: "pending",
+                    initialPaymentStatus: isPartner ? "completed" : "pending",
+                    websiteInfoStatus: isPartner ? "completed" : "pending",
+                    role: isPartner ? "partner" : "client",
                     referralCode: newReferralCode,
                     referredBy: referralCodeInput.trim().toUpperCase() || null
                 });
@@ -81,10 +83,25 @@ const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => 
                         <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
                     </div>
                     {!isLogin && (
-                        <div>
-                            <label htmlFor="referral" className="block text-sm font-medium text-slate-600 mb-2">Código de Referido (Opcional)</label>
-                            <input id="referral" type="text" value={referralCodeInput} onChange={(e) => setReferralCodeInput(e.target.value)} placeholder="Ej: JUAN1234" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
-                        </div>
+                        <>
+                            <div>
+                                <label htmlFor="referral" className="block text-sm font-medium text-slate-600 mb-2">Código de Referido (Opcional)</label>
+                                <input id="referral" type="text" value={referralCodeInput} onChange={(e) => setReferralCodeInput(e.target.value)} placeholder="Ej: JUAN1234" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                <input
+                                    id="isPartner"
+                                    type="checkbox"
+                                    checked={isPartner}
+                                    onChange={(e) => setIsPartner(e.target.checked)}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                                />
+                                <label htmlFor="isPartner" className="text-sm text-slate-700">
+                                    <span className="font-bold block">Quiero ser solo Afiliado</span>
+                                    <span className="text-xs text-slate-500">Gana dinero refiriendo, sin crear sitio web.</span>
+                                </label>
+                            </div>
+                        </>
                     )}
                     <div className="pt-2">
                         <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold rounded-lg py-3 hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50">{loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}</button>
