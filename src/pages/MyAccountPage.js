@@ -255,9 +255,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                         </div>
                     </div>
 
-                </div>
 
-                <div className="space-y-8">
                     {userProfile?.role !== 'partner' && (
                         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                             <div className="border-b border-slate-200 p-6">
