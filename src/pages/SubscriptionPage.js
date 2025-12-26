@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import useWompiScript from '../hooks/useWompiScript';
 
 const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
-    useWompiScript(); // Carga el script de Wompi
+    const isWompiLoaded = useWompiScript(); // Carga el script de Wompi y verifica si cargó
     const [isProcessing, setIsProcessing] = useState(false);
     const [acceptanceToken, setAcceptanceToken] = useState(null); // <-- AÑADIDO
     const [loadingToken, setLoadingToken] = useState(true); // <-- AÑADIDO
@@ -105,7 +105,11 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 </div>
 
                 {/* 7. Formulario de Wompi */}
-                <form className="max-w-md mx-auto mt-10" id="wompi-form">
+                <form
+                    className="max-w-md mx-auto mt-10"
+                    id="wompi-form"
+                    onSubmit={(e) => e.preventDefault()} // <-- PREVENIR RELOAD NATIVO
+                >
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
 
                         {/* Mostramos 'cargando' mientras obtenemos el token de aceptación */}
@@ -154,12 +158,12 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                         <div className="mt-8">
                             <button
                                 type="submit"
-                                disabled={isProcessing || loadingToken} // <-- Deshabilitado si está procesando O cargando
+                                disabled={isProcessing || loadingToken || !isWompiLoaded} // <-- Deshabilitado si está procesando, cargando token O script no cargado
                                 className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                                 data-wompi-key={wompiPublicKey}
                                 data-wompi-currency="COP"
                             >
-                                {isProcessing ? 'Procesando...' : 'Pagar $89.900 COP Ahora'}
+                                {isProcessing ? 'Procesando...' : !isWompiLoaded ? 'Cargando Wompi...' : 'Pagar $89.900 COP Ahora'}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>
