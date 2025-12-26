@@ -91,8 +91,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 card_holder: cardHolder
             };
 
-            // URL de SANDBOX para pruebas
-            const response = await fetch(`https://sandbox.wompi.co/v1/tokens/cards`, {
+            // URL de PRODUCCIÓN (Wompi usa la misma URL para pruebas, las llaves definen el entorno)
+            const response = await fetch(`https://production.wompi.co/v1/tokens/cards`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
