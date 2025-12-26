@@ -299,6 +299,7 @@ exports.getWompiAcceptanceToken = onCall(
 
     // Usar clave de prueba directamente (IGNORAR secrets para asegurar entorno de pruebas)
     const wompiPublicKey = 'pub_test_cqO03BgvqDZ4OmJsrt8kyajkOXNY6lvT';
+    console.log("DEBUG: Usando Public Key:", wompiPublicKey);
 
     try {
       // 1. Obtenemos el "token de aceptación" del comerciante
