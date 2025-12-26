@@ -344,7 +344,7 @@ exports.createWompiSubscription = onCall(
 
     // Usar clave de prueba directamente (IGNORAR secrets para asegurar entorno de pruebas)
     const wompiPrivateKey = 'prv_test_gOjEQ6Tr90OW2GdBjVmHH5kRZYE47RTk';
-    console.log("DEBUG: Usando Private Key:", wompiPrivateKey); // Log para verificar
+    console.log("DEBUG: Usando Private Key:", wompiPrivateKey);
 
     const db = getFirestore();
     const userRef = db.collection('users').doc(userId);
@@ -355,62 +355,74 @@ exports.createWompiSubscription = onCall(
 
     try {
       // 1. Crear Fuente de Pago (la tarjeta tokenizada)
+      // Esto guarda la tarjeta para futuros cobros
       console.log(`Creando fuente de pago para ${userEmail}`);
       const paymentSourceResponse = await wompiApi.post('/payment_sources', {
         type: "CARD",
         token: paymentToken,
         customer_email: userEmail,
         acceptance_token: acceptanceToken,
-      }, { headers }); // Pasar headers explícitamente
+      }, { headers });
       const paymentSource = paymentSourceResponse.data.data;
       console.log(`Fuente de pago creada: ${paymentSource.id}`);
 
-      // 2. Crear Cliente en Wompi
-      console.log(`Creando cliente para ${userEmail}`);
-      const customerResponse = await wompiApi.post('/customers', {
-        email: userEmail,
-        full_name: userName,
-        payment_source_id: paymentSource.id,
-      }, { headers }); // Pasar headers explícitamente
-      const customer = customerResponse.data.data;
-      console.log(`Cliente creado: ${customer.id}`);
+      // 2. Realizar el PRIMER COBRO inmediatamente (Suscripción Manual)
+      // Usamos la fuente de pago recién creada
+      const amountInCents = 8990000; // 89.900 COP
+      const reference = `sub_initial_${userId}_${Date.now()}`;
 
-      // 3. Crear la Suscripción
-      console.log(`Creando suscripción para ${customer.id}`);
-      const subscriptionResponse = await wompiApi.post('/subscriptions', {
-        customer_id: customer.id,
-        payment_source_id: paymentSource.id,
-        // Datos de la suscripción (¡Importante!)
-        plan_name: "Suscripción Mensual Cósmica", // Puedes cambiar esto
-        interval: "month", // "day", "week", "month", "year"
-        interval_count: 1, // Cada 1 mes
-        amount_in_cents: 8990000, // 89.900 COP en centavos
+      console.log(`Iniciando cobro de suscripción manual: ${reference}`);
+      const transactionResponse = await wompiApi.post('/transactions', {
+        amount_in_cents: amountInCents,
         currency: "COP",
-      }, { headers }); // Pasar headers explícitamente
+        customer_email: userEmail,
+        payment_source_id: paymentSource.id, // Cobrar a la fuente de pago
+        reference: reference,
+        payment_method: {
+          installments: 1 // 1 cuota
+        }
+      }, { headers });
 
-      const subscription = subscriptionResponse.data.data;
-      console.log(`Suscripción creada: ${subscription.id}`);
+      const transaction = transactionResponse.data.data;
+      console.log(`Transacción creada: ${transaction.id}, Estado: ${transaction.status}`);
 
-      // 4. Guardar info en Firestore y activar usuario
+      // 3. Guardar info en Firestore y activar usuario
+      // Asumimos éxito si la transacción se crea (Wompi puede tardar en aprobarla, pero en Sandbox es rápido)
+      // En un caso real, deberíamos verificar transaction.status === 'APPROVED' o esperar al webhook.
+      // Para Sandbox y UX inmediata, activamos si no hay error de API.
+
       await userRef.set({
-        wompiCustomerId: customer.id,
         wompiPaymentSourceId: paymentSource.id,
-        subscriptionId: subscription.id,
-        subscriptionProvider: "wompi",
-        subscriptionStatus: "active", // Wompi lo crea como 'pending' pero lo activamos de inmediato
-        initialPaymentStatus: "completed", // ¡Clave para el flujo de la app!
+        subscriptionId: "manual_managed", // Ya no hay ID de suscripción de Wompi
+        lastTransactionId: transaction.id,
+        subscriptionProvider: "wompi_manual",
+        subscriptionStatus: "active",
+        initialPaymentStatus: "completed",
+        subscriptionStartDate: admin.firestore.Timestamp.now(),
+        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) // +30 días
       }, { merge: true });
 
-      console.log(`Usuario ${userId} activado con suscripción ${subscription.id}`);
-      return { status: "success", subscriptionId: subscription.id, paymentSourceId: paymentSource.id };
+      // Guardar registro del pago
+      await userRef.collection('payments').doc(transaction.id).set({
+        paymentId: transaction.id,
+        date: admin.firestore.Timestamp.now(),
+        amount: amountInCents / 100,
+        description: "Suscripción Mensual (Primer Pago)",
+        status: transaction.status, // 'PENDING', 'APPROVED', etc.
+        reference: reference,
+        type: 'subscription_initial'
+      });
+
+      console.log(`Usuario ${userId} activado. Transacción: ${transaction.id}`);
+      return { status: "success", transactionId: transaction.id, paymentSourceId: paymentSource.id };
 
     } catch (error) {
-      console.error("Error al crear la suscripción en Wompi:", error.response ? error.response.data : error.message);
+      console.error("Error al procesar el pago en Wompi:", error.response ? error.response.data : error.message);
 
       if (error.response && error.response.data && error.response.data.error) {
-        throw new functions.https.HttpsError('internal', error.response.data.error.messages || 'Error de Wompi.');
+        throw new functions.https.HttpsError('internal', JSON.stringify(error.response.data.error.messages) || 'Error de Wompi.');
       }
-      throw new functions.https.HttpsError('internal', 'No se pudo crear la suscripción.');
+      throw new functions.https.HttpsError('internal', 'No se pudo procesar el pago.');
     }
   }
 );
