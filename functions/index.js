@@ -19,7 +19,8 @@ initializeApp();
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
-const WOMPI_API_BASE = "https://api.wompi.co/v1";
+// URL de Sandbox para pruebas
+const WOMPI_API_BASE = "https://sandbox.wompi.co/v1";
 
 // --- NOTIFICACIONES Y LÓGICA DE LA APP (TUS FUNCIONES) ---
 
@@ -296,7 +297,8 @@ exports.getWompiAcceptanceToken = onCall(
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
 
-    const wompiPublicKey = process.env.WOMPI_PUBLIC_KEY;
+    // Usar clave de prueba directamente si no está en secrets (para solucionar el problema actual)
+    const wompiPublicKey = process.env.WOMPI_PUBLIC_KEY || 'pub_test_cqO03BgvqDZ4OmJsrt8kyajkOXNY6lvT';
 
     try {
       // 1. Obtenemos el "token de aceptación" del comerciante
@@ -339,7 +341,9 @@ exports.createWompiSubscription = onCall(
     const userEmail = request.auth.token.email;
     const userName = request.auth.token.name || userEmail;
 
-    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY;
+    // Usar clave de prueba directamente si no está en secrets
+    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY || 'prv_test_gOjEQ6Tr90OW2GdBjVmHH5kRZYE47RTk';
+
     wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
     const db = getFirestore();
     const userRef = db.collection('users').doc(userId);
@@ -419,7 +423,9 @@ exports.cancelWompiSubscription = onCall(
     }
 
     const userId = request.auth.uid;
-    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY;
+    // Usar clave de prueba directamente si no está en secrets
+    const wompiPrivateKey = process.env.WOMPI_PRIVATE_KEY || 'prv_test_gOjEQ6Tr90OW2GdBjVmHH5kRZYE47RTk';
+
     wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
     const db = getFirestore();
 
@@ -460,7 +466,8 @@ exports.wompiWebhook = onRequest(
       return res.status(405).send('Method Not Allowed');
     }
 
-    const eventsToken = process.env.WOMPI_EVENT_TOKEN;
+    // Usar token de prueba directamente si no está en secrets
+    const eventsToken = process.env.WOMPI_EVENT_TOKEN || 'test_events_T6YZmeNXEkeCwmZ3W6N911rfnd1jjENU';
     const requestBody = req.rawBody.toString();
 
     // TODO: Implementar la verificación de firma HMAC si Wompi la envía.

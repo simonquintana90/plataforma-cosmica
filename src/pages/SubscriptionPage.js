@@ -16,7 +16,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
     const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
 
     const navigate = useNavigate();
-    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX'; // Tu llave pública
+    const wompiPublicKey = 'pub_test_cqO03BgvqDZ4OmJsrt8kyajkOXNY6lvT'; // Llave pública de PRUEBAS
 
     // --- Obtener el Token de Aceptación al cargar ---
     useEffect(() => {
@@ -91,7 +91,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 card_holder: cardHolder
             };
 
-            const response = await fetch(`https://production.wompi.co/v1/tokens/cards`, {
+            // URL de SANDBOX para pruebas
+            const response = await fetch(`https://sandbox.wompi.co/v1/tokens/cards`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
