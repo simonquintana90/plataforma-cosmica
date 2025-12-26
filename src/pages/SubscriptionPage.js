@@ -8,16 +8,22 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
     const [isProcessing, setIsProcessing] = useState(false);
     const [acceptanceToken, setAcceptanceToken] = useState(null); // <-- AÑADIDO
     const [loadingToken, setLoadingToken] = useState(true); // <-- AÑADIDO
+    const [tokenError, setTokenError] = useState(null); // <-- AÑADIDO: Estado de error
+    const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
     const navigate = useNavigate();
 
     // --- (NUEVO) Obtener el Token de Aceptación al cargar ---
     useEffect(() => {
         const fetchAcceptanceToken = async () => {
             setLoadingToken(true);
+            setTokenError(null);
             try {
+                console.log("Iniciando obtención de token de aceptación...");
                 const functions = getFunctions();
                 const getWompiAcceptanceToken = httpsCallable(functions, 'getWompiAcceptanceToken');
                 const result = await getWompiAcceptanceToken();
+
+                console.log("Resultado getWompiAcceptanceToken:", result);
 
                 if (result.data.acceptance_token) {
                     setAcceptanceToken(result.data.acceptance_token);
@@ -26,6 +32,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 }
             } catch (error) {
                 console.error("Error al obtener token de aceptación:", error);
+                setTokenError("No se pudo conectar con el sistema de pagos. Por favor recarga la página.");
                 toast.error("Error al inicializar el formulario de pago.");
             } finally {
                 setLoadingToken(false);
@@ -33,6 +40,17 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         };
         fetchAcceptanceToken();
     }, [getFunctions, httpsCallable]);
+
+    // Formateo de fecha MM/YY
+    const handleExpDateChange = (e) => {
+        let value = e.target.value.replace(/\D/g, ''); // Solo números
+        if (value.length > 4) value = value.slice(0, 4); // Max 4 dígitos
+
+        if (value.length >= 3) {
+            value = `${value.slice(0, 2)}/${value.slice(2)}`;
+        }
+        setExpDate(value);
+    };
 
     // 1. Esta función es llamada por el FORMULARIO de Wompi
     const handleWompiResponse = async (event) => {
@@ -81,10 +99,12 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         if (!acceptanceToken) return; // No hacer nada si no hay token
 
         const wompiForm = document.getElementById('wompi-form');
-        wompiForm.addEventListener('wompi:token', handleWompiResponse);
-        return () => {
-            wompiForm.removeEventListener('wompi:token', handleWompiResponse);
-        };
+        if (wompiForm) {
+            wompiForm.addEventListener('wompi:token', handleWompiResponse);
+            return () => {
+                wompiForm.removeEventListener('wompi:token', handleWompiResponse);
+            };
+        }
     }, [acceptanceToken]); // <-- Se activa cuando el token de aceptación está listo
 
     // 6. DEBES PONER TU LLAVE PÚBLICA DE WOMPI AQUÍ
@@ -110,12 +130,26 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                     id="wompi-form"
                     onSubmit={(e) => e.preventDefault()} // <-- PREVENIR RELOAD NATIVO
                 >
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 relative">
 
                         {/* Mostramos 'cargando' mientras obtenemos el token de aceptación */}
                         {loadingToken && (
-                            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl z-20">
                                 <p className="font-bold text-slate-600">Cargando formulario de pago...</p>
+                            </div>
+                        )}
+
+                        {/* Mostramos error si falla el token */}
+                        {tokenError && (
+                            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl z-20 p-6 text-center">
+                                <p className="font-bold text-red-600 mb-2">Error de conexión</p>
+                                <p className="text-slate-600 text-sm mb-4">{tokenError}</p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold"
+                                >
+                                    Recargar Página
+                                </button>
                             </div>
                         )}
 
@@ -142,7 +176,14 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="wompi-form-field">
                                     <label className="block text-sm font-medium text-slate-600 mb-2">Fecha de exp.</label>
-                                    <input type="text" data-wompi="card-exp" placeholder="MM/YY" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                    <input
+                                        type="text"
+                                        data-wompi="card-exp"
+                                        placeholder="MM/YY"
+                                        value={expDate}
+                                        onChange={handleExpDateChange}
+                                        className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    />
                                 </div>
                                 <div className="wompi-form-field">
                                     <label className="block text-sm font-medium text-slate-600 mb-2">CVC</label>
@@ -158,12 +199,16 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                         <div className="mt-8">
                             <button
                                 type="submit"
-                                disabled={isProcessing || loadingToken || !isWompiLoaded} // <-- Deshabilitado si está procesando, cargando token O script no cargado
-                                className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                disabled={isProcessing || loadingToken || !isWompiLoaded || !acceptanceToken} // <-- Deshabilitado estricto
+                                className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 data-wompi-key={wompiPublicKey}
                                 data-wompi-currency="COP"
                             >
-                                {isProcessing ? 'Procesando...' : !isWompiLoaded ? 'Cargando Wompi...' : 'Pagar $89.900 COP Ahora'}
+                                {isProcessing ? 'Procesando...' :
+                                    loadingToken ? 'Inicializando...' :
+                                        !isWompiLoaded ? 'Cargando Wompi...' :
+                                            !acceptanceToken ? 'Error de conexión' :
+                                                'Pagar $89.900 COP Ahora'}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>
