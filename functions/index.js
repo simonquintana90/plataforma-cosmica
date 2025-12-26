@@ -19,8 +19,8 @@ initializeApp();
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
-// URL de Producción (Wompi usa la misma para pruebas, las llaves definen el entorno)
-const WOMPI_API_BASE = "https://production.wompi.co/v1";
+// URL de Sandbox para pruebas
+const WOMPI_API_BASE = "https://sandbox.wompi.co/v1";
 
 // --- NOTIFICACIONES Y LÓGICA DE LA APP (TUS FUNCIONES) ---
 
