@@ -343,10 +343,14 @@ exports.createWompiSubscription = onCall(
 
     // Usar clave de prueba directamente (IGNORAR secrets para asegurar entorno de pruebas)
     const wompiPrivateKey = 'prv_test_gOjEQ6Tr90OW2GdBjVmHH5kRZYE47RTk';
+    console.log("DEBUG: Usando Private Key:", wompiPrivateKey); // Log para verificar
 
-    wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
     const db = getFirestore();
     const userRef = db.collection('users').doc(userId);
+
+    const headers = {
+      Authorization: `Bearer ${wompiPrivateKey}`
+    };
 
     try {
       // 1. Crear Fuente de Pago (la tarjeta tokenizada)
@@ -356,7 +360,7 @@ exports.createWompiSubscription = onCall(
         token: paymentToken,
         customer_email: userEmail,
         acceptance_token: acceptanceToken,
-      });
+      }, { headers }); // Pasar headers explícitamente
       const paymentSource = paymentSourceResponse.data.data;
       console.log(`Fuente de pago creada: ${paymentSource.id}`);
 
@@ -366,7 +370,7 @@ exports.createWompiSubscription = onCall(
         email: userEmail,
         full_name: userName,
         payment_source_id: paymentSource.id,
-      });
+      }, { headers }); // Pasar headers explícitamente
       const customer = customerResponse.data.data;
       console.log(`Cliente creado: ${customer.id}`);
 
@@ -381,7 +385,7 @@ exports.createWompiSubscription = onCall(
         interval_count: 1, // Cada 1 mes
         amount_in_cents: 8990000, // 89.900 COP en centavos
         currency: "COP",
-      });
+      }, { headers }); // Pasar headers explícitamente
 
       const subscription = subscriptionResponse.data.data;
       console.log(`Suscripción creada: ${subscription.id}`);
