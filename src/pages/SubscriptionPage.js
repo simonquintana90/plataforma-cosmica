@@ -1,29 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import useWompiScript from '../hooks/useWompiScript';
 
 const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
-    const isWompiLoaded = useWompiScript(); // Carga el script de Wompi y verifica si cargó
+    // useWompiScript(); // YA NO SE USA
     const [isProcessing, setIsProcessing] = useState(false);
     const [acceptanceToken, setAcceptanceToken] = useState(null); // <-- AÑADIDO
     const [loadingToken, setLoadingToken] = useState(true); // <-- AÑADIDO
     const [tokenError, setTokenError] = useState(null); // <-- AÑADIDO: Estado de error
-    const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
-    const navigate = useNavigate();
 
-    // --- (NUEVO) Obtener el Token de Aceptación al cargar ---
+    // Estados para los inputs controlados
+    const [cardNumber, setCardNumber] = useState("");
+    const [cvc, setCvc] = useState("");
+    const [cardHolder, setCardHolder] = useState("");
+    const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
+
+    const navigate = useNavigate();
+    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX'; // Tu llave pública
+
+    // --- Obtener el Token de Aceptación al cargar ---
     useEffect(() => {
         const fetchAcceptanceToken = async () => {
             setLoadingToken(true);
             setTokenError(null);
             try {
-                console.log("Iniciando obtención de token de aceptación...");
                 const functions = getFunctions();
                 const getWompiAcceptanceToken = httpsCallable(functions, 'getWompiAcceptanceToken');
                 const result = await getWompiAcceptanceToken();
-
-                console.log("Resultado getWompiAcceptanceToken:", result);
 
                 if (result.data.acceptance_token) {
                     setAcceptanceToken(result.data.acceptance_token);
@@ -52,19 +55,64 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         setExpDate(value);
     };
 
-    // 1. Esta función es llamada por el FORMULARIO de Wompi
-    const handleWompiResponse = async (event) => {
-        event.preventDefault();
+    // Formateo de tarjeta (espacios cada 4 dígitos)
+    const handleCardNumberChange = (e) => {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 16) value = value.slice(0, 16);
+        // Agregar espacios visualmente es opcional, pero para enviar a la API debe ir limpio.
+        // Aquí guardamos el valor limpio o formateado según prefieras. 
+        // Para simplificar, guardamos limpio y mostramos limpio (o podrías usar una librería de máscaras).
+        setCardNumber(value);
+    };
+
+    const handlePayment = async (e) => {
+        e.preventDefault();
+
+        if (!acceptanceToken) {
+            toast.error("Error de inicialización. Recarga la página.");
+            return;
+        }
+
         setIsProcessing(true);
         toast.loading('Procesando tu suscripción...');
 
-        const wompiToken = event.detail.token; // Token de la tarjeta
-
         try {
+            // 1. Tokenizar la tarjeta directamente con la API de Wompi
+            const [expMonth, expYear] = expDate.split('/');
+            if (!expMonth || !expYear || expMonth.length !== 2 || expYear.length !== 2) {
+                throw new Error("Fecha de expiración inválida.");
+            }
+
+            const tokenizationData = {
+                number: cardNumber,
+                cvc: cvc,
+                exp_month: expMonth,
+                exp_year: expYear,
+                card_holder: cardHolder
+            };
+
+            const response = await fetch(`https://production.wompi.co/v1/tokens/cards`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${wompiPublicKey}`
+                },
+                body: JSON.stringify(tokenizationData)
+            });
+
+            const data = await response.json();
+
+            if (response.status !== 200 && response.status !== 201) {
+                console.error("Error Wompi Token:", data);
+                throw new Error(data.error?.messages?.number?.[0] || "Error al verificar la tarjeta.");
+            }
+
+            const wompiToken = data.data.id;
+
+            // 2. Crear la suscripción en el backend
             const functions = getFunctions();
             const createWompiSubscription = httpsCallable(functions, 'createWompiSubscription');
 
-            // 2. Enviamos AMBOS tokens al backend
             const result = await createWompiSubscription({
                 paymentToken: wompiToken,
                 acceptanceToken: acceptanceToken
@@ -74,7 +122,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 const userRef = doc(db, "users", user.uid);
                 await updateDoc(userRef, {
                     initialPaymentStatus: "completed",
-                    subscriptionStatus: "active", // <-- CAMBIO A "active"
+                    subscriptionStatus: "active",
                     subscriptionId: result.data.subscriptionId,
                     paymentSourceId: result.data.paymentSourceId,
                 });
@@ -87,28 +135,12 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
             }
 
         } catch (error) {
-            console.error("Error al crear la suscripción:", error);
+            console.error("Error en el proceso de pago:", error);
             toast.dismiss();
             toast.error(`Error: ${error.message || 'No se pudo procesar el pago.'}`);
             setIsProcessing(false);
         }
     };
-
-    // 5. Añadimos el listener para el evento del formulario de Wompi
-    useEffect(() => {
-        if (!acceptanceToken) return; // No hacer nada si no hay token
-
-        const wompiForm = document.getElementById('wompi-form');
-        if (wompiForm) {
-            wompiForm.addEventListener('wompi:token', handleWompiResponse);
-            return () => {
-                wompiForm.removeEventListener('wompi:token', handleWompiResponse);
-            };
-        }
-    }, [acceptanceToken]); // <-- Se activa cuando el token de aceptación está listo
-
-    // 6. DEBES PONER TU LLAVE PÚBLICA DE WOMPI AQUÍ
-    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX';
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -120,15 +152,14 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
                 <div className="text-center">
-                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Bienvenido a Cósmica, {user.displayName || user.email}!</h1>
+                    {/* Título actualizado sin el nombre */}
+                    <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Bienvenido a Cósmica!</h1>
                     <p className="mt-4 max-w-2xl mx-auto text-slate-500">Último paso. Activa tu suscripción mensual para que nuestro equipo comience a trabajar en tu sitio web.</p>
                 </div>
 
-                {/* 7. Formulario de Wompi */}
                 <form
                     className="max-w-md mx-auto mt-10"
-                    id="wompi-form"
-                    onSubmit={(e) => e.preventDefault()} // <-- PREVENIR RELOAD NATIVO
+                    onSubmit={handlePayment}
                 >
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 relative">
 
@@ -145,6 +176,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                                 <p className="font-bold text-red-600 mb-2">Error de conexión</p>
                                 <p className="text-slate-600 text-sm mb-4">{tokenError}</p>
                                 <button
+                                    type="button"
                                     onClick={() => window.location.reload()}
                                     className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold"
                                 >
@@ -169,46 +201,64 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
 
                         {/* 8. Campos del widget de Wompi */}
                         <div className="mt-8 space-y-4">
-                            <div className="wompi-form-field">
+                            <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-2">Número de tarjeta</label>
-                                <input type="text" data-wompi="card-number" placeholder="0000 0000 0000 0000" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                <input
+                                    type="text"
+                                    placeholder="0000 0000 0000 0000"
+                                    value={cardNumber}
+                                    onChange={handleCardNumberChange}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    required
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="wompi-form-field">
+                                <div>
                                     <label className="block text-sm font-medium text-slate-600 mb-2">Fecha de exp.</label>
                                     <input
                                         type="text"
-                                        data-wompi="card-exp"
                                         placeholder="MM/YY"
                                         value={expDate}
                                         onChange={handleExpDateChange}
                                         className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        required
                                     />
                                 </div>
-                                <div className="wompi-form-field">
+                                <div>
                                     <label className="block text-sm font-medium text-slate-600 mb-2">CVC</label>
-                                    <input type="text" data-wompi="card-cvc" placeholder="123" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                    <input
+                                        type="text"
+                                        placeholder="123"
+                                        value={cvc}
+                                        onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                        className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        required
+                                    />
                                 </div>
                             </div>
-                            <div className="wompi-form-field">
+                            <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-2">Nombre del titular</label>
-                                <input type="text" data-wompi="card-holder" placeholder="Nombre como aparece en la tarjeta" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                                <input
+                                    type="text"
+                                    placeholder="Nombre como aparece en la tarjeta"
+                                    value={cardHolder}
+                                    onChange={(e) => setCardHolder(e.target.value)}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    required
+                                />
                             </div>
                         </div>
 
                         <div className="mt-8">
                             <button
                                 type="submit"
-                                disabled={isProcessing || loadingToken || !isWompiLoaded || !acceptanceToken} // <-- Deshabilitado estricto
+                                disabled={isProcessing || loadingToken || !acceptanceToken}
                                 className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                data-wompi-key={wompiPublicKey}
-                                data-wompi-currency="COP"
                             >
                                 {isProcessing ? 'Procesando...' :
                                     loadingToken ? 'Inicializando...' :
-                                        !isWompiLoaded ? 'Cargando Wompi...' :
-                                            !acceptanceToken ? 'Error de conexión' :
-                                                'Pagar $89.900 COP Ahora'}
+                                        !acceptanceToken ? 'Error de conexión' :
+                                            'Pagar $89.900 COP Ahora'}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>
