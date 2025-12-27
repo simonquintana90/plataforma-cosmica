@@ -177,7 +177,7 @@ exports.cancelWompiSubscription = onCall(
     // Usar clave de PRODUCCIÓN directamente
     const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
 
-    wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
+    // wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`; // NO NECESARIO EN MANUAL
     const db = getFirestore();
 
     try {
