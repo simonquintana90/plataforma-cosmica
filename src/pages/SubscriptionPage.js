@@ -124,7 +124,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 await updateDoc(userRef, {
                     initialPaymentStatus: "completed",
                     subscriptionStatus: "active",
-                    subscriptionId: result.data.subscriptionId,
+                    subscriptionId: "manual_managed", // Ya no hay ID de suscripción de Wompi
+                    lastTransactionId: result.data.transactionId, // Guardamos el ID de la transacción
                     paymentSourceId: result.data.paymentSourceId,
                 });
 
