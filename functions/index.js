@@ -165,46 +165,49 @@ exports.getWompiAcceptanceToken = onCall(
 );
 
 exports.cancelWompiSubscription = onCall(
-  {
-    secrets: ["WOMPI_PRIVATE_KEY"],
-  },
+  {}, // Eliminar secrets si no se usan para evitar errores de configuración
   async (request) => {
+    console.log("Iniciando cancelación de suscripción...");
+
     if (!request.auth) {
+      console.error("Usuario no autenticado.");
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
 
     const userId = request.auth.uid;
-    // Usar clave de PRODUCCIÓN directamente
-    const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
+    console.log(`Usuario autenticado: ${userId}`);
 
-    // wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`; // NO NECESARIO EN MANUAL
+    // Usar clave de PRODUCCIÓN directamente
+    // const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC'; // No se usa en este flujo manual
+
     const db = getFirestore();
 
     try {
+      console.log("Consultando Firestore...");
       const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists || !userDoc.data().subscriptionId || userDoc.data().subscriptionProvider !== 'wompi_manual') {
-        // Nota: Cambié 'wompi' a 'wompi_manual' para coincidir con el nuevo flujo
-        // Pero si es manual, no hay suscripción real en Wompi para cancelar.
-        // Solo actualizamos el estado en Firestore.
-        console.log("Suscripción manual, solo actualizando estado local.");
+
+      if (!userDoc.exists) {
+        console.log("El documento del usuario no existe.");
+      } else {
+        console.log("Datos del usuario:", JSON.stringify(userDoc.data()));
       }
 
-      // Si tuviéramos un ID de suscripción real de Wompi (flujo anterior), intentaríamos cancelarlo.
-      // Pero ahora es manual. Así que solo actualizamos la DB.
-
+      console.log("Actualizando estado en Firestore...");
       await db.collection('users').doc(userId).set({
         subscriptionStatus: 'canceled',
       }, { merge: true });
 
-      console.log(`Suscripción cancelada para usuario ${userId}`);
+      console.log(`Suscripción cancelada exitosamente para usuario ${userId}`);
       return { success: true, message: 'La suscripción ha sido cancelada.' };
 
     } catch (error) {
-      console.error("Error al cancelar la suscripción:", error);
-      throw new functions.https.HttpsError('internal', 'No se pudo cancelar la suscripción.');
+      console.error("Error CRÍTICO al cancelar la suscripción:", error);
+      throw new functions.https.HttpsError('internal', `No se pudo cancelar la suscripción: ${error.message}`);
     }
   }
 );
+
+
 
 exports.wompiWebhook = onRequest(
   { secrets: ["WOMPI_EVENT_TOKEN"] },
