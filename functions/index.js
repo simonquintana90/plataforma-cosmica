@@ -22,6 +22,14 @@ const ADMIN_EMAIL = "simonquintana90@gmail.com";
 // URL de Producción
 const WOMPI_API_BASE = "https://production.wompi.co/v1";
 
+const wompiApi = axios.create({
+  baseURL: WOMPI_API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// ... (existing code)
 // ... (existing code)
 
 exports.createWompiSubscription = onCall(
@@ -509,12 +517,7 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
 
 // --- (NUEVO) FUNCIONES DE WOMPI ---
 
-const wompiApi = axios.create({
-  baseURL: WOMPI_API_BASE,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+
 
 /**
  * (NUEVO) Obtiene el token de aceptación de Wompi.

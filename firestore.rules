@@ -31,6 +31,17 @@ service cloud.firestore {
       match /messages/{messageId} {
          allow read, write: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid);
       }
+      // Messages subcollection
+      match /messages/{messageId} {
+         allow read, write: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid);
+      }
+    }
+
+    // Payouts collection
+    match /payouts/{payoutId} {
+      allow read, create: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      // Allow create if the userId in the data matches the auth uid
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
