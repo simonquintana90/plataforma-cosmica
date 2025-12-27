@@ -278,9 +278,18 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                         </button>
                                     </div>
                                 )}
-                                {(subscription.status === 'inactive' || subscription.status === 'cancelled') && (
-                                    <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                                        <p className="text-sm text-slate-500">No tienes una suscripción activa actualmente.</p>
+                                {(subscription.status === 'inactive' || subscription.status === 'cancelled' || subscription.status === 'canceled') && (
+                                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                        <div>
+                                            <p className="font-bold text-slate-700">Suscripción Inactiva</p>
+                                            <p className="text-sm text-slate-500 mt-1">Reactiva tu plan para continuar disfrutando de cambios ilimitados.</p>
+                                        </div>
+                                        <Link
+                                            to="/suscripcion"
+                                            className="bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            Reactivar
+                                        </Link>
                                     </div>
                                 )}
                             </div>
