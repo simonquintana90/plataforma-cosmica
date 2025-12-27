@@ -19,8 +19,240 @@ initializeApp();
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
-// URL de Sandbox para pruebas
-const WOMPI_API_BASE = "https://sandbox.wompi.co/v1";
+// URL de Producción
+const WOMPI_API_BASE = "https://production.wompi.co/v1";
+
+// ... (existing code)
+
+exports.createWompiSubscription = onCall(
+  {
+    secrets: ["WOMPI_PRIVATE_KEY"], // Correcto: Mayúsculas
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const { paymentToken, acceptanceToken } = request.data;
+    if (!paymentToken || !acceptanceToken) {
+      throw new functions.https.HttpsError('invalid-argument', 'Faltan el token de pago o el token de aceptación.');
+    }
+
+    const userId = request.auth.uid;
+    const userEmail = request.auth.token.email;
+    const userName = request.auth.token.name || userEmail;
+
+    // Usar clave de PRODUCCIÓN directamente
+    const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
+    console.log("DEBUG: Usando Private Key:", wompiPrivateKey);
+
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(userId);
+
+    const headers = {
+      Authorization: `Bearer ${wompiPrivateKey}`
+    };
+
+    try {
+      // 1. Crear Fuente de Pago (la tarjeta tokenizada)
+      console.log(`Creando fuente de pago para ${userEmail}`);
+      const paymentSourceResponse = await wompiApi.post('/payment_sources', {
+        type: "CARD",
+        token: paymentToken,
+        customer_email: userEmail,
+        acceptance_token: acceptanceToken,
+      }, { headers });
+      const paymentSource = paymentSourceResponse.data.data;
+      console.log(`Fuente de pago creada: ${paymentSource.id}`);
+
+      // 2. Realizar el PRIMER COBRO inmediatamente (Suscripción Manual)
+      const amountInCents = 8990000; // 89.900 COP
+      const currency = "COP";
+      const reference = `sub_initial_${userId}_${Date.now()}`;
+
+      // Generar firma de integridad
+      const wompiIntegritySecret = 'prod_integrity_5arGHVwweUk0dR7WcmKebKvuLGUIUEcU';
+      const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
+      const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
+
+      console.log(`Iniciando cobro de suscripción manual: ${reference}`);
+      const transactionResponse = await wompiApi.post('/transactions', {
+        amount_in_cents: amountInCents,
+        currency: currency,
+        customer_email: userEmail,
+        payment_source_id: paymentSource.id,
+        reference: reference,
+        signature: signature, // Firma obligatoria
+        payment_method: {
+          installments: 1 // 1 cuota
+        }
+      }, { headers });
+
+      const transaction = transactionResponse.data.data;
+      console.log(`Transacción creada: ${transaction.id}, Estado: ${transaction.status}`);
+
+      // 3. Guardar info en Firestore y activar usuario
+      await userRef.set({
+        wompiPaymentSourceId: paymentSource.id,
+        subscriptionId: "manual_managed",
+        lastTransactionId: transaction.id,
+        subscriptionProvider: "wompi_manual",
+        subscriptionStatus: "active",
+        initialPaymentStatus: "completed",
+        subscriptionStartDate: admin.firestore.Timestamp.now(),
+        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) // +30 días
+      }, { merge: true });
+
+      // Guardar registro del pago
+      await userRef.collection('payments').doc(transaction.id).set({
+        paymentId: transaction.id,
+        date: admin.firestore.Timestamp.now(),
+        amount: amountInCents / 100,
+        description: "Suscripción Mensual (Primer Pago)",
+        status: transaction.status,
+        reference: reference,
+        type: 'subscription_initial'
+      });
+
+      console.log(`Usuario ${userId} activado. Transacción: ${transaction.id}`);
+      return { status: "success", transactionId: transaction.id, paymentSourceId: paymentSource.id };
+
+    } catch (error) {
+      console.error("Error al procesar el pago en Wompi:", error.response ? error.response.data : error.message);
+      if (error.response && error.response.data && error.response.data.error) {
+        throw new functions.https.HttpsError('internal', JSON.stringify(error.response.data.error.messages) || 'Error de Wompi.');
+      }
+      throw new functions.https.HttpsError('internal', 'No se pudo procesar el pago.');
+    }
+  }
+);
+
+exports.getWompiAcceptanceToken = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    // Usar clave pública de PRODUCCIÓN
+    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX';
+    console.log("DEBUG: Usando Public Key:", wompiPublicKey);
+
+    try {
+      // 1. Obtenemos el "token de aceptación" del comerciante
+      const merchantResponse = await axios.get(`${WOMPI_API_BASE}/merchants/${wompiPublicKey}`);
+      const acceptanceToken = merchantResponse.data.data.presigned_acceptance.acceptance_token;
+
+      if (!acceptanceToken) {
+        throw new Error('No se pudo obtener el token de aceptación del comerciante.');
+      }
+
+      return { acceptance_token: acceptanceToken };
+
+    } catch (error) {
+      console.error("Error al obtener token de aceptación de Wompi:", error.response ? error.response.data : error.message);
+      throw new functions.https.HttpsError('internal', 'No se pudo inicializar el pago.');
+    }
+  }
+);
+
+exports.cancelWompiSubscription = onCall(
+  {
+    secrets: ["WOMPI_PRIVATE_KEY"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const userId = request.auth.uid;
+    // Usar clave de PRODUCCIÓN directamente
+    const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
+
+    wompiApi.defaults.headers.common['Authorization'] = `Bearer ${wompiPrivateKey}`;
+    const db = getFirestore();
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists || !userDoc.data().subscriptionId || userDoc.data().subscriptionProvider !== 'wompi_manual') {
+        // Nota: Cambié 'wompi' a 'wompi_manual' para coincidir con el nuevo flujo
+        // Pero si es manual, no hay suscripción real en Wompi para cancelar.
+        // Solo actualizamos el estado en Firestore.
+        console.log("Suscripción manual, solo actualizando estado local.");
+      }
+
+      // Si tuviéramos un ID de suscripción real de Wompi (flujo anterior), intentaríamos cancelarlo.
+      // Pero ahora es manual. Así que solo actualizamos la DB.
+
+      await db.collection('users').doc(userId).set({
+        subscriptionStatus: 'canceled',
+      }, { merge: true });
+
+      console.log(`Suscripción cancelada para usuario ${userId}`);
+      return { success: true, message: 'La suscripción ha sido cancelada.' };
+
+    } catch (error) {
+      console.error("Error al cancelar la suscripción:", error);
+      throw new functions.https.HttpsError('internal', 'No se pudo cancelar la suscripción.');
+    }
+  }
+);
+
+exports.wompiWebhook = onRequest(
+  { secrets: ["WOMPI_EVENT_TOKEN"] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method Not Allowed');
+    }
+
+    // Usar token de eventos de PRODUCCIÓN
+    const eventsToken = 'prod_events_EA8U2uHfINkWRNIyWcSzOjtpmWNi9hLj';
+    const requestBody = req.rawBody.toString();
+
+    // TODO: Implementar la verificación de firma HMAC si Wompi la envía.
+
+    console.log("Webhook de Wompi recibido:", JSON.stringify(req.body));
+
+    const event = req.body;
+    const db = getFirestore();
+
+    try {
+      const { data, event: eventType } = event;
+
+      if (eventType === 'transaction.updated') {
+        const { transaction } = data;
+        // Solo nos interesan transacciones aprobadas con referencia de suscripción
+        if (transaction.status === 'APPROVED' && transaction.reference && transaction.reference.startsWith('sub_')) {
+          // Buscar usuario por referencia o email si es posible, o guardar el pago suelto.
+          // En este caso, la referencia tiene el userId: sub_initial_${userId}_...
+          const parts = transaction.reference.split('_');
+          if (parts.length >= 3) {
+            const userId = parts[2];
+
+            // Guardar en el historial de pagos
+            const paymentRef = db.collection('users').doc(userId).collection('payments').doc(transaction.id);
+            await paymentRef.set({
+              paymentId: transaction.id,
+              date: admin.firestore.Timestamp.fromDate(new Date(transaction.created_at)),
+              amount: transaction.amount_in_cents / 100, // Almacenar en COP
+              description: "Pago de suscripción mensual (Webhook)",
+              status: 'approved',
+              type: 'subscription',
+              reference: transaction.reference,
+            });
+            console.log(`Pago ${transaction.id} registrado para usuario ${userId} vía Webhook`);
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error("Error al procesar el webhook de Wompi:", error.message);
+      return res.status(500).send("Error interno");
+    }
+
+    res.status(200).send("OK");
+  }
+);
 
 // --- NOTIFICACIONES Y LÓGICA DE LA APP (TUS FUNCIONES) ---
 
@@ -373,7 +605,7 @@ exports.createWompiSubscription = onCall(
       const reference = `sub_initial_${userId}_${Date.now()}`;
 
       // Generar firma de integridad
-      const wompiIntegritySecret = 'test_integrity_VBK64NlZECr9POjoSv41dCHmrslP1j0c';
+      const wompiIntegritySecret = 'prod_integrity_5arGHVwweUk0dR7WcmKebKvuLGUIUEcU';
       const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
       const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
 
@@ -491,7 +723,8 @@ exports.wompiWebhook = onRequest(
     }
 
     // Usar token de prueba directamente (IGNORAR secrets para asegurar entorno de pruebas)
-    const eventsToken = 'test_events_T6YZmeNXEkeCwmZ3W6N911rfnd1jjENU';
+    // Usar token de eventos de PRODUCCIÓN
+    const eventsToken = 'prod_events_EA8U2uHfINkWRNIyWcSzOjtpmWNi9hLj';
     const requestBody = req.rawBody.toString();
 
     // TODO: Implementar la verificación de firma HMAC si Wompi la envía.
@@ -711,3 +944,94 @@ exports.uploadLogo = functions.https.onRequest((req, res) => {
     busboy.end(req.rawBody);
   });
 });
+
+/**
+ * (NUEVO) Notifica al usuario que su sitio web está listo.
+ * Se llama desde el Panel de Admin.
+ */
+exports.notifyUserSiteReady = onCall(
+  {
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    // Verificar si es Admin
+    if (request.auth.uid !== ADMIN_UID) {
+      throw new functions.https.HttpsError('permission-denied', 'Solo el administrador puede realizar esta acción.');
+    }
+
+    const { userId, provisionalUrl, dnsInstructions } = request.data;
+    if (!userId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Falta el ID del usuario.');
+    }
+
+    const db = getFirestore();
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'Usuario no encontrado.');
+      }
+
+      const userData = userDoc.data();
+      const userEmail = userData.email;
+      const userName = userData.displayName || "Cliente";
+
+      // Guardar información en Firestore para el Dashboard del usuario
+      await db.collection('users').doc(userId).update({
+        siteReady: true,
+        provisionalUrl: provisionalUrl || null,
+        dnsInstructions: dnsInstructions || null,
+        siteReadyDate: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      const emailHtml = `
+        <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+          </div>
+          <div style="padding: 20px 30px;">
+            <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Tu sitio web está listo! 🚀</h1>
+            <p>Hola, <strong>${userName}</strong>.</p>
+            <p>Nos complace informarte que tu página web ha sido finalizada.</p>
+            
+            ${provisionalUrl ? `
+            <div style="background-color: #f0f7ff; border-left: 4px solid #3e6cff; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-weight: bold; color: #3e6cff;">Link Provisional:</p>
+                <p style="margin: 5px 0 0;"><a href="${provisionalUrl}" target="_blank" style="color: #333; text-decoration: underline;">${provisionalUrl}</a></p>
+            </div>` : ''}
+
+            ${dnsInstructions ? `
+            <div style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-weight: bold; color: #b78a00;">Instrucciones para tu Dominio:</p>
+                <p style="margin: 5px 0 0; white-space: pre-wrap;">${dnsInstructions}</p>
+            </div>` : ''}
+
+            <p>Por favor, ingresa a tu cuenta para ver todos los detalles.</p>
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="https://app.cosmicaweb.com" style="background-color: #3e6cff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a mi cuenta</a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      await resend.emails.send({
+        from: "Cósmica Web <notificaciones@send.cosmicaweb.com>",
+        to: userEmail,
+        subject: "¡Tu sitio web está listo! 🚀",
+        html: emailHtml,
+      });
+
+      console.log(`Notificación de sitio listo enviada a ${userEmail}`);
+      return { success: true, message: 'Notificación enviada.' };
+
+    } catch (error) {
+      console.error("Error al enviar notificación de sitio listo:", error);
+      throw new functions.https.HttpsError('internal', 'No se pudo enviar la notificación.');
+    }
+  }
+);

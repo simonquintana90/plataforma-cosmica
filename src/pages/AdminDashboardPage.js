@@ -6,6 +6,8 @@ import Skeleton from '../components/Skeleton';
 import { motion } from 'framer-motion';
 import PageTransition from '../components/PageTransition';
 
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc }) => {
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
@@ -69,6 +71,31 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         } finally {
             setApprovingUserId(null);
         }
+    };
+
+    // Estado para el modal de notificación
+    const [notificationModal, setNotificationModal] = useState({ isOpen: false, userId: null, userName: '' });
+    const [notificationData, setNotificationData] = useState({ provisionalUrl: '', dnsInstructions: '' });
+
+    const handleNotifyUser = async (userId) => {
+        setNotificationModal({ isOpen: false, userId: null, userName: '' }); // Cerrar modal
+        const notifyUserSiteReady = httpsCallable(getFunctions(), 'notifyUserSiteReady');
+
+        toast.promise(
+            notifyUserSiteReady({
+                userId: userId,
+                provisionalUrl: notificationData.provisionalUrl,
+                dnsInstructions: notificationData.dnsInstructions
+            }),
+            {
+                loading: 'Enviando notificación...',
+                success: '¡Notificación enviada!',
+                error: 'Error al enviar notificación'
+            }
+        );
+
+        // Limpiar datos
+        setNotificationData({ provisionalUrl: '', dnsInstructions: '' });
     };
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -214,6 +241,19 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                                     {approvingUserId === u.id ? 'Aprobando...' : 'Aprobar'}
                                                 </button>
                                             )}
+
+                                            {/* BOTÓN PARA NOTIFICAR WEB LISTA */}
+                                            {u.status === 'approved' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setNotificationModal({ isOpen: true, userId: u.id, userName: u.displayName });
+                                                    }}
+                                                    className="bg-indigo-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                                >
+                                                    Notificar Web Lista 🚀
+                                                </button>
+                                            )}
                                         </div>
                                     </Link>
                                 </li>
@@ -222,6 +262,54 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                     </div>
                 )}
             </main>
+
+            {/* MODAL DE NOTIFICACIÓN */}
+            {notificationModal.isOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+                        <h3 className="text-xl font-bold text-slate-900 mb-4">Notificar a {notificationModal.userName}</h3>
+                        <p className="text-sm text-slate-500 mb-4">Ingresa los detalles finales para el cliente.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Link Provisional (Vercel)</label>
+                                <input
+                                    type="text"
+                                    placeholder="https://cliente.vercel.app"
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    value={notificationData.provisionalUrl}
+                                    onChange={(e) => setNotificationData({ ...notificationData, provisionalUrl: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Instrucciones DNS (Opcional)</label>
+                                <textarea
+                                    rows="4"
+                                    placeholder="Ej: Configura un registro A apuntando a 76.76.21.21..."
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    value={notificationData.dnsInstructions}
+                                    onChange={(e) => setNotificationData({ ...notificationData, dnsInstructions: e.target.value })}
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={() => setNotificationModal({ isOpen: false, userId: null, userName: '' })}
+                                className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => handleNotifyUser(notificationModal.userId)}
+                                className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                                Enviar Notificación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

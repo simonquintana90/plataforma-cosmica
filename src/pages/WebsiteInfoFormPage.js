@@ -256,7 +256,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">Tu dominio <span className="text-red-500">*</span></label>
-                                <p className="text-xs text-slate-500 mb-2">Tu empresa solo debe tener un dominio.</p>
+                                <p className="text-xs text-slate-500 mb-2">Si aún no tienes uno, te recomendamos adquirirlo en proveedores como <strong>GoDaddy</strong> o <strong>Dreamhost</strong>.</p>
                                 <input type="text" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="Ej: solucioneslegales.com" />
                             </div>
 
@@ -319,7 +319,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                                     </div>
                                 </div>
 
-                                <div>
+                                {/* <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Tipografía</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 border border-slate-100 rounded-lg custom-scrollbar">
                                         {FONT_OPTIONS.map((font) => (
@@ -333,7 +333,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
                                             </div>
                                         ))}
                                     </div>
-                                </div>
+                                </div> */}
                             </div>
 
                             <div>
