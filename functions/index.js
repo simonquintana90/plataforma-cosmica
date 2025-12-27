@@ -369,15 +369,22 @@ exports.createWompiSubscription = onCall(
       // 2. Realizar el PRIMER COBRO inmediatamente (Suscripción Manual)
       // Usamos la fuente de pago recién creada
       const amountInCents = 8990000; // 89.900 COP
+      const currency = "COP";
       const reference = `sub_initial_${userId}_${Date.now()}`;
+
+      // Generar firma de integridad
+      const wompiIntegritySecret = 'test_integrity_VBK64NlZECr9POjoSv41dCHmrslP1j0c';
+      const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
+      const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
 
       console.log(`Iniciando cobro de suscripción manual: ${reference}`);
       const transactionResponse = await wompiApi.post('/transactions', {
         amount_in_cents: amountInCents,
-        currency: "COP",
+        currency: currency,
         customer_email: userEmail,
         payment_source_id: paymentSource.id, // Cobrar a la fuente de pago
         reference: reference,
+        signature: signature, // Firma obligatoria
         payment_method: {
           installments: 1 // 1 cuota
         }
