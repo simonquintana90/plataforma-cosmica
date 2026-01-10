@@ -13,45 +13,51 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            setLoading(true);
-            const userDocRef = doc(db, "users", userId);
+    const [notifyModalOpen, setNotifyModalOpen] = useState(false);
+    const [notifyData, setNotifyData] = useState({ provisionalUrl: '', dnsARecord: '', dnsCnameRecord: '' });
+    const [notifyLoading, setNotifyLoading] = useState(false);
 
-            const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setUserDetail(data);
-                    setWebsiteInfo(data.websiteInfo || {});
-                } else {
-                    setUserDetail(null);
-                }
+    // ... existing useEffect ...
+
+    // ... existing handlers ...
+
+    const handleNotifyReady = async (e) => {
+        e.preventDefault();
+        setNotifyLoading(true);
+        toast.loading("Enviando notificación...");
+
+        // Construir el string de instrucciones
+        let dnsInstructions = '';
+        if (notifyData.dnsARecord) {
+            dnsInstructions += `Type: A\nName: @\nValue: ${notifyData.dnsARecord}\n\n`;
+        }
+        if (notifyData.dnsCnameRecord) {
+            dnsInstructions += `Type: CNAME\nName: www\nValue: ${notifyData.dnsCnameRecord}`;
+        }
+
+        try {
+            const notifyUserSiteReady = httpsCallable(getFunctions(), 'notifyUserSiteReady');
+            await notifyUserSiteReady({
+                userId: userId,
+                provisionalUrl: notifyData.provisionalUrl,
+                dnsInstructions: dnsInstructions.trim()
             });
 
-            const requestsQuery = query(collection(db, "requests"), where("userId", "==", userId), orderBy("createdAt", "desc"));
-            const unsubscribeRequests = onSnapshot(requestsQuery, (qSnapshot) => {
-                setUserRequests(qSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
+            toast.dismiss();
+            toast.success("¡Usuario notificado con éxito!");
+            setNotifyModalOpen(false);
 
-            try {
-                const getPaymentHistory = httpsCallable(getFunctions(), 'getPaymentHistory');
-                const result = await getPaymentHistory({ userId: userId });
-                setPaymentHistory(result.data);
-            } catch (error) {
-                console.error("Error fetching payment history:", error);
-                toast.error("No se pudo cargar el historial de pagos.");
-            }
+            // Manually update local state to reflect change immediately without waiting for snapshot
+            setUserDetail(prev => ({ ...prev, siteReady: true }));
 
-            setLoading(false);
-
-            return () => {
-                unsubscribeUser();
-                unsubscribeRequests();
-            };
-        };
-
-        fetchUserData();
-    }, [userId, db, doc, getFunctions, httpsCallable, collection, query, where, orderBy, onSnapshot]);
+        } catch (error) {
+            console.error("Error sending notification:", error);
+            toast.dismiss();
+            toast.error("Error al notificar al usuario.");
+        } finally {
+            setNotifyLoading(false);
+        }
+    };
 
     const handleInfoChange = (e) => {
         const { name, value } = e.target;
@@ -81,9 +87,6 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
             setIsSaving(false);
         }
     };
-
-    if (loading) return <div className="flex justify-center items-center min-h-screen">Cargando datos del usuario...</div>;
-    if (!userDetail) return <div className="flex justify-center items-center min-h-screen">No se encontró al usuario.</div>;
 
     const renderWebsiteInfo = () => {
         const fields = [
@@ -156,10 +159,102 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
 
     return (
         <div className="min-h-screen bg-slate-50">
+            {notifyModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+                        <div className="p-6 border-b border-slate-100">
+                            <h3 className="text-xl font-bold text-slate-900">Notificar Sitio Listo 🚀</h3>
+                            <p className="text-sm text-slate-500 mt-1">Envía las instrucciones finales al cliente.</p>
+                        </div>
+                        <form onSubmit={handleNotifyReady} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">URL Provisional / Final</label>
+                                <input
+                                    type="url"
+                                    required
+                                    placeholder="https://cliente.webflow.io"
+                                    value={notifyData.provisionalUrl}
+                                    onChange={(e) => setNotifyData({ ...notifyData, provisionalUrl: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Registros DNS a configurar</label>
+                                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    {/* A Record */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-slate-600 uppercase">Registro A (@)</label>
+                                            <span className="text-[10px] text-slate-400 font-mono">Type: A | Name: @</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: 76.76.21.21"
+                                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm"
+                                            value={notifyData.dnsARecord || ''}
+                                            onChange={(e) => setNotifyData({ ...notifyData, dnsARecord: e.target.value })}
+                                        />
+                                    </div>
+
+                                    {/* CNAME Record */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-slate-600 uppercase">Registro CNAME (www)</label>
+                                            <span className="text-[10px] text-slate-400 font-mono">Type: CNAME | Name: www</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: cname.vercel-dns.com"
+                                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm"
+                                            value={notifyData.dnsCnameRecord || ''}
+                                            onChange={(e) => setNotifyData({ ...notifyData, dnsCnameRecord: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setNotifyModalOpen(false)}
+                                    className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={notifyLoading}
+                                    className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/20"
+                                >
+                                    {notifyLoading ? 'Enviando...' : 'Enviar Notificación'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
                     <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Logo Cósmica" className="h-6 w-auto" />
-                    <Link to="/admin" className="text-sm font-bold text-blue-600 hover:underline">← Volver al Panel</Link>
+                    <div className="flex items-center gap-4">
+
+                        {userDetail.siteReady ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                Sitio Notificado
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => setNotifyModalOpen(true)}
+                                className="text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-all shadow-md shadow-slate-900/10 flex items-center gap-2"
+                            >
+                                <span>🚀</span> Notificar Sitio Listo
+                            </button>
+                        )}
+                        <Link to="/admin" className="text-sm font-bold text-blue-600 hover:underline">← Volver</Link>
+                    </div>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

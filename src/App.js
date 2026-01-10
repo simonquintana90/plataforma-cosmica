@@ -10,12 +10,15 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const WebsiteInfoFormPage = lazy(() => import('./pages/WebsiteInfoFormPage'));
 const RequestDetailPage = lazy(() => import('./pages/RequestDetailPage'));
 const MyAccountPage = lazy(() => import('./pages/MyAccountPage'));
+const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
+const ReferralsPage = lazy(() => import('./pages/ReferralsPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminUserDetailPage = lazy(() => import('./pages/AdminUserDetailPage'));
 const TemplateGalleryPage = lazy(() => import('./pages/TemplateGalleryPage'));
 const AIBuilderPage = lazy(() => import('./pages/AIBuilderPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const ProfileErrorPage = lazy(() => import('./pages/ProfileErrorPage'));
+
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
@@ -77,6 +80,8 @@ const AppRoutes = () => {
             } />
             <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
             <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
+            <Route path="/conexiones" element={<ConnectionsPage user={user} {...firebaseServices} />} />
+            <Route path="/referidos" element={<ReferralsPage user={user} {...firebaseServices} />} />
             <Route path="/suscripcion" element={<SubscriptionPage user={user} auth={firebaseServices.auth} {...firebaseServices} />} />
 
             <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />

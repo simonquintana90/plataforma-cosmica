@@ -1,3 +1,10 @@
+import { getFunctions, httpsCallable } from 'firebase/functions'; // REMOVED via update, but tool needs valid replacement. 
+// Actually I will just remove the import in one chunk and update props in another or combined.
+
+// Combined approach:
+// Remove import line 9.
+// Update props line 11.
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -6,9 +13,9 @@ import Skeleton from '../components/Skeleton';
 import { motion } from 'framer-motion';
 import PageTransition from '../components/PageTransition';
 
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// import { getFunctions, httpsCallable } from 'firebase/functions'; // REMOVING THIS LINE
 
-const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc }) => {
+const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, getFunctions, httpsCallable }) => {
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
@@ -18,6 +25,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
     const [completingRequestId, setCompletingRequestId] = useState(null);
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
+    const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
 
     useEffect(() => {
         setLoadingRequests(true);
@@ -75,17 +83,26 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
     // Estado para el modal de notificación
     const [notificationModal, setNotificationModal] = useState({ isOpen: false, userId: null, userName: '' });
-    const [notificationData, setNotificationData] = useState({ provisionalUrl: '', dnsInstructions: '' });
+    const [notificationData, setNotificationData] = useState({ provisionalUrl: '', dnsARecord: '', dnsCnameRecord: '' });
 
     const handleNotifyUser = async (userId) => {
         setNotificationModal({ isOpen: false, userId: null, userName: '' }); // Cerrar modal
         const notifyUserSiteReady = httpsCallable(getFunctions(), 'notifyUserSiteReady');
 
+        // Construir el string de instrucciones
+        let dnsInstructions = '';
+        if (notificationData.dnsARecord) {
+            dnsInstructions += `Type: A\nName: @\nValue: ${notificationData.dnsARecord}\n\n`;
+        }
+        if (notificationData.dnsCnameRecord) {
+            dnsInstructions += `Type: CNAME\nName: www\nValue: ${notificationData.dnsCnameRecord}`;
+        }
+
         toast.promise(
             notifyUserSiteReady({
                 userId: userId,
                 provisionalUrl: notificationData.provisionalUrl,
-                dnsInstructions: notificationData.dnsInstructions
+                dnsInstructions: dnsInstructions.trim()
             }),
             {
                 loading: 'Enviando notificación...',
@@ -95,7 +112,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         );
 
         // Limpiar datos
-        setNotificationData({ provisionalUrl: '', dnsInstructions: '' });
+        setNotificationData({ provisionalUrl: '', dnsARecord: '', dnsCnameRecord: '' });
     };
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -151,7 +168,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
                 <div className="border-b border-slate-200 mb-6">
                     <nav className="flex space-x-4">
-                        <button onClick={() => setActiveTab('requests')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'requests' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Solicitudes ({filteredRequests.length})</button>
+                        <button onClick={() => setActiveTab('requests')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'requests' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Solicitudes ({pendingRequestsCount})</button>
                         <button onClick={() => setActiveTab('users')} className={`relative px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'users' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>
                             Todos los Usuarios ({filteredUsers.length})
                             {pendingUsersCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsersCount}</span></span>}
@@ -282,14 +299,38 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Instrucciones DNS (Opcional)</label>
-                                <textarea
-                                    rows="4"
-                                    placeholder="Ej: Configura un registro A apuntando a 76.76.21.21..."
-                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                    value={notificationData.dnsInstructions}
-                                    onChange={(e) => setNotificationData({ ...notificationData, dnsInstructions: e.target.value })}
-                                ></textarea>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Registros DNS a configurar</label>
+                                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    {/* A Record */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-slate-600 uppercase">Registro A (@)</label>
+                                            <span className="text-[10px] text-slate-400 font-mono">Type: A | Name: @</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: 76.76.21.21"
+                                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono text-sm"
+                                            value={notificationData.dnsARecord || ''}
+                                            onChange={(e) => setNotificationData({ ...notificationData, dnsARecord: e.target.value })}
+                                        />
+                                    </div>
+
+                                    {/* CNAME Record */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-slate-600 uppercase">Registro CNAME (www)</label>
+                                            <span className="text-[10px] text-slate-400 font-mono">Type: CNAME | Name: www</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: cname.vercel-dns.com"
+                                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono text-sm"
+                                            value={notificationData.dnsCnameRecord || ''}
+                                            onChange={(e) => setNotificationData({ ...notificationData, dnsCnameRecord: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

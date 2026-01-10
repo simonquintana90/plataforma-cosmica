@@ -41,7 +41,7 @@ exports.createWompiSubscription = onCall(
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
 
-    const { paymentToken, acceptanceToken } = request.data;
+    const { paymentToken, acceptanceToken, planInterval = 'monthly' } = request.data;
     if (!paymentToken || !acceptanceToken) {
       throw new functions.https.HttpsError('invalid-argument', 'Faltan el token de pago o el token de aceptación.');
     }
@@ -74,16 +74,25 @@ exports.createWompiSubscription = onCall(
       console.log(`Fuente de pago creada: ${paymentSource.id}`);
 
       // 2. Realizar el PRIMER COBRO inmediatamente (Suscripción Manual)
-      const amountInCents = 8990000; // 89.900 COP
+      let amountInCents = 8990000; // Default: Mensual 89.900 COP
+      let nextPaymentDays = 30;
+      let planDescription = "Suscripción Mensual";
+
+      if (planInterval === 'yearly') {
+        amountInCents = 100000000; // Anual 1.000.000 COP
+        nextPaymentDays = 365;
+        planDescription = "Suscripción Anual";
+      }
+
       const currency = "COP";
-      const reference = `sub_initial_${userId}_${Date.now()}`;
+      const reference = `sub_${planInterval}_${userId}_${Date.now()}`;
 
       // Generar firma de integridad
       const wompiIntegritySecret = 'prod_integrity_5arGHVwweUk0dR7WcmKebKvuLGUIUEcU';
       const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
       const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
 
-      console.log(`Iniciando cobro de suscripción manual: ${reference}`);
+      console.log(`Iniciando cobro de suscripción manual (${planInterval}): ${reference}`);
       const transactionResponse = await wompiApi.post('/transactions', {
         amount_in_cents: amountInCents,
         currency: currency,
@@ -106,9 +115,10 @@ exports.createWompiSubscription = onCall(
         lastTransactionId: transaction.id,
         subscriptionProvider: "wompi_manual",
         subscriptionStatus: "active",
+        subscriptionInterval: planInterval, // 'monthly' or 'yearly'
         initialPaymentStatus: "completed",
         subscriptionStartDate: admin.firestore.Timestamp.now(),
-        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) // +30 días
+        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000))
       }, { merge: true });
 
       // Guardar registro del pago
@@ -116,7 +126,7 @@ exports.createWompiSubscription = onCall(
         paymentId: transaction.id,
         date: admin.firestore.Timestamp.now(),
         amount: amountInCents / 100,
-        description: "Suscripción Mensual (Primer Pago)",
+        description: `${planDescription} (Primer Pago)`,
         status: transaction.status,
         reference: reference,
         type: 'subscription_initial'
@@ -720,7 +730,7 @@ exports.notifyUserSiteReady = onCall(
           <div style="padding: 20px 30px;">
             <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Tu sitio web está listo! 🚀</h1>
             <p>Hola, <strong>${userName}</strong>.</p>
-            <p>Nos complace informarte que tu página web ha sido finalizada.</p>
+            <p>Nos complace informarte que hemos terminado la construcción de tu sitio web.</p>
             
             ${provisionalUrl ? `
             <div style="background-color: #f0f7ff; border-left: 4px solid #3e6cff; padding: 15px; margin: 20px 0;">
@@ -729,12 +739,17 @@ exports.notifyUserSiteReady = onCall(
             </div>` : ''}
 
             ${dnsInstructions ? `
+            <h3 style="color: #0D0D0D; font-size: 18px; margin-top: 25px;">Pasos para conectar tu dominio:</h3>
+            <p>Para finalizar la conexión con tu dominio propio, por favor <strong>comunícate con tu proveedor de dominio</strong> (donde compraste tu .com) e infórmales que deseas cambiar los registros DNS por los siguientes:</p>
+            
             <div style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
-                <p style="margin: 0; font-weight: bold; color: #b78a00;">Instrucciones para tu Dominio:</p>
-                <p style="margin: 5px 0 0; white-space: pre-wrap;">${dnsInstructions}</p>
-            </div>` : ''}
+                <p style="margin: 0; font-weight: bold; color: #b78a00;">Registros DNS:</p>
+                <p style="margin: 5px 0 0; white-space: pre-wrap; font-family: monospace;">${dnsInstructions}</p>
+            </div>
+            
+            <p>Una vez realices este cambio, avísanos para activar el certificado SSL final.</p>` : ''}
 
-            <p>Por favor, ingresa a tu cuenta para ver todos los detalles.</p>
+            <p style="margin-top: 30px;">Por favor, ingresa a tu cuenta para ver todos los detalles.</p>
             <div style="text-align: center; margin-top: 30px;">
                 <a href="https://app.cosmicaweb.com" style="background-color: #3e6cff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a mi cuenta</a>
             </div>

@@ -44,6 +44,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         fetchAcceptanceToken();
     }, [getFunctions, httpsCallable]);
 
+    const [planInterval, setPlanInterval] = useState('monthly'); // 'monthly' | 'yearly'
+
     // Formateo de fecha MM/YY
     const handleExpDateChange = (e) => {
         let value = e.target.value.replace(/\D/g, ''); // Solo números
@@ -116,7 +118,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
 
             const result = await createWompiSubscription({
                 paymentToken: wompiToken,
-                acceptanceToken: acceptanceToken
+                acceptanceToken: acceptanceToken,
+                planInterval: planInterval // Enviamos el plan seleccionado
             });
 
             if (result.data.status === 'success') {
@@ -156,7 +159,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 <div className="text-center">
                     {/* Título actualizado sin el nombre */}
                     <h1 className="font-heading text-3xl md:text-4xl font-bold text-slate-900">¡Bienvenido a Cósmica!</h1>
-                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Último paso. Activa tu suscripción mensual para que nuestro equipo comience a trabajar en tu sitio web.</p>
+                    <p className="mt-4 max-w-2xl mx-auto text-slate-500">Último paso. Activa tu suscripción para que nuestro equipo comience a trabajar en tu sitio web.</p>
                 </div>
 
                 <form
@@ -187,13 +190,50 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                             </div>
                         )}
 
+                        {/* SELECCIÓN DE PLAN */}
+                        <div className="flex bg-slate-100 rounded-lg p-1 mb-8">
+                            <button
+                                type="button"
+                                onClick={() => setPlanInterval('monthly')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${planInterval === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Mensual
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPlanInterval('yearly')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${planInterval === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Anual
+                                <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full border border-green-200">Ahorra 7%</span>
+                            </button>
+                        </div>
+
                         <h3 className="font-heading text-xl font-bold text-slate-900 text-center">
-                            Suscripción Mensual
+                            {planInterval === 'monthly' ? 'Suscripción Mensual' : 'Suscripción Anual'}
                         </h3>
-                        <p className="text-slate-500 mt-2 text-center">
-                            <span className="text-3xl font-bold text-slate-800">$89.900</span>
-                            <span className="text-slate-500"> COP / mes</span>
-                        </p>
+                        <div className="text-center mt-2 flex flex-col items-center justify-center h-20 transition-all duration-300">
+                            {/* Usamos key para forzar re-render y animación simple si se deseara, aunque aquí es directo */}
+                            {planInterval === 'monthly' ? (
+                                <p key="monthly" className="animate-fadeIn">
+                                    <span className="text-4xl font-bold text-slate-800">$89.900</span>
+                                    <span className="text-slate-500"> COP / mes</span>
+                                </p>
+                            ) : (
+                                <div key="yearly" className="animate-fadeIn flex flex-col items-center">
+                                    <p>
+                                        <span className="text-4xl font-bold text-slate-800">$1.000.000</span>
+                                        <span className="text-slate-500"> COP / año</span>
+                                    </p>
+                                    <p className="text-xs text-green-600 font-medium mt-1">
+                                        ¡Ahorras $78.800 al año!
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
 
                         <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
                             <p className="text-sm text-blue-800">
@@ -260,7 +300,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                                 {isProcessing ? 'Procesando...' :
                                     loadingToken ? 'Inicializando...' :
                                         !acceptanceToken ? 'Error de conexión' :
-                                            'Pagar $89.900 COP Ahora'}
+                                            `Pagar ${planInterval === 'monthly' ? '$89.900' : '$1.000.000'} COP Ahora`}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>
