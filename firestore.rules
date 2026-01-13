@@ -25,6 +25,16 @@ service cloud.firestore {
         // Payments are created via backend functions mostly, but allow write if needed for testing or specific admin overrides
         allow write: if isAdmin();
       }
+
+      // Landing Pages subcollection
+      match /landingPages/{pageId} {
+          allow read, write: if isAdmin() || isOwner(userId);
+      }
+
+      // Monthly Analytics subcollection
+      match /analytics_monthly/{monthId} {
+          allow read: if isAdmin() || isOwner(userId);
+      }
     }
 
     // Requests collection

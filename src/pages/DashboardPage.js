@@ -261,7 +261,10 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 {/* Visits Card (Monthly) */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-5xl">👁️</span>
+                        <svg className="w-16 h-16 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                     </div>
                     <div className="flex justify-between items-start mb-2">
                         <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Visitas</h3>
@@ -280,7 +283,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 {/* Clicks Card (Monthly) */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-5xl">👆</span>
+                        <svg className="w-16 h-16 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
                     </div>
                     <div className="flex justify-between items-start mb-2">
                         <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Clics</h3>
@@ -299,7 +304,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 {/* Conversion Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-5xl">🎯</span>
+                        <svg className="w-16 h-16 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                     </div>
                     <div className="flex justify-between items-start mb-2">
                         <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Conversión</h3>
@@ -313,7 +320,9 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 {/* Status/Requests Summary Card - Replacing the redundant Totals */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-5xl">⚡</span>
+                        <svg className="w-16 h-16 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                     </div>
                     <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Estado Plan</h3>
                     <div className="mt-1">
