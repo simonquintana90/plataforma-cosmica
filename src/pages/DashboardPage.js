@@ -58,8 +58,15 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setSubscription({ status: data.subscriptionStatus || 'inactive' });
+                // Restore global counters if needed, though we are focusing on monthly now.
+                // But the user said "counters stopped working", implying they might care about totals OR 
+                // just that the new ones were 0. Let's set them just in case specific logic uses them.
+                setVisitCount(data.visitCount || 0);
+                setClickCount(data.clickCount || 0);
             } else {
                 setSubscription({ status: 'inactive' });
+                setVisitCount(0);
+                setClickCount(0);
             }
         });
         return () => unsubscribe();
@@ -194,68 +201,46 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-green-500/10 rounded-full blur-3xl"></div>
                         <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
 
-                        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
-                            <div className="bg-green-500/20 p-4 rounded-2xl border border-green-500/30 backdrop-blur-sm">
-                                <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-heading font-bold mb-2">¡Tu sitio web está en línea! 🚀</h2>
-                                <p className="text-slate-300 max-w-2xl leading-relaxed">
-                                    Ya hemos completado tu sitio. Aquí tienes los detalles de acceso y configuración.
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h2 className="text-2xl font-bold mb-2">¡Tu sitio está activo! 🚀</h2>
+                                <p className="text-slate-400 max-w-xl">
+                                    Tu plataforma está funcionando correctamente. Aquí tienes el resumen de tu actividad reciente.
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="relative z-10 mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {user.provisionalUrl && (
-                                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Link Provisional</p>
-                                    <a href={user.provisionalUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 font-bold text-lg hover:underline truncate block">
-                                        {user.provisionalUrl}
-                                    </a>
-                                </div>
-                            )}
-                            {user.dnsInstructions && (
-                                <div className="bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-xl p-5">
-                                    <p className="text-xs font-bold text-amber-500/80 uppercase tracking-widest mb-2">Configuración DNS</p>
-                                    <p className="text-sm text-amber-200/90 font-mono whitespace-pre-wrap">
-                                        {user.dnsInstructions}
-                                    </p>
-                                </div>
-                            )}
+                            <div>
+                                <a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold backdrop-blur-sm transition-all flex items-center gap-2">
+                                    <span>💬</span> Soporte
+                                </a>
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="relative overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-                        <div className="flex items-start gap-5">
-                            <div className="bg-blue-50 p-3 rounded-xl">
-                                <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-900 text-lg mb-1">Estamos construyendo tu sitio 🏗️</h3>
-                                <p className="text-slate-500 leading-relaxed">
-                                    Nuestro equipo de diseño y desarrollo está trabajando en tu proyecto. Te notificaremos por email apenas tengamos avances para mostrarte.
-                                </p>
-                            </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-2xl p-8 flex flex-col md:flex-row items-center gap-6">
+                        <div className="bg-orange-100 p-4 rounded-full">
+                            <span className="text-3xl">🚧</span>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-orange-800 mb-2">Sitio en Construcción</h2>
+                            <p className="text-orange-700">Estamos preparando todo para tu lanzamiento. Te notificaremos cuando esté listo.</p>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold text-slate-900">Métricas Clave</h2>
-                <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200">
+            {/* METRICS SECTION (Merged) */}
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-900">Métricas</h2>
+
+                {/* Month Selector */}
+                <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
                     <button
                         onClick={() => setSelectedMonth(getPreviousMonth(selectedMonth))}
-                        className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors"
                     >
-                        ←
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                     </button>
-                    <span className="text-sm font-bold text-slate-700 px-2 min-w-[120px] text-center capitalize">
+                    <span className="text-sm font-bold text-slate-700 px-3 min-w-[140px] text-center capitalize">
                         {formatMonth(selectedMonth)}
                     </span>
                     <button
@@ -265,100 +250,112 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                             setSelectedMonth(next);
                         }}
                         disabled={getMonthKey(selectedMonth) === getMonthKey(new Date())}
-                        className="p-1 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-30"
-                    >                      →
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-30 transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                {/* Visits Card */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                {/* Visits Card (Monthly) */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-6xl">👁️</span>
+                        <span className="text-5xl">👁️</span>
                     </div>
-                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Visitas del Mes</h3>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Visitas</h3>
+                    </div>
                     <div className="flex items-baseline gap-2">
                         <div className="text-4xl font-bold text-slate-900">
                             {currentMonthData.visitCount || 0}
                         </div>
-                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${visitsChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            <span>{visitsChange >= 0 ? '↑' : '↓'}</span>
-                            {Math.abs(visitsChange).toFixed(1)}%
-                        </div>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2">Vs. mes anterior ({previousMonthData.visitCount || 0})</p>
+                    <div className={`mt-3 text-xs font-bold w-fit px-2 py-1 rounded-full flex items-center gap-1 ${visitsChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <span>{visitsChange >= 0 ? '↗' : '↘'}</span>
+                        {Math.abs(visitsChange).toFixed(1)}% vs mes anterior
+                    </div>
                 </div>
 
-                {/* Clicks Card */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                {/* Clicks Card (Monthly) */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-6xl">👆</span>
+                        <span className="text-5xl">👆</span>
                     </div>
-                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Clics del Mes</h3>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Clics</h3>
+                    </div>
                     <div className="flex items-baseline gap-2">
                         <div className="text-4xl font-bold text-slate-900">
                             {currentMonthData.clickCount || 0}
                         </div>
-                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${clicksChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            <span>{clicksChange >= 0 ? '↑' : '↓'}</span>
-                            {Math.abs(clicksChange).toFixed(1)}%
-                        </div>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2">Vs. mes anterior ({previousMonthData.clickCount || 0})</p>
+                    <div className={`mt-3 text-xs font-bold w-fit px-2 py-1 rounded-full flex items-center gap-1 ${clicksChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <span>{clicksChange >= 0 ? '↗' : '↘'}</span>
+                        {Math.abs(clicksChange).toFixed(1)}% vs mes anterior
+                    </div>
                 </div>
 
-                {/* CTR Card (Calculated) */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                {/* Conversion Card */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="text-6xl">🎯</span>
+                        <span className="text-5xl">🎯</span>
                     </div>
-                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Tasa de Conversión</h3>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider">Conversión</h3>
+                    </div>
                     <div className="text-4xl font-bold text-slate-900">
                         {((currentMonthData.clickCount || 0) / (currentMonthData.visitCount || 1) * 100).toFixed(1)}%
                     </div>
-                    <p className="text-xs text-slate-400 mt-2">De visitas a clics este mes.</p>
+                    <p className="text-xs text-slate-400 mt-3">De visitas a clics este mes.</p>
+                </div>
+
+                {/* Status/Requests Summary Card - Replacing the redundant Totals */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="text-5xl">⚡</span>
+                    </div>
+                    <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Estado Plan</h3>
+                    <div className="mt-1">
+                        <StatusBadge status={subscription.status} />
+                    </div>
+                    {subscription.status === 'active' &&
+                        <p className="text-xs text-slate-400 mt-3">Renovación automática activa</p>
+                    }
                 </div>
             </div>
 
-            {/* METRICS & CONTENT GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-slate-500">Solicitudes Activas</p>
-                    <div className="flex items-end justify-between">
-                        <h3 className="text-3xl font-bold text-slate-900">{activeRequestsCount}</h3>
-                        <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            {/* LOWER CONTENT GRID (Requests) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                {/* Active Requests */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-40 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider">Solicitudes Activas</h3>
+                            <div className="text-4xl font-bold text-slate-900 mt-2">{activeRequestsCount}</div>
+                        </div>
+                        <div className="bg-orange-100 p-3 rounded-xl">
+                            <span className="text-orange-600 text-xl">⏱️</span>
                         </div>
                     </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-slate-500">Completadas</p>
-                    <div className="flex items-end justify-between">
-                        <h3 className="text-3xl font-bold text-slate-900">{completedRequestsCount}</h3>
-                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-4">
+                        <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${Math.min((activeRequestsCount / 5) * 100, 100)}%` }}></div>
                     </div>
                 </div>
-                {/* Visit Metrics */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-slate-500">Visitas Totales</p>
-                    <div className="flex items-end justify-between">
-                        <h3 className="text-3xl font-bold text-slate-900">{visitCount}</h3>
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+
+                {/* Completed Requests */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-40 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider">Completadas</h3>
+                            <div className="text-4xl font-bold text-slate-900 mt-2">{completedRequestsCount}</div>
+                        </div>
+                        <div className="bg-green-100 p-3 rounded-xl">
+                            <span className="text-green-600 text-xl">✓</span>
                         </div>
                     </div>
-                </div>
-                {/* Click Metrics */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-slate-500">Clics Totales</p>
-                    <div className="flex items-end justify-between">
-                        <h3 className="text-3xl font-bold text-slate-900">{clickCount}</h3>
-                        <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                        </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-4">
+                        <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
                     </div>
                 </div>
             </div>
