@@ -18,6 +18,7 @@ const TemplateGalleryPage = lazy(() => import('./pages/TemplateGalleryPage'));
 const AIBuilderPage = lazy(() => import('./pages/AIBuilderPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const ProfileErrorPage = lazy(() => import('./pages/ProfileErrorPage'));
+const LandingPagesPage = lazy(() => import('./pages/LandingPagesPage'));
 
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
@@ -83,6 +84,7 @@ const AppRoutes = () => {
             <Route path="/conexiones" element={<ConnectionsPage user={user} {...firebaseServices} />} />
             <Route path="/referidos" element={<ReferralsPage user={user} {...firebaseServices} />} />
             <Route path="/suscripcion" element={<SubscriptionPage user={user} auth={firebaseServices.auth} {...firebaseServices} />} />
+            <Route path="/landing-pages" element={<LandingPagesPage user={user} {...firebaseServices} />} />
 
             <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
             <Route path="/admin/templates" element={user.uid === ADMIN_UID ? <TemplateGalleryPage /> : <Navigate to="/" />} />

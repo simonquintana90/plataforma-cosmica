@@ -145,6 +145,122 @@ exports.createWompiSubscription = onCall(
   }
 );
 
+/**
+ * Crea una suscripción ADICIONAL para Landing Pages.
+ * Reutiliza la fuente de pago existente del usuario.
+ */
+exports.createLandingPageSubscription = onCall(
+  {
+    secrets: ["WOMPI_PRIVATE_KEY"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const { planInterval = 'monthly' } = request.data;
+    const userId = request.auth.uid;
+    const userEmail = request.auth.token.email;
+
+    // Usar clave de PRODUCCIÓN
+    const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
+
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(userId);
+
+    try {
+      // 1. Obtener la fuente de pago existente
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'Usuario no encontrado.');
+      }
+      const userData = userDoc.data();
+
+      const paymentSourceId = userData.wompiPaymentSourceId || userData.paymentSourceId;
+
+      if (!paymentSourceId) {
+        throw new functions.https.HttpsError('failed-precondition', 'No tienes una tarjeta guardada. Por favor actualiza tu suscripción principal primero.');
+      }
+
+      // 2. Definir montos
+      let amountInCents = 2000000; // Default: Mensual 20.000 COP
+      let nextPaymentDays = 30;
+      let planDescription = "Landing Page Adicional (Mensual)";
+
+      if (planInterval === 'yearly') {
+        amountInCents = 20000000; // Anual 200.000 COP
+        nextPaymentDays = 365;
+        planDescription = "Landing Page Adicional (Anual)";
+      }
+
+      const currency = "COP";
+      const reference = `sub_landing_${planInterval}_${userId}_${Date.now()}`;
+
+      // 3. Generar firma de integridad
+      const wompiIntegritySecret = 'prod_integrity_5arGHVwweUk0dR7WcmKebKvuLGUIUEcU';
+      const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
+      const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
+
+      // 4. Realizar el cobro
+      console.log(`Iniciando cobro Landing Page (${planInterval}) para ${userEmail}: ${reference}`);
+
+      const headers = {
+        Authorization: `Bearer ${wompiPrivateKey}`
+      };
+
+      const transactionResponse = await wompiApi.post('/transactions', {
+        amount_in_cents: amountInCents,
+        currency: currency,
+        customer_email: userEmail,
+        payment_source_id: paymentSourceId,
+        reference: reference,
+        signature: signature,
+        payment_method: {
+          installments: 1
+        }
+      }, { headers });
+
+      const transaction = transactionResponse.data.data;
+      console.log(`Transacción Landing Page creada: ${transaction.id}, Estado: ${transaction.status}`);
+
+      // 5. Guardar estado de la suscripción ADICIONAL
+      if (transaction.status === 'APPROVED' || transaction.status === 'PENDING') {
+        await userRef.update({
+          landingPageSubscription: {
+            status: 'active',
+            interval: planInterval,
+            startDate: admin.firestore.Timestamp.now(),
+            nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000)),
+            lastTransactionId: transaction.id
+          }
+        });
+
+        // Guardar en el historial de pagos GENERAL
+        await userRef.collection('payments').doc(transaction.id).set({
+          paymentId: transaction.id,
+          date: admin.firestore.Timestamp.now(),
+          amount: amountInCents / 100,
+          description: planDescription,
+          status: transaction.status,
+          reference: reference,
+          type: 'landing_page_subscription'
+        });
+
+        return { status: "success", transactionId: transaction.id };
+      } else {
+        throw new functions.https.HttpsError('aborted', `El pago fue rechazado: ${transaction.status_message || transaction.status}`);
+      }
+
+    } catch (error) {
+      console.error("Error al procesar pago Landing Page:", error.response ? error.response.data : error.message);
+      if (error.response && error.response.data && error.response.data.error) {
+        throw new functions.https.HttpsError('internal', JSON.stringify(error.response.data.error.messages) || 'Error de Wompi.');
+      }
+      throw new functions.https.HttpsError('internal', error.message || 'No se pudo procesar el pago de la Landing Page.');
+    }
+  }
+);
+
 exports.getWompiAcceptanceToken = onCall(
   {},
   async (request) => {
@@ -858,6 +974,59 @@ exports.trackClick = onRequest(
         console.error(`Error tracking click for user ${userId}:`, error);
       }
       res.status(200).set('Content-Type', 'image/gif').send(pixel);
+    }
+  }
+);
+
+/**
+ * Notifica al Admin cuando un usuario envía los detalles de su Landing Page.
+ * Trigger: Update en users/{userId}
+ */
+exports.notifyLandingPageSubmission = onDocumentUpdated(
+  { document: "users/{userId}" },
+  async (event) => {
+    const newData = event.data.after.data();
+    const previousData = event.data.before.data();
+    const userId = event.params.userId;
+
+    // Verificar si landingPageDetails cambió o fue agregado
+    const newDetails = newData.landingPageDetails;
+    const oldDetails = previousData.landingPageDetails;
+
+    // Solo notificar si hay nuevos detalles y son diferentes a los anteriores (o no existían)
+    if (newDetails && (!oldDetails || JSON.stringify(newDetails) !== JSON.stringify(oldDetails))) {
+
+      const adminEmail = "simonquintana90@gmail.com"; // Email del Admin
+
+      const mailOptions = {
+        from: '"Plataforma Cósmica" <hola@cosmica.agency>',
+        to: adminEmail,
+        subject: `🚀 Nueva Solicitud de Landing Page - ${newData.displayName || 'Usuario'}`,
+        html: `
+          <h1>¡Nueva Landing Page Solicitada!</h1>
+          <p>El usuario <strong>${newData.displayName}</strong> (${newData.email}) ha enviado los detalles para su Landing Page adicional.</p>
+          
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <p><strong>Objetivo:</strong> ${newDetails.goal}</p>
+            <p><strong>Título Sugerido:</strong> ${newDetails.title}</p>
+            <p><strong>Descripción:</strong><br/>${newDetails.description}</p>
+            ${newDetails.fileUrl ? `<p><strong>Archivo adjunto:</strong> <a href="${newDetails.fileUrl}">Ver Archivo</a></p>` : ''}
+          </div>
+
+          <p>
+            <a href="https://plataforma-cosmica.web.app/admin/user/${userId}" style="background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+              Ver Usuario en Admin
+            </a>
+          </p>
+        `
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Notificación de Landing Page enviada para ${userId}`);
+      } catch (error) {
+        console.error("Error al enviar email de notificación:", error);
+      }
     }
   }
 );
