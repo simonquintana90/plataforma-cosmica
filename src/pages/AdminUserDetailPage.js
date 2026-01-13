@@ -37,9 +37,29 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
     }, [db, userId, doc, onSnapshot, isEditing]);
 
     const handleCopyPixel = () => {
-        const pixelCode = `<img src="https://us-central1-plataforma-cosmica.cloudfunctions.net/trackVisit?userId=${userId}" alt="" style="display:none;" />`;
-        navigator.clipboard.writeText(pixelCode);
-        toast.success("Pixel copiado al portapapeles");
+        const trackingScript = `
+<!-- Cósmica Analytics -->
+<script>
+(function() {
+  const uid = "${userId}";
+  const baseUrl = "https://us-central1-plataforma-cosmica.cloudfunctions.net";
+  
+  // 1. Track Visit (Image Pixel)
+  new Image().src = \`\${baseUrl}/trackVisit?userId=\${uid}\`;
+
+  // 2. Track Clicks (Anchor & Buttons)
+  document.addEventListener("click", function(e) {
+    const target = e.target.closest("a, button");
+    if (target) {
+      new Image().src = \`\${baseUrl}/trackClick?userId=\${uid}&t=\${Date.now()}\`;
+    }
+  });
+})();
+</script>
+<!-- End Analytics -->`;
+
+        navigator.clipboard.writeText(trackingScript.trim());
+        toast.success("Código de rastreo copiado al portapapeles");
     };
 
     const handleNotifyReady = async (e) => {

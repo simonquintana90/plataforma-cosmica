@@ -814,4 +814,45 @@ exports.trackVisit = onRequest(
       res.status(200).send("Error");
     }
   }
-);
+
+/**
+ * Registra un nuevo clic en la página web de un cliente.
+ * Se llama desde el Script en el frontend del cliente.
+ * URL: https://us-central1-plataforma-cosmica.cloudfunctions.net/trackClick?userId=XXX
+ */
+exports.trackClick = onRequest(
+    { cors: true },
+    async (req, res) => {
+      const userId = req.query.userId;
+
+      if (!userId) {
+        return res.status(400).send("Falta el userId.");
+      }
+
+      try {
+        const db = getFirestore();
+        const userRef = db.collection('users').doc(userId);
+
+        // Usamos incremento atómico
+        await userRef.update({
+          clickCount: admin.firestore.FieldValue.increment(1),
+          lastClick: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Retornamos un pixel transparente (o simplemente 200 OK)
+        // Usamos pixel para mantener consistencia si deciden usarlo como imagen en algun momento
+        const pixel = Buffer.from(
+          'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+          'base64'
+        );
+
+        res.set('Content-Type', 'image/gif');
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.status(200).send(pixel);
+
+      } catch (error) {
+        console.error(`Error tracking click for user ${userId}:`, error);
+        res.status(200).send("Error");
+      }
+    }
+  );
