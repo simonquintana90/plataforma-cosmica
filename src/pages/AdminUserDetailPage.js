@@ -44,14 +44,16 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
   const uid = "${userId}";
   const baseUrl = "https://us-central1-plataforma-cosmica.cloudfunctions.net";
   
-  // 1. Track Visit (Image Pixel)
-  new Image().src = \`\${baseUrl}/trackVisit?userId=\${uid}\`;
+  // 1. Track Visit
+  fetch(\`\${baseUrl}/trackVisit?userId=\${uid}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
+    .catch(e => console.error("Tracking Error:", e));
 
   // 2. Track Clicks (Anchor & Buttons)
   document.addEventListener("click", function(e) {
-    const target = e.target.closest("a, button");
+    const target = e.target.closest("a, button, input[type='submit'], input[type='button']");
     if (target) {
-      new Image().src = \`\${baseUrl}/trackClick?userId=\${uid}&t=\${Date.now()}\`;
+      fetch(\`\${baseUrl}/trackClick?userId=\${uid}&t=\${Date.now()}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
+        .catch(e => console.error("Tracking Error:", e));
     }
   });
 })();
