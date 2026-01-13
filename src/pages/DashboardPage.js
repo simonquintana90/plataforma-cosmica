@@ -20,6 +20,10 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
 
+    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    const [monthlyStats, setMonthlyStats] = useState({ current: { visits: 0, clicks: 0 }, previous: { visits: 0, clicks: 0 } });
+    const [loadingStats, setLoadingStats] = useState(true);
+
     const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
 
     const activeRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -28,27 +32,68 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const activeRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
     const historyRequests = useMemo(() => requests.filter(r => r.status === 'completed'), [requests]);
 
+    // Helpers for Month Keys
+    const getMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const getPreviousMonth = (date) => {
+        const d = new Date(date);
+        d.setMonth(d.getMonth() - 1);
+        return d;
+    };
+
+    // Helper to format Month Name
+    const formatMonth = (date) => {
+        return new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric' }).format(date);
+    };
+
+    // Calculate percentage change
+    const calculateChange = (current, previous) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+    };
+
+    // Effect: Fetch Subscription & Global Stats
     useEffect(() => {
         const userSubRef = doc(db, "users", user.uid);
         const unsubscribe = onSnapshot(userSubRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if (data.subscriptionStatus) {
-                    setSubscription({ status: data.subscriptionStatus });
-                } else {
-                    setSubscription({ status: 'inactive' });
-                }
-                setVisitCount(data.visitCount || 0);
-                setClickCount(data.clickCount || 0);
+                setSubscription({ status: data.subscriptionStatus || 'inactive' });
             } else {
                 setSubscription({ status: 'inactive' });
-                setVisitCount(0);
-                setClickCount(0);
             }
         });
         return () => unsubscribe();
     }, [db, doc, onSnapshot, user.uid]);
 
+    // OK, let's restart the state strategy:
+    const [currentMonthData, setCurrentMonthData] = useState({ visitCount: 0, clickCount: 0 });
+    const [previousMonthData, setPreviousMonthData] = useState({ visitCount: 0, clickCount: 0 });
+
+    useEffect(() => {
+        const currentKey = getMonthKey(selectedMonth);
+        const userDocRef = doc(db, "users", user.uid);
+
+        const unsub = onSnapshot(doc(userDocRef, "analytics_monthly", currentKey), (s) => {
+            setCurrentMonthData(s.exists() ? s.data() : { visitCount: 0, clickCount: 0 });
+        });
+        return () => unsub();
+    }, [db, doc, user.uid, selectedMonth]);
+
+    useEffect(() => {
+        const previousKey = getMonthKey(getPreviousMonth(selectedMonth));
+        const userDocRef = doc(db, "users", user.uid);
+
+        const unsub = onSnapshot(doc(userDocRef, "analytics_monthly", previousKey), (s) => {
+            setPreviousMonthData(s.exists() ? s.data() : { visitCount: 0, clickCount: 0 });
+        });
+        return () => unsub();
+    }, [db, doc, user.uid, selectedMonth]);
+
+    // Calculate Derived
+    const visitsChange = calculateChange(currentMonthData.visitCount || 0, previousMonthData.visitCount || 0);
+    const clicksChange = calculateChange(currentMonthData.clickCount || 0, previousMonthData.clickCount || 0);
+
+    // ... requests effect ...
     useEffect(() => {
         const q = query(collection(db, "requests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -199,6 +244,81 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                         </div>
                     </div>
                 )}
+            </div>
+
+            <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold text-slate-900">Métricas Clave</h2>
+                <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200">
+                    <button
+                        onClick={() => setSelectedMonth(getPreviousMonth(selectedMonth))}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                    >
+                        ←
+                    </button>
+                    <span className="text-sm font-bold text-slate-700 px-2 min-w-[120px] text-center capitalize">
+                        {formatMonth(selectedMonth)}
+                    </span>
+                    <button
+                        onClick={() => {
+                            const next = new Date(selectedMonth);
+                            next.setMonth(next.getMonth() + 1);
+                            setSelectedMonth(next);
+                        }}
+                        disabled={getMonthKey(selectedMonth) === getMonthKey(new Date())}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-30"
+                    >                      →
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                {/* Visits Card */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="text-6xl">👁️</span>
+                    </div>
+                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Visitas del Mes</h3>
+                    <div className="flex items-baseline gap-2">
+                        <div className="text-4xl font-bold text-slate-900">
+                            {currentMonthData.visitCount || 0}
+                        </div>
+                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${visitsChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span>{visitsChange >= 0 ? '↑' : '↓'}</span>
+                            {Math.abs(visitsChange).toFixed(1)}%
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">Vs. mes anterior ({previousMonthData.visitCount || 0})</p>
+                </div>
+
+                {/* Clicks Card */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="text-6xl">👆</span>
+                    </div>
+                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Clics del Mes</h3>
+                    <div className="flex items-baseline gap-2">
+                        <div className="text-4xl font-bold text-slate-900">
+                            {currentMonthData.clickCount || 0}
+                        </div>
+                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${clicksChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span>{clicksChange >= 0 ? '↑' : '↓'}</span>
+                            {Math.abs(clicksChange).toFixed(1)}%
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">Vs. mes anterior ({previousMonthData.clickCount || 0})</p>
+                </div>
+
+                {/* CTR Card (Calculated) */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="text-6xl">🎯</span>
+                    </div>
+                    <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">Tasa de Conversión</h3>
+                    <div className="text-4xl font-bold text-slate-900">
+                        {((currentMonthData.clickCount || 0) / (currentMonthData.visitCount || 1) * 100).toFixed(1)}%
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">De visitas a clics este mes.</p>
+                </div>
             </div>
 
             {/* METRICS & CONTENT GRID */}

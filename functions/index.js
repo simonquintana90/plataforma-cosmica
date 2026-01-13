@@ -223,16 +223,17 @@ exports.createLandingPageSubscription = onCall(
       const transaction = transactionResponse.data.data;
       console.log(`Transacción Landing Page creada: ${transaction.id}, Estado: ${transaction.status}`);
 
-      // 5. Guardar estado de la suscripción ADICIONAL
+      // 5. Guardar estado de la suscripción ADICIONAL (Multi-Landing Page)
       if (transaction.status === 'APPROVED' || transaction.status === 'PENDING') {
-        await userRef.update({
-          landingPageSubscription: {
-            status: 'active',
-            interval: planInterval,
-            startDate: admin.firestore.Timestamp.now(),
-            nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000)),
-            lastTransactionId: transaction.id
-          }
+        // Create a new document in the landingPages subcollection
+        const landingPageRef = await userRef.collection('landingPages').add({
+          status: 'active',
+          interval: planInterval,
+          startDate: admin.firestore.Timestamp.now(),
+          nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000)),
+          lastTransactionId: transaction.id,
+          detailsProvided: false, // New landing page needs details
+          createdAt: admin.firestore.Timestamp.now()
         });
 
         // Guardar en el historial de pagos GENERAL
@@ -243,10 +244,11 @@ exports.createLandingPageSubscription = onCall(
           description: planDescription,
           status: transaction.status,
           reference: reference,
-          type: 'landing_page_subscription'
+          type: 'landing_page_subscription',
+          landingPageId: landingPageRef.id // Link payment to specific LP
         });
 
-        return { status: "success", transactionId: transaction.id };
+        return { status: "success", transactionId: transaction.id, landingPageId: landingPageRef.id };
       } else {
         throw new functions.https.HttpsError('aborted', `El pago fue rechazado: ${transaction.status_message || transaction.status}`);
       }
@@ -332,8 +334,6 @@ exports.cancelWompiSubscription = onCall(
     }
   }
 );
-
-
 
 exports.wompiWebhook = onRequest(
   { secrets: ["WOMPI_EVENT_TOKEN"] },
@@ -913,11 +913,25 @@ exports.trackVisit = onRequest(
     try {
       const db = getFirestore();
       const userRef = db.collection('users').doc(userId);
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
 
-      await userRef.update({
+      const batch = db.batch();
+
+      // 1. Update Global Total
+      batch.update(userRef, {
         visitCount: admin.firestore.FieldValue.increment(1),
         lastVisit: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      // 2. Update Monthly Stat
+      const monthRef = userRef.collection('analytics_monthly').doc(monthKey);
+      batch.set(monthRef, {
+        visitCount: admin.firestore.FieldValue.increment(1),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      await batch.commit();
 
       res.set('Content-Type', 'image/gif');
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -957,11 +971,25 @@ exports.trackClick = onRequest(
     try {
       const db = getFirestore();
       const userRef = db.collection('users').doc(userId);
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
 
-      await userRef.update({
+      const batch = db.batch();
+
+      // 1. Update Global Total
+      batch.update(userRef, {
         clickCount: admin.firestore.FieldValue.increment(1),
         lastClick: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      // 2. Update Monthly Stat
+      const monthRef = userRef.collection('analytics_monthly').doc(monthKey);
+      batch.set(monthRef, {
+        clickCount: admin.firestore.FieldValue.increment(1),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      await batch.commit();
 
       res.set('Content-Type', 'image/gif');
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -980,31 +1008,37 @@ exports.trackClick = onRequest(
 
 /**
  * Notifica al Admin cuando un usuario envía los detalles de su Landing Page.
- * Trigger: Update en users/{userId}
+ * Trigger: Update en users/{userId}/landingPages/{landingPageId}
  */
 exports.notifyLandingPageSubmission = onDocumentUpdated(
-  { document: "users/{userId}" },
+  { document: "users/{userId}/landingPages/{landingPageId}" },
   async (event) => {
     const newData = event.data.after.data();
     const previousData = event.data.before.data();
     const userId = event.params.userId;
+    const landingPageId = event.params.landingPageId;
 
-    // Verificar si landingPageDetails cambió o fue agregado
-    const newDetails = newData.landingPageDetails;
-    const oldDetails = previousData.landingPageDetails;
+    // Verificar si detalles ("details") cambió o fue agregado
+    const newDetails = newData.details;
+    const oldDetails = previousData.details;
 
     // Solo notificar si hay nuevos detalles y son diferentes a los anteriores (o no existían)
     if (newDetails && (!oldDetails || JSON.stringify(newDetails) !== JSON.stringify(oldDetails))) {
 
-      const adminEmail = "simonquintana90@gmail.com"; // Email del Admin
+      const adminEmail = "simonquintana90@gmail.com";
+      const db = getFirestore();
+
+      // Obtener info del usuario para el email
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.data() || {};
 
       const mailOptions = {
         from: '"Plataforma Cósmica" <hola@cosmica.agency>',
         to: adminEmail,
-        subject: `🚀 Nueva Solicitud de Landing Page - ${newData.displayName || 'Usuario'}`,
+        subject: `🚀 Nueva Solicitud de Landing Page - ${userData.displayName || 'Usuario'}`,
         html: `
           <h1>¡Nueva Landing Page Solicitada!</h1>
-          <p>El usuario <strong>${newData.displayName}</strong> (${newData.email}) ha enviado los detalles para su Landing Page adicional.</p>
+          <p>El usuario <strong>${userData.displayName}</strong> (${userData.email}) ha enviado los detalles para su Landing Page adicional (ID: ${landingPageId}).</p>
           
           <div style="background-color: #f3f4f6; padding: 20px; border-radius: 10px; margin: 20px 0;">
             <p><strong>Objetivo:</strong> ${newDetails.goal}</p>
@@ -1023,10 +1057,43 @@ exports.notifyLandingPageSubmission = onDocumentUpdated(
 
       try {
         await transporter.sendMail(mailOptions);
-        console.log(`Notificación de Landing Page enviada para ${userId}`);
+        console.log(`Notificación de Landing Page enviada para ${landingPageId} (User: ${userId})`);
       } catch (error) {
         console.error("Error al enviar email de notificación:", error);
       }
+    }
+  }
+);
+
+/**
+ * Cancela SUBCRIPCIÓN DE LANDING PAGE ADICIONAL.
+ * Recibe: landingPageId
+ */
+exports.cancelLandingPageSubscription = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
+    }
+
+    const { landingPageId } = request.data;
+    if (!landingPageId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Falta el ID de la Landing Page.');
+    }
+
+    const userId = request.auth.uid;
+    const db = getFirestore();
+    const landingPageRef = db.collection('users').doc(userId).collection('landingPages').doc(landingPageId);
+
+    try {
+      await landingPageRef.update({
+        status: "cancelled",
+        cancelledAt: admin.firestore.Timestamp.now()
+      });
+      return { status: 'success', message: 'Suscripción cancelada.' };
+    } catch (error) {
+      console.error("Error cancelando landing page:", error);
+      throw new functions.https.HttpsError('internal', 'No se pudo cancelar la suscripción.');
     }
   }
 );
