@@ -773,3 +773,45 @@ exports.notifyUserSiteReady = onCall(
     }
   }
 );
+
+/**
+ * Registra una nueva visita a la página web de un cliente.
+ * Se llama desde un Pixel o Script en el frontend del cliente.
+ * URL: https://us-central1-plataforma-cosmica.cloudfunctions.net/trackVisit?userId=XXX
+ */
+exports.trackVisit = onRequest(
+  { cors: true }, // Habilita CORS automáticamente para cualquier origen
+  async (req, res) => {
+    const userId = req.query.userId;
+
+    if (!userId) {
+      return res.status(400).send("Falta el userId.");
+    }
+
+    try {
+      const db = getFirestore();
+      const userRef = db.collection('users').doc(userId);
+
+      // Usamos incremento atómico para asegurar consistencia
+      await userRef.update({
+        visitCount: admin.firestore.FieldValue.increment(1),
+        lastVisit: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Retornamos un pixel transparente 1x1 GIF
+      const pixel = Buffer.from(
+        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        'base64'
+      );
+
+      res.set('Content-Type', 'image/gif');
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.status(200).send(pixel);
+
+    } catch (error) {
+      console.error(`Error tracking visit for user ${userId}:`, error);
+      // Incluso si falla, devolvemos 200 para no romper el frontend del cliente
+      res.status(200).send("Error");
+    }
+  }
+);
