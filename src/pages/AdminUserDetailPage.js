@@ -68,9 +68,9 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
   fetch(\`\${baseUrl}/trackVisit?userId=\${uid}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
     .catch(e => console.error("Tracking Error:", e));
 
-  // 2. Track Clicks (Anchor & Buttons)
+  // 2. Track Clicks (Only .cta class)
   document.addEventListener("click", function(e) {
-    const target = e.target.closest("a, button, input[type='submit'], input[type='button']");
+    const target = e.target.closest(".cta"); // Only track elements with 'cta' class
     if (target) {
       fetch(\`\${baseUrl}/trackClick?userId=\${uid}&t=\${Date.now()}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
         .catch(e => console.error("Tracking Error:", e));
@@ -359,6 +359,10 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
                                 <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
                                     <p className="text-xs font-bold text-indigo-600 uppercase">Clics Totales</p>
                                     <p className="text-2xl font-bold text-slate-900 mt-1">{userDetail.clickCount || 0}</p>
+                                </div>
+                                <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100">
+                                    <p className="text-xs font-bold text-purple-600 uppercase">Conversión</p>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">{((userDetail.clickCount || 0) / (userDetail.visitCount || 1) * 100).toFixed(1)}%</p>
                                 </div>
                             </div>
                         </div>
