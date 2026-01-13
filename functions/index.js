@@ -783,37 +783,40 @@ exports.trackVisit = onRequest(
   { cors: true }, // Habilita CORS automáticamente para cualquier origen
   async (req, res) => {
     const userId = req.query.userId;
+    // Pixel transparente 1x1 GIF
+    const pixel = Buffer.from(
+      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      'base64'
+    );
 
     if (!userId) {
-      return res.status(400).send("Falta el userId.");
+      res.status(200).set('Content-Type', 'image/gif').send(pixel);
+      return;
     }
 
     try {
       const db = getFirestore();
       const userRef = db.collection('users').doc(userId);
 
-      // Usamos incremento atómico para asegurar consistencia
       await userRef.update({
         visitCount: admin.firestore.FieldValue.increment(1),
         lastVisit: admin.firestore.FieldValue.serverTimestamp()
       });
-
-      // Retornamos un pixel transparente 1x1 GIF
-      const pixel = Buffer.from(
-        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-        'base64'
-      );
 
       res.set('Content-Type', 'image/gif');
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.status(200).send(pixel);
 
     } catch (error) {
-      console.error(`Error tracking visit for user ${userId}:`, error);
-      // Incluso si falla, devolvemos 200 para no romper el frontend del cliente
-      res.status(200).send("Error");
+      if (error.code === 5 || error.message.includes('NOT_FOUND')) {
+        console.warn(`TrackVisit: Usuario no encontrado (${userId})`);
+      } else {
+        console.error(`Error tracking visit for user ${userId}:`, error);
+      }
+      res.status(200).set('Content-Type', 'image/gif').send(pixel);
     }
   }
+);
 
 /**
  * Registra un nuevo clic en la página web de un cliente.
@@ -821,38 +824,40 @@ exports.trackVisit = onRequest(
  * URL: https://us-central1-plataforma-cosmica.cloudfunctions.net/trackClick?userId=XXX
  */
 exports.trackClick = onRequest(
-    { cors: true },
-    async (req, res) => {
-      const userId = req.query.userId;
+  { cors: true },
+  async (req, res) => {
+    const userId = req.query.userId;
+    // Pixel transparente
+    const pixel = Buffer.from(
+      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      'base64'
+    );
 
-      if (!userId) {
-        return res.status(400).send("Falta el userId.");
-      }
-
-      try {
-        const db = getFirestore();
-        const userRef = db.collection('users').doc(userId);
-
-        // Usamos incremento atómico
-        await userRef.update({
-          clickCount: admin.firestore.FieldValue.increment(1),
-          lastClick: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        // Retornamos un pixel transparente (o simplemente 200 OK)
-        // Usamos pixel para mantener consistencia si deciden usarlo como imagen en algun momento
-        const pixel = Buffer.from(
-          'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-          'base64'
-        );
-
-        res.set('Content-Type', 'image/gif');
-        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        res.status(200).send(pixel);
-
-      } catch (error) {
-        console.error(`Error tracking click for user ${userId}:`, error);
-        res.status(200).send("Error");
-      }
+    if (!userId) {
+      res.status(200).set('Content-Type', 'image/gif').send(pixel);
+      return;
     }
-  );
+
+    try {
+      const db = getFirestore();
+      const userRef = db.collection('users').doc(userId);
+
+      await userRef.update({
+        clickCount: admin.firestore.FieldValue.increment(1),
+        lastClick: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.set('Content-Type', 'image/gif');
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.status(200).send(pixel);
+
+    } catch (error) {
+      if (error.code === 5 || error.message.includes('NOT_FOUND')) {
+        console.warn(`TrackClick: Usuario no encontrado (${userId})`);
+      } else {
+        console.error(`Error tracking click for user ${userId}:`, error);
+      }
+      res.status(200).set('Content-Type', 'image/gif').send(pixel);
+    }
+  }
+);
