@@ -14,6 +14,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [subscription, setSubscription] = useState({ status: 'loading' });
+    const [visitCount, setVisitCount] = useState(0);
 
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
@@ -29,10 +30,17 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     useEffect(() => {
         const userSubRef = doc(db, "users", user.uid);
         const unsubscribe = onSnapshot(userSubRef, (docSnap) => {
-            if (docSnap.exists() && docSnap.data().subscriptionStatus) {
-                setSubscription({ status: docSnap.data().subscriptionStatus });
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.subscriptionStatus) {
+                    setSubscription({ status: data.subscriptionStatus });
+                } else {
+                    setSubscription({ status: 'inactive' });
+                }
+                setVisitCount(data.visitCount || 0);
             } else {
                 setSubscription({ status: 'inactive' });
+                setVisitCount(0);
             }
         });
         return () => unsubscribe();
@@ -210,12 +218,12 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                         </div>
                     </div>
                 </div>
-                {/* Placeholder metrics for future expansion */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 opacity-60">
-                    <p className="text-sm font-medium text-slate-500">Visitas (Pronto)</p>
+                {/* Visit Metrics */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
+                    <p className="text-sm font-medium text-slate-500">Visitas Totales</p>
                     <div className="flex items-end justify-between">
-                        <h3 className="text-3xl font-bold text-slate-900">-</h3>
-                        <div className="p-2 bg-slate-50 rounded-lg text-slate-400">
+                        <h3 className="text-3xl font-bold text-slate-900">{visitCount}</h3>
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </div>
                     </div>
