@@ -17,6 +17,10 @@ const LandingPagesPage = ({ user, db, doc, updateDoc, collection, onSnapshot, ge
             pages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             setLandingPages(pages);
             setLoading(false);
+        }, (error) => {
+            console.error("Error fetching landing pages:", error);
+            toast.error("Error al cargar tus Landing Pages. Verifica tu conexión.");
+            setLoading(false);
         });
         return () => unsubscribe();
     }, [db, user.uid, collection, onSnapshot]);
