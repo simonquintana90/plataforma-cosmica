@@ -20,11 +20,12 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
     useEffect(() => {
         if (!userId) return;
         const userRef = doc(db, "users", userId);
-        const unsubscribe = onSnapshot(userRef, (docSnap) => {
+
+        // 1. Fetch User Details
+        const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setUserDetail({ id: docSnap.id, ...data });
-                // Only set websiteInfo if it's not already being edited to avoid overwriting user input
                 if (!isEditing) {
                     setWebsiteInfo(data.websiteInfo || {});
                 }
@@ -33,8 +34,27 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
             }
             setLoading(false);
         });
-        return () => unsubscribe();
-    }, [db, userId, doc, onSnapshot, isEditing]);
+
+        // 2. Fetch Requests (Chats)
+        const qRequests = query(collection(db, "requests"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+        const unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
+            const reqs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setUserRequests(reqs);
+        });
+
+        // 3. Fetch Payments
+        const qPayments = query(collection(db, "users", userId, "payments"), orderBy("date", "desc"));
+        const unsubscribePayments = onSnapshot(qPayments, (snapshot) => {
+            const pays = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setPaymentHistory(pays);
+        });
+
+        return () => {
+            unsubscribeUser();
+            unsubscribeRequests();
+            unsubscribePayments();
+        };
+    }, [db, userId, doc, collection, query, where, orderBy, onSnapshot, isEditing]);
 
     const handleCopyPixel = () => {
         const trackingScript = `
@@ -312,23 +332,105 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
                             </div>
                         </div>
                     </header>
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 mb-8">
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
+                        {/* 1. Header & Quick Stats */}
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                             <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
                             <p className="text-sm text-slate-500">{userDetail.email}</p>
-                            <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
-                                <h3 className="text-sm font-bold text-slate-600 mb-2">Estado General</h3>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <UserStatusBadge status={userDetail.status} />
-                                    <StatusBadge status={userDetail.initialPaymentStatus} />
-                                    {/* 4. Lógica actualizada para leer 'subscriptionStatus' */}
-                                    {userDetail.subscriptionStatus && <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'active' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span>}
+
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <p className="text-xs font-bold text-slate-500 uppercase">Estado</p>
+                                    <div className="mt-1 flex gap-2">
+                                        <UserStatusBadge status={userDetail.status} />
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <p className="text-xs font-bold text-slate-500 uppercase">Suscripción</p>
+                                    <div className="mt-1 flex gap-2">
+                                        {userDetail.subscriptionStatus ? <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${userDetail.subscriptionStatus === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'}`}>{userDetail.subscriptionStatus}</span> : <span className="text-sm text-slate-500">-</span>}
+                                        <StatusBadge status={userDetail.initialPaymentStatus} />
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                                    <p className="text-xs font-bold text-blue-600 uppercase">Visitas Totales</p>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">{userDetail.visitCount || 0}</p>
+                                </div>
+                                <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                    <p className="text-xs font-bold text-indigo-600 uppercase">Clics Totales</p>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">{userDetail.clickCount || 0}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                            {renderWebsiteInfo()}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* 2. Left Column: Website Info & Requests */}
+                            <div className="lg:col-span-2 space-y-8">
+                                {/* Website Info */}
+                                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                                    {renderWebsiteInfo()}
+                                </div>
+
+                                {/* Requests / Chats */}
+                                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                                        <h2 className="text-lg font-bold text-slate-800">Solicitudes y Chats</h2>
+                                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{userRequests.length}</span>
+                                    </div>
+                                    <div className="divide-y divide-slate-100">
+                                        {userRequests.length > 0 ? (
+                                            userRequests.map(req => (
+                                                <Link to={`/admin/requests/${req.id}`} key={req.id} className="block p-4 hover:bg-slate-50 transition-colors group">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{req.title}</h3>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${req.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                            {req.status === 'completed' ? 'Completada' : 'Pendiente'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 line-clamp-2">{req.description}</p>
+                                                    <div className="mt-2 flex items-center justify-between">
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {req.createdAt?.seconds ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                                                        </span>
+                                                        <span className="text-xs text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Ver conversación →</span>
+                                                    </div>
+                                                </Link>
+                                            ))
+                                        ) : (
+                                            <div className="p-8 text-center text-slate-500 text-sm">No hay solicitudes recientes.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3. Right Column: Payments History */}
+                            <div className="space-y-8">
+                                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100">
+                                        <h2 className="text-lg font-bold text-slate-800">Historial de Pagos</h2>
+                                    </div>
+                                    <div className="divide-y divide-slate-100">
+                                        {paymentHistory.length > 0 ? (
+                                            paymentHistory.map(pay => (
+                                                <div key={pay.id} className="p-4 hover:bg-slate-50 transition-colors">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[10px] uppercase font-bold text-slate-400">
+                                                            {pay.date?.seconds ? new Date(pay.date.seconds * 1000).toLocaleDateString() : 'Fecha desc.'}
+                                                        </span>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pay.status === 'APPROVED' || pay.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {pay.status}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-900">${pay.amount ? pay.amount.toLocaleString() : '0'}</p>
+                                                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{pay.description}</p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-8 text-center text-slate-500 text-sm">No hay pagos registrados.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </main>
                 </>

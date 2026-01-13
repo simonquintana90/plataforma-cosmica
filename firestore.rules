@@ -18,6 +18,13 @@ service cloud.firestore {
       // Owner can read/write their own document
       // DEBUG: Allow all authenticated users to read/write for now to test
       allow read, write: if request.auth != null;
+      
+      // Payments subcollection
+      match /payments/{paymentId} {
+        allow read: if isAdmin() || isOwner(userId);
+        // Payments are created via backend functions mostly, but allow write if needed for testing or specific admin overrides
+        allow write: if isAdmin();
+      }
     }
 
     // Requests collection
