@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import WithdrawalModal from '../components/WithdrawalModal';
 import DashboardLayout from '../components/layout/DashboardLayout';
 
-const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
 const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, updateDoc, updatePassword, getFunctions, httpsCallable, onSnapshot, collection, query, where, addDoc, serverTimestamp }) => {
     const [name, setName] = useState(user.displayName || '');

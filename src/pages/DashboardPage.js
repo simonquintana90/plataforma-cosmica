@@ -71,11 +71,10 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
         const unsub = onSnapshot(doc(userDocRef, "analytics_monthly", currentKey), (s) => {
             setCurrentMonthData(s.exists() ? s.data() : { visitCount: 0, clickCount: 0 });
         }, (error) => {
-            console.error("Error fetching current month analytics:", error);
             // Optionally set error state or defaults
         });
         return () => unsub();
-    }, [db, doc, user.uid, selectedMonth]);
+    }, [db, doc, user.uid, selectedMonth, onSnapshot]);
 
     useEffect(() => {
         const previousKey = getMonthKey(getPreviousMonth(selectedMonth));
@@ -87,7 +86,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             console.error("Error fetching previous month analytics:", error);
         });
         return () => unsub();
-    }, [db, doc, user.uid, selectedMonth]);
+    }, [db, doc, user.uid, selectedMonth, onSnapshot]);
 
     // Calculate Derived
     const visitsChange = calculateChange(currentMonthData.visitCount || 0, previousMonthData.visitCount || 0);

@@ -58,7 +58,12 @@ service cloud.firestore {
     match /payouts/{payoutId} {
       allow read, create: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
       // Allow create if the userId in the data matches the auth uid
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Coupons collection
+    match /coupons/{couponId} {
+        allow read, write: if isAdmin();
     }
   }
 }

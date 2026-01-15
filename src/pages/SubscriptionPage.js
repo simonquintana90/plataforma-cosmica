@@ -1,41 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
-    // useWompiScript(); // YA NO SE USA
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [acceptanceToken, setAcceptanceToken] = useState(null); // <-- AÑADIDO
-    const [loadingToken, setLoadingToken] = useState(true); // <-- AÑADIDO
-    const [tokenError, setTokenError] = useState(null); // <-- AÑADIDO: Estado de error
+    const navigate = useNavigate();
+    const location = useLocation();
+    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX'; // Llave pública de PRODUCCIÓN
 
-    // Estados para los inputs controlados
+    // Estados
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [acceptanceToken, setAcceptanceToken] = useState(null);
+    const [loadingToken, setLoadingToken] = useState(true);
+    const [tokenError, setTokenError] = useState(null);
     const [cardNumber, setCardNumber] = useState("");
     const [cvc, setCvc] = useState("");
     const [cardHolder, setCardHolder] = useState("");
-    const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
+    const [expDate, setExpDate] = useState("");
     const [couponCode, setCouponCode] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [couponMessage, setCouponMessage] = useState(null);
+    const [planInterval, setPlanInterval] = useState('monthly');
 
-    // Read coupon from URL
-    const location = useLocation();
+    // Callback para validar cupón
+    const handleValidateCoupon = useCallback(async (codeToValidate = couponCode) => {
+        if (!codeToValidate) return;
+        setValidatingCoupon(true);
+        setCouponMessage(null);
+        setAppliedCoupon(null);
+
+        try {
+            const functions = getFunctions();
+            const validate = httpsCallable(functions, 'validateCoupon');
+            const result = await validate({ couponCode: codeToValidate });
+
+            if (result.data.valid) {
+                setAppliedCoupon(result.data);
+                setCouponMessage({ type: 'success', text: `¡Cupón ${result.data.code} aplicado!` });
+                toast.success("Cupón aplicado correctamente");
+            } else {
+                setCouponMessage({ type: 'error', text: result.data.message || 'Cupón inválido' });
+                toast.error(result.data.message || "Cupón inválido");
+            }
+        } catch (error) {
+            console.error(error);
+            setCouponMessage({ type: 'error', text: 'Error al validar cupón' });
+        } finally {
+            setValidatingCoupon(false);
+        }
+    }, [couponCode, getFunctions, httpsCallable]);
+
+    // Effect: Leer cupón de URL
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const codeFromUrl = params.get('coupon');
         if (codeFromUrl && !appliedCoupon) {
             setCouponCode(codeFromUrl.toUpperCase());
-            // Optional: Auto-validate here if functions are ready, but might loop if not careful.
-            // setValidatingCoupon(true) ...
-            // Let's just pre-fill it for now.
         }
-    }, [location.search]);
+    }, [location.search, appliedCoupon]);
 
-    const navigate = useNavigate();
-    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX'; // Llave pública de PRODUCCIÓN
+    // Effect: Auto-validar cupón
+    useEffect(() => {
+        if (couponCode && !appliedCoupon && !validatingCoupon && !couponMessage) {
+            const timer = setTimeout(() => {
+                handleValidateCoupon();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [couponCode, appliedCoupon, validatingCoupon, couponMessage, handleValidateCoupon]);
 
-    // --- Obtener el Token de Aceptación al cargar ---
+    // Effect: Obtener Token Wompi
     useEffect(() => {
         const fetchAcceptanceToken = async () => {
             setLoadingToken(true);
@@ -61,13 +95,10 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         fetchAcceptanceToken();
     }, [getFunctions, httpsCallable]);
 
-    const [planInterval, setPlanInterval] = useState('monthly'); // 'monthly' | 'yearly'
-
-    // Formateo de fecha MM/YY
+    // Handlers
     const handleExpDateChange = (e) => {
-        let value = e.target.value.replace(/\D/g, ''); // Solo números
-        if (value.length > 4) value = value.slice(0, 4); // Max 4 dígitos
-
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 4) value = value.slice(0, 4);
         if (value.length >= 3) {
             value = `${value.slice(0, 2)}/${value.slice(2)}`;
         }
@@ -77,64 +108,28 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
     const handleCardNumberChange = (e) => {
         let value = e.target.value.replace(/\D/g, '');
         if (value.length > 16) value = value.slice(0, 16);
-        // Agregar espacios visualmente es opcional, pero para enviar a la API debe ir limpio.
-        // Aquí guardamos el valor limpio o formateado según prefieras. 
-        // Para simplificar, guardamos limpio y mostramos limpio (o podrías usar una librería de máscaras).
         setCardNumber(value);
     };
 
-    // Auto-validate effect
-    useEffect(() => {
-        if (couponCode && !appliedCoupon && !validatingCoupon && !couponMessage) {
-            const timer = setTimeout(() => {
-                handleValidateCoupon();
-            }, 500); // Small delay to ensure state and functions ready
-            return () => clearTimeout(timer);
-        }
-    }, [couponCode]);
-
-    const handleValidateCoupon = async () => {
-        if (!couponCode) return;
-        setValidatingCoupon(true);
-        setCouponMessage(null);
-        setAppliedCoupon(null);
-
-        try {
-            const functions = getFunctions();
-            const validate = httpsCallable(functions, 'validateCoupon');
-            const result = await validate({ couponCode });
-
-            if (result.data.valid) {
-                setAppliedCoupon(result.data);
-                setCouponMessage({ type: 'success', text: `¡Cupón ${result.data.code} aplicado!` });
-                toast.success("Cupón aplicado correctamente");
-            } else {
-                setCouponMessage({ type: 'error', text: result.data.message || 'Cupón inválido' });
-                toast.error(result.data.message || "Cupón inválido");
-            }
-        } catch (error) {
-            console.error(error);
-            setCouponMessage({ type: 'error', text: 'Error al validar cupón' });
-        } finally {
-            setValidatingCoupon(false);
-        }
-    };
-
-    // Calculate Price
     const getPrice = () => {
         let price = planInterval === 'monthly' ? 89900 : 1000000;
 
-        if (appliedCoupon) {
+        // Validar si el cupón aplica al plan seleccionado
+        let isCouponValidForPlan = true;
+        if (appliedCoupon && appliedCoupon.applicablePlan && appliedCoupon.applicablePlan !== 'all') {
+            if (appliedCoupon.applicablePlan !== planInterval) {
+                isCouponValidForPlan = false;
+            }
+        }
+
+        if (appliedCoupon && isCouponValidForPlan) {
             if (appliedCoupon.type === 'percent') {
                 price = price - Math.floor(price * (appliedCoupon.value / 100));
             } else if (appliedCoupon.type === 'amount') {
                 price = price - appliedCoupon.value;
             }
         }
-
-        // Minimum safety check (visual only logic, backend has real check)
         if (price < 1500) price = 1500;
-
         return price;
     };
 
@@ -190,8 +185,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
             const result = await createWompiSubscription({
                 paymentToken: wompiToken,
                 acceptanceToken: acceptanceToken,
-                planInterval: planInterval, // Enviamos el plan seleccionado
-                couponCode: appliedCoupon ? appliedCoupon.code : null // Enviar cupón
+                planInterval: planInterval,
+                couponCode: appliedCoupon ? appliedCoupon.code : null
             });
 
             if (result.data.status === 'success') {
@@ -199,8 +194,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                 await updateDoc(userRef, {
                     initialPaymentStatus: "completed",
                     subscriptionStatus: "active",
-                    subscriptionId: "manual_managed", // Ya no hay ID de suscripción de Wompi
-                    lastTransactionId: result.data.transactionId, // Guardamos el ID de la transacción
+                    subscriptionId: "manual_managed",
+                    lastTransactionId: result.data.transactionId,
                     paymentSourceId: result.data.paymentSourceId,
                 });
 
@@ -341,6 +336,14 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                             <p className={`text-xs text-center mb-4 ${couponMessage.type === 'success' ? 'text-green-600 font-bold' : 'text-red-500'}`}>
                                 {couponMessage.text}
                             </p>
+                        )}
+                        {appliedCoupon && appliedCoupon.applicablePlan && appliedCoupon.applicablePlan !== 'all' && appliedCoupon.applicablePlan !== planInterval && (
+                            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                                <p className="text-xs text-amber-700">
+                                    <span className="font-bold">¡Atención!</span> El cupón <span className="font-bold">{appliedCoupon.code}</span> solo es válido para el plan <span className="font-bold uppercase">{appliedCoupon.applicablePlan === 'monthly' ? 'Mensual' : 'Anual'}</span>.
+                                    <br />Cambia de plan para aplicar el descuento.
+                                </p>
+                            </div>
                         )}
 
 

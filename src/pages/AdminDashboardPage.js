@@ -77,7 +77,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                 createdAt: new Date()
             });
             toast.success("Cupón creado");
-            setNewCoupon({ code: '', type: 'percent', value: 0, active: true });
+            setNewCoupon({ code: '', type: 'percent', value: 0, active: true, applicablePlan: 'all', duration: 'once' });
         } catch (error) {
             console.error(error);
             toast.error("Error al crear cupón");
@@ -350,8 +350,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                             onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
                                             <select
                                                 className="w-full border border-slate-300 rounded-lg px-3 py-2"
@@ -362,7 +362,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                                 <option value="amount">Valor Fijo ($)</option>
                                             </select>
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Valor</label>
                                             <input
                                                 type="number"
@@ -370,6 +370,31 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                                 value={newCoupon.value}
                                                 onChange={e => setNewCoupon({ ...newCoupon, value: Number(e.target.value) })}
                                             />
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Aplicable a</label>
+                                            <select
+                                                className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                                                value={newCoupon.applicablePlan || 'all'}
+                                                onChange={e => setNewCoupon({ ...newCoupon, applicablePlan: e.target.value })}
+                                            >
+                                                <option value="all">Todos los Planes</option>
+                                                <option value="monthly">Solo Mensual</option>
+                                                <option value="yearly">Solo Anual</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Duración</label>
+                                            <select
+                                                className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                                                value={newCoupon.duration || 'once'}
+                                                onChange={e => setNewCoupon({ ...newCoupon, duration: e.target.value })}
+                                            >
+                                                <option value="once">Una sola vez</option>
+                                                <option value="forever">De por vida</option>
+                                            </select>
                                         </div>
                                     </div>
 
@@ -393,6 +418,16 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                         </div>
                                         <p className="text-slate-500 text-sm">
                                             Descuento: <strong>{coupon.type === 'percent' ? `${coupon.value}%` : `$${coupon.value}`}</strong>
+                                            {coupon.applicablePlan && coupon.applicablePlan !== 'all' && (
+                                                <span className="ml-2 text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                                                    Solo {coupon.applicablePlan === 'monthly' ? 'Mensual' : 'Anual'}
+                                                </span>
+                                            )}
+                                            {coupon.duration === 'forever' && (
+                                                <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold">
+                                                    FOREVER
+                                                </span>
+                                            )}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">

@@ -94,21 +94,29 @@ exports.createWompiSubscription = onCall(
         if (couponDoc.exists) {
           const couponData = couponDoc.data();
           if (couponData.active) {
-            appliedCoupon = { code: couponCode, ...couponData };
-            console.log("Cupón válido encontrado:", appliedCoupon);
+            // Validar si el cupón aplica al plan seleccionado
+            const applicablePlan = couponData.applicablePlan || 'all'; // 'all', 'monthly', 'yearly'
 
-            // Calcular descuento
-            if (couponData.type === 'percent') {
-              const discountAmount = Math.floor(amountInCents * (couponData.value / 100)); // Usar Math.floor para enteros
-              amountInCents -= discountAmount;
-            } else if (couponData.type === 'amount') {
-              amountInCents -= (couponData.value * 100); // Asumiendo value en pesos, convertir a centavos
+            if (applicablePlan !== 'all' && applicablePlan !== planInterval) {
+              console.log(`El cupón ${couponCode} no aplica para el plan ${planInterval} (Solo ${applicablePlan}).`);
+              // No aplicamos descuento, pero no fallamos la transacción.
+            } else {
+              appliedCoupon = { code: couponCode, ...couponData };
+              console.log("Cupón válido encontrado:", appliedCoupon);
+
+              // Calcular descuento
+              if (couponData.type === 'percent') {
+                const discountAmount = Math.floor(amountInCents * (couponData.value / 100)); // Usar Math.floor para enteros
+                amountInCents -= discountAmount;
+              } else if (couponData.type === 'amount') {
+                amountInCents -= (couponData.value * 100); // Asumiendo value en pesos, convertir a centavos
+              }
+
+              // Seguridad: El monto no puede ser menor a 1500 pesos (mínimo Wompi aprox)
+              if (amountInCents < 150000) amountInCents = 150000;
+
+              planDescription += ` (Cupón ${couponCode} aplicado)`;
             }
-
-            // Seguridad: El monto no puede ser menor a 1500 pesos (mínimo Wompi aprox)
-            if (amountInCents < 150000) amountInCents = 150000;
-
-            planDescription += ` (Cupón ${couponCode} aplicado)`;
           } else {
             console.log("El cupón existe pero no está activo.");
             // Opcional: Lanzar error si el cupón es inválido, o ignorarlo y cobrar full. 
@@ -152,7 +160,9 @@ exports.createWompiSubscription = onCall(
         subscriptionInterval: planInterval, // 'monthly' or 'yearly'
         initialPaymentStatus: "completed",
         subscriptionStartDate: admin.firestore.Timestamp.now(),
-        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000))
+        nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + nextPaymentDays * 24 * 60 * 60 * 1000)),
+        // Store recurring coupon if applicable
+        recurringCoupon: (appliedCoupon && appliedCoupon.duration === 'forever') ? appliedCoupon.code : null
       }, { merge: true });
 
       // Guardar registro del pago
@@ -212,7 +222,8 @@ exports.validateCoupon = onCall(
         valid: true,
         type: data.type,
         value: data.value,
-        code: couponCode.toUpperCase()
+        code: couponCode.toUpperCase(),
+        applicablePlan: data.applicablePlan || 'all'
       };
     } catch (error) {
       console.error("Error validando cupón:", error);
