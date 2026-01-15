@@ -12,15 +12,6 @@ const NavbarCinematic = ({
     theme = { primary: '#3b82f6', secondary: '#0f172a' }
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     const isImageLogo = logo && (logo.includes('http') || logo.includes('data:image'));
 

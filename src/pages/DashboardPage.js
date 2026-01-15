@@ -6,7 +6,6 @@ import Skeleton from '../components/Skeleton';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../components/layout/DashboardLayout';
 
-const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
 const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, query, where, orderBy, onSnapshot, doc }) => {
     const [changeRequestSent, setChangeRequestSent] = useState(false);
@@ -14,15 +13,11 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [subscription, setSubscription] = useState({ status: 'loading' });
-    const [visitCount, setVisitCount] = useState(0);
-    const [clickCount, setClickCount] = useState(0);
 
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
 
     const [selectedMonth, setSelectedMonth] = useState(new Date());
-    const [monthlyStats, setMonthlyStats] = useState({ current: { visits: 0, clicks: 0 }, previous: { visits: 0, clicks: 0 } });
-    const [loadingStats, setLoadingStats] = useState(true);
 
     const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
 
@@ -58,15 +53,8 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setSubscription({ status: data.subscriptionStatus || 'inactive' });
-                // Restore global counters if needed, though we are focusing on monthly now.
-                // But the user said "counters stopped working", implying they might care about totals OR 
-                // just that the new ones were 0. Let's set them just in case specific logic uses them.
-                setVisitCount(data.visitCount || 0);
-                setClickCount(data.clickCount || 0);
             } else {
                 setSubscription({ status: 'inactive' });
-                setVisitCount(0);
-                setClickCount(0);
             }
         });
         return () => unsubscribe();

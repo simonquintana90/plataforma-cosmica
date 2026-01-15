@@ -98,7 +98,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                 unsubscribeWithdrawals();
             };
         }
-    }, [userProfile, db, collection, query, where, user.uid]);
+    }, [userProfile, db, collection, query, where, user.uid, onSnapshot]);
 
     const handleRequestWithdrawal = async (bankDetails) => {
         if (referralEarnings < 50000) {

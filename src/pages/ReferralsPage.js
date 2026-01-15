@@ -3,7 +3,6 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import toast from 'react-hot-toast';
 
 const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
-    const [copied, setCopied] = useState(false);
     const [loadingWithdraw, setLoadingWithdraw] = useState(false);
 
     // Generate a simple referral code from UID or use email
@@ -90,8 +89,8 @@ const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                                 onClick={handleWithdraw}
                                 disabled={monthlyEarnings < paymentThreshold || loadingWithdraw}
                                 className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${monthlyEarnings >= paymentThreshold
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
-                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                     }`}
                             >
                                 {loadingWithdraw ? 'Procesando...' : (monthlyEarnings >= paymentThreshold ? 'Solicitar Retiro' : `Mínimo $${paymentThreshold.toLocaleString()} para retirar`)}

@@ -1,19 +1,8 @@
-import { getFunctions, httpsCallable } from 'firebase/functions'; // REMOVED via update, but tool needs valid replacement. 
-// Actually I will just remove the import in one chunk and update props in another or combined.
-
-// Combined approach:
-// Remove import line 9.
-// Update props line 11.
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
 import Skeleton from '../components/Skeleton';
-import { motion } from 'framer-motion';
-import PageTransition from '../components/PageTransition';
-
-// import { getFunctions, httpsCallable } from 'firebase/functions'; // REMOVING THIS LINE
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getFunctions, httpsCallable }) => {
     const [activeTab, setActiveTab] = useState('requests');

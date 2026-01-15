@@ -27,7 +27,7 @@ const FooterImpact = ({
                                 <ul className="space-y-2">
                                     {column.items.map((item, i) => (
                                         <li key={i}>
-                                            <a href="#" className="text-slate-500 hover:text-blue-600 transition-colors">
+                                            <a href="/" className="text-slate-500 hover:text-blue-600 transition-colors">
                                                 {item}
                                             </a>
                                         </li>
@@ -43,7 +43,7 @@ const FooterImpact = ({
                                 <ul className="space-y-2">
                                     {links && links.map((link, i) => (
                                         <li key={i}>
-                                            <a href={link.href || '#'} className="text-slate-500 hover:text-blue-600 transition-colors">
+                                            <a href={link.href || '/'} className="text-slate-500 hover:text-blue-600 transition-colors">
                                                 {link.name || link}
                                             </a>
                                         </li>

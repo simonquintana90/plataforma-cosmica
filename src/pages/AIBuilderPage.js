@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WebsiteBuilder from '../components/builder/WebsiteBuilder';
 import VisualEditorSidebar from '../components/builder/VisualEditorSidebar';
-import { generateWebsiteConfig } from '../utils/aiGenerator';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,31 +32,12 @@ const AIBuilderPage = () => {
 
     // State for Website Config
     const [parsedConfig, setParsedConfig] = useState(DEFAULT_CONFIG);
-    const [isLoading, setIsLoading] = useState(true);
     const [selectedSectionId, setSelectedSectionId] = useState(null);
-
-    // State for Generator Form (kept for reference or future re-generation)
-    const [formData, setFormData] = useState({
-        businessName: '',
-        industry: 'general',
-        description: '',
-        style: 'impact',
-        brandColors: {
-            primary: '#3B82F6',
-            secondary: '#1E293B',
-            accent: '#F59E0B'
-        },
-        fontPairing: 'modern',
-        mainCity: '',
-        mainService: '',
-        logoUrl: ''
-    });
 
     // Load User Config on Mount
     useEffect(() => {
         const loadUserConfig = async () => {
             if (!user || !db) {
-                setIsLoading(false);
                 return;
             }
 
@@ -73,37 +53,15 @@ const AIBuilderPage = () => {
                         setParsedConfig(userData.websiteConfig);
                         toast.success("Loaded your generated website!");
                     }
-
-                    // 2. Pre-fill the generator form with their data
-                    if (userData.websiteInfo) {
-                        const info = userData.websiteInfo;
-                        setFormData({
-                            businessName: info.businessName || info.domain || '',
-                            industry: 'general',
-                            description: (info.mainService || '') + ". " + (info.uniqueAspect || ''),
-                            style: 'impact',
-                            brandColors: info.brandColors || {
-                                primary: info.brandColor || '#3B82F6',
-                                secondary: '#1E293B',
-                                accent: '#F59E0B'
-                            },
-                            fontPairing: info.fontPairing || 'modern',
-                            mainCity: info.mainCity || '',
-                            mainService: info.mainService || '',
-                            logoUrl: info.logoUrl || ''
-                        });
-                    }
                 }
             } catch (err) {
                 console.error("Error loading user config:", err);
                 toast.error(`Could not load config: ${err.message}`);
-            } finally {
-                setIsLoading(false);
             }
         };
 
         loadUserConfig();
-    }, [user, db]);
+    }, [user, db, doc, getDoc]);
 
     return (
         <div className="flex h-screen overflow-hidden font-sans bg-slate-50">

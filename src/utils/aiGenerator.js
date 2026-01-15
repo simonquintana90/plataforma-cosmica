@@ -129,7 +129,6 @@ const generatePAS = (service, city, tone) => {
 export const generateWebsiteConfig = (formData) => {
     const {
         businessName,
-        industry,
         description,
         style,
         brandColors,
@@ -138,14 +137,11 @@ export const generateWebsiteConfig = (formData) => {
         mainService,
         logoUrl,
         uniqueAspect,
-        processStepByStep,
         servicesInclude,
-        tone = 'friendly',
-        keywords = ''
+        tone = 'friendly'
     } = formData;
 
     const toneSettings = TONE_MODIFIERS[tone] || TONE_MODIFIERS.friendly;
-    const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k);
 
     // 1. Global Theme
     const baseTheme = STYLES[style]?.theme || STYLES.impact.theme;

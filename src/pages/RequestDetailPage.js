@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import useFileUpload from '../hooks/useFileUpload';
 import { StatusBadge } from '../components/Badges';
 import { motion } from 'framer-motion';
-import PageTransition from '../components/PageTransition';
 
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 
