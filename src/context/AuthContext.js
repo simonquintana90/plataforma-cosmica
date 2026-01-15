@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
             try {
                 const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js');
                 const { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, updatePassword } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js');
-                const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
+                const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, getDoc, where, setDoc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js');
                 const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js');
                 const { getStorage } = await import('https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js');
 
@@ -54,7 +54,8 @@ export const AuthProvider = ({ children }) => {
                     updateDoc,
                     getDoc,
                     where,
-                    setDoc
+                    setDoc,
+                    deleteDoc
                 });
 
                 const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {

@@ -527,7 +527,7 @@ const DashboardPage = ({ user, auth, db, addDoc, collection, serverTimestamp, qu
                 </div>
 
             </div>
-        </DashboardLayout>
+        </DashboardLayout >
     );
 };
 

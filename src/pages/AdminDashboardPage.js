@@ -15,14 +15,24 @@ import PageTransition from '../components/PageTransition';
 
 // import { getFunctions, httpsCallable } from 'firebase/functions'; // REMOVING THIS LINE
 
-const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, getFunctions, httpsCallable }) => {
+const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getFunctions, httpsCallable }) => {
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
+    const [coupons, setCoupons] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [loadingCoupons, setLoadingCoupons] = useState(true);
     const [approvingUserId, setApprovingUserId] = useState(null);
     const [completingRequestId, setCompletingRequestId] = useState(null);
+
+    // Formulario Nuevo Cupón
+    const [newCoupon, setNewCoupon] = useState({
+        code: '',
+        type: 'percent', // percent | amount
+        value: 0,
+        active: true
+    });
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
     const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -50,6 +60,60 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         });
         return () => unsubscribe();
     }, [db, collection, query, onSnapshot, orderBy]);
+
+
+    // Fetch Coupons
+    useEffect(() => {
+        if (activeTab === 'coupons') {
+            setLoadingCoupons(true);
+            const q = query(collection(db, "coupons"));
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const data = [];
+                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                setCoupons(data);
+                setLoadingCoupons(false);
+            });
+            return () => unsubscribe();
+        }
+    }, [db, collection, query, onSnapshot, activeTab]);
+
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        if (!newCoupon.code || !newCoupon.value) return toast.error("Completa el formulario");
+
+        try {
+            await setDoc(doc(db, "coupons", newCoupon.code.toUpperCase()), {
+                ...newCoupon,
+                code: newCoupon.code.toUpperCase(),
+                createdAt: new Date()
+            });
+            toast.success("Cupón creado");
+            setNewCoupon({ code: '', type: 'percent', value: 0, active: true });
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al crear cupón");
+        }
+    };
+
+    const handleDeleteCoupon = async (couponId) => {
+        if (!window.confirm("¿Seguro de eliminar este cupón?")) return;
+        try {
+            await deleteDoc(doc(db, "coupons", couponId));
+            toast.success("Cupón eliminado");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al eliminar");
+        }
+    };
+
+    const handleToggleCoupon = async (couponId, currentStatus) => {
+        try {
+            await updateDoc(doc(db, "coupons", couponId), { active: !currentStatus });
+            toast.success("Estado actualizado");
+        } catch (error) {
+            toast.error("Error al actualizar");
+        }
+    };
 
     const handleMarkAsComplete = async (requestId) => {
         setCompletingRequestId(requestId);
@@ -173,6 +237,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                             Todos los Usuarios ({filteredUsers.length})
                             {pendingUsersCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsersCount}</span></span>}
                         </button>
+                        <button onClick={() => setActiveTab('coupons')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'coupons' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Cupones</button>
                     </nav>
                 </div>
 
@@ -276,6 +341,91 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                )}
+
+                {activeTab === 'coupons' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Formulario */}
+                        <div className="md:col-span-1">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                                <h3 className="font-heading font-bold text-lg mb-4">Crear Nuevo Cupón</h3>
+                                <form onSubmit={handleCreateCoupon} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Código</label>
+                                        <input
+                                            type="text"
+                                            placeholder="EJ: VERANO2025"
+                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 uppercase font-bold text-slate-800"
+                                            value={newCoupon.code}
+                                            onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                                            <select
+                                                className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                                                value={newCoupon.type}
+                                                onChange={e => setNewCoupon({ ...newCoupon, type: e.target.value })}
+                                            >
+                                                <option value="percent">Porcentaje (%)</option>
+                                                <option value="amount">Valor Fijo ($)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Valor</label>
+                                            <input
+                                                type="number"
+                                                className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                                                value={newCoupon.value}
+                                                onChange={e => setNewCoupon({ ...newCoupon, value: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" className="w-full bg-slate-900 text-white font-bold py-2 rounded-lg hover:bg-black transition-colors">
+                                        Crear Cupón
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {/* Lista */}
+                        <div className="md:col-span-2 space-y-4">
+                            {loadingCoupons ? <p>Cargando...</p> : coupons.map(coupon => (
+                                <div key={coupon.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <h4 className="font-heading font-bold text-xl text-slate-800">{coupon.code}</h4>
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${coupon.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {coupon.active ? 'ACTIVO' : 'INACTIVO'}
+                                            </span>
+                                        </div>
+                                        <p className="text-slate-500 text-sm">
+                                            Descuento: <strong>{coupon.type === 'percent' ? `${coupon.value}%` : `$${coupon.value}`}</strong>
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleToggleCoupon(coupon.id, coupon.active)}
+                                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="Activar/Desactivar"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteCoupon(coupon.id)}
+                                            className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                                            title="Eliminar"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {coupons.length === 0 && <p className="text-slate-500 text-center py-8">No hay cupones creados.</p>}
+                        </div>
                     </div>
                 )}
             </main>

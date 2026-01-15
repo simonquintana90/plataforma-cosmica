@@ -41,7 +41,7 @@ exports.createWompiSubscription = onCall(
       throw new functions.https.HttpsError('unauthenticated', 'El usuario debe estar autenticado.');
     }
 
-    const { paymentToken, acceptanceToken, planInterval = 'monthly' } = request.data;
+    const { paymentToken, acceptanceToken, planInterval = 'monthly', couponCode } = request.data;
     if (!paymentToken || !acceptanceToken) {
       throw new functions.https.HttpsError('invalid-argument', 'Faltan el token de pago o el token de aceptación.');
     }
@@ -83,6 +83,40 @@ exports.createWompiSubscription = onCall(
         nextPaymentDays = 365;
         planDescription = "Suscripción Anual";
       }
+
+      // --- LÓGICA DE CUPONES ---
+      let appliedCoupon = null;
+      if (couponCode) {
+        console.log(`Verificando cupón: ${couponCode}`);
+        const couponRef = db.collection('coupons').doc(couponCode.toUpperCase());
+        const couponDoc = await couponRef.get();
+
+        if (couponDoc.exists) {
+          const couponData = couponDoc.data();
+          if (couponData.active) {
+            appliedCoupon = { code: couponCode, ...couponData };
+            console.log("Cupón válido encontrado:", appliedCoupon);
+
+            // Calcular descuento
+            if (couponData.type === 'percent') {
+              const discountAmount = Math.floor(amountInCents * (couponData.value / 100)); // Usar Math.floor para enteros
+              amountInCents -= discountAmount;
+            } else if (couponData.type === 'amount') {
+              amountInCents -= (couponData.value * 100); // Asumiendo value en pesos, convertir a centavos
+            }
+
+            // Seguridad: El monto no puede ser menor a 1500 pesos (mínimo Wompi aprox)
+            if (amountInCents < 150000) amountInCents = 150000;
+
+            planDescription += ` (Cupón ${couponCode} aplicado)`;
+          } else {
+            console.log("El cupón existe pero no está activo.");
+            // Opcional: Lanzar error si el cupón es inválido, o ignorarlo y cobrar full. 
+            // Mejor ignorar para no romper el flujo si el usuario escribió mal, pero en el front ya debió validarse.
+          }
+        }
+      }
+      // --- FIN LÓGICA DE CUPONES ---
 
       const currency = "COP";
       const reference = `sub_${planInterval}_${userId}_${Date.now()}`;
@@ -129,7 +163,9 @@ exports.createWompiSubscription = onCall(
         description: `${planDescription} (Primer Pago)`,
         status: transaction.status,
         reference: reference,
-        type: 'subscription_initial'
+        type: 'subscription_initial',
+        appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+        originalAmount: appliedCoupon ? (appliedCoupon.type === 'percent' ? amountInCents / (1 - appliedCoupon.value / 100) : amountInCents + appliedCoupon.value * 100) : amountInCents // Aprox reverse calculation just for logs/record if needed, or simply don't store original.
       });
 
       console.log(`Usuario ${userId} activado. Transacción: ${transaction.id}`);
@@ -149,6 +185,42 @@ exports.createWompiSubscription = onCall(
  * Crea una suscripción ADICIONAL para Landing Pages.
  * Reutiliza la fuente de pago existente del usuario.
  */
+/**
+ * Valida un cupón antes del pago.
+ * Retorna detalles del descuento si es válido.
+ */
+exports.validateCoupon = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
+    }
+    const { couponCode } = request.data;
+    if (!couponCode) return { valid: false, message: 'Código vacío' };
+
+    const db = getFirestore();
+    try {
+      const couponDoc = await db.collection('coupons').doc(couponCode.toUpperCase()).get();
+      if (!couponDoc.exists) {
+        return { valid: false, message: 'Cupón no existe' };
+      }
+      const data = couponDoc.data();
+      if (!data.active) {
+        return { valid: false, message: 'Cupón inactivo' };
+      }
+      return {
+        valid: true,
+        type: data.type,
+        value: data.value,
+        code: couponCode.toUpperCase()
+      };
+    } catch (error) {
+      console.error("Error validando cupón:", error);
+      throw new functions.https.HttpsError('internal', 'Error al validar cupón');
+    }
+  }
+);
+
 exports.createLandingPageSubscription = onCall(
   {
     secrets: ["WOMPI_PRIVATE_KEY"],

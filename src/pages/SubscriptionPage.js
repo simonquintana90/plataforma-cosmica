@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
@@ -14,6 +14,23 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
     const [cvc, setCvc] = useState("");
     const [cardHolder, setCardHolder] = useState("");
     const [expDate, setExpDate] = useState(""); // <-- AÑADIDO: Estado para fecha
+    const [couponCode, setCouponCode] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
+    const [couponMessage, setCouponMessage] = useState(null);
+
+    // Read coupon from URL
+    const location = useLocation();
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const codeFromUrl = params.get('coupon');
+        if (codeFromUrl && !appliedCoupon) {
+            setCouponCode(codeFromUrl.toUpperCase());
+            // Optional: Auto-validate here if functions are ready, but might loop if not careful.
+            // setValidatingCoupon(true) ...
+            // Let's just pre-fill it for now.
+        }
+    }, [location.search]);
 
     const navigate = useNavigate();
     const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX'; // Llave pública de PRODUCCIÓN
@@ -57,7 +74,6 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         setExpDate(value);
     };
 
-    // Formateo de tarjeta (espacios cada 4 dígitos)
     const handleCardNumberChange = (e) => {
         let value = e.target.value.replace(/\D/g, '');
         if (value.length > 16) value = value.slice(0, 16);
@@ -65,6 +81,61 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
         // Aquí guardamos el valor limpio o formateado según prefieras. 
         // Para simplificar, guardamos limpio y mostramos limpio (o podrías usar una librería de máscaras).
         setCardNumber(value);
+    };
+
+    // Auto-validate effect
+    useEffect(() => {
+        if (couponCode && !appliedCoupon && !validatingCoupon && !couponMessage) {
+            const timer = setTimeout(() => {
+                handleValidateCoupon();
+            }, 500); // Small delay to ensure state and functions ready
+            return () => clearTimeout(timer);
+        }
+    }, [couponCode]);
+
+    const handleValidateCoupon = async () => {
+        if (!couponCode) return;
+        setValidatingCoupon(true);
+        setCouponMessage(null);
+        setAppliedCoupon(null);
+
+        try {
+            const functions = getFunctions();
+            const validate = httpsCallable(functions, 'validateCoupon');
+            const result = await validate({ couponCode });
+
+            if (result.data.valid) {
+                setAppliedCoupon(result.data);
+                setCouponMessage({ type: 'success', text: `¡Cupón ${result.data.code} aplicado!` });
+                toast.success("Cupón aplicado correctamente");
+            } else {
+                setCouponMessage({ type: 'error', text: result.data.message || 'Cupón inválido' });
+                toast.error(result.data.message || "Cupón inválido");
+            }
+        } catch (error) {
+            console.error(error);
+            setCouponMessage({ type: 'error', text: 'Error al validar cupón' });
+        } finally {
+            setValidatingCoupon(false);
+        }
+    };
+
+    // Calculate Price
+    const getPrice = () => {
+        let price = planInterval === 'monthly' ? 89900 : 1000000;
+
+        if (appliedCoupon) {
+            if (appliedCoupon.type === 'percent') {
+                price = price - Math.floor(price * (appliedCoupon.value / 100));
+            } else if (appliedCoupon.type === 'amount') {
+                price = price - appliedCoupon.value;
+            }
+        }
+
+        // Minimum safety check (visual only logic, backend has real check)
+        if (price < 1500) price = 1500;
+
+        return price;
     };
 
     const handlePayment = async (e) => {
@@ -119,7 +190,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
             const result = await createWompiSubscription({
                 paymentToken: wompiToken,
                 acceptanceToken: acceptanceToken,
-                planInterval: planInterval // Enviamos el plan seleccionado
+                planInterval: planInterval, // Enviamos el plan seleccionado
+                couponCode: appliedCoupon ? appliedCoupon.code : null // Enviar cupón
             });
 
             if (result.data.status === 'success') {
@@ -216,23 +288,60 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                         </h3>
                         <div className="text-center mt-2 flex flex-col items-center justify-center h-20 transition-all duration-300">
                             {/* Usamos key para forzar re-render y animación simple si se deseara, aunque aquí es directo */}
-                            {planInterval === 'monthly' ? (
-                                <p key="monthly" className="animate-fadeIn">
-                                    <span className="text-4xl font-bold text-slate-800">$89.900</span>
-                                    <span className="text-slate-500"> COP / mes</span>
+                            <div className="flex flex-col items-center">
+                                {appliedCoupon && (
+                                    <span className="text-slate-400 line-through text-sm">
+                                        {planInterval === 'monthly' ? '$89.900' : '$1.000.000'}
+                                    </span>
+                                )}
+                                <p className="animate-fadeIn">
+                                    <span className="text-4xl font-bold text-slate-800">
+                                        ${getPrice().toLocaleString('es-CO')}
+                                    </span>
+                                    <span className="text-slate-500"> COP / {planInterval === 'monthly' ? 'mes' : 'año'}</span>
                                 </p>
-                            ) : (
-                                <div key="yearly" className="animate-fadeIn flex flex-col items-center">
-                                    <p>
-                                        <span className="text-4xl font-bold text-slate-800">$1.000.000</span>
-                                        <span className="text-slate-500"> COP / año</span>
-                                    </p>
+                                {planInterval === 'yearly' && !appliedCoupon && (
                                     <p className="text-xs text-green-600 font-medium mt-1">
                                         ¡Ahorras $78.800 al año!
                                     </p>
-                                </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* INPUT CUPÓN */}
+                        <div className="mt-4 mb-2 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Código de descuento"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                disabled={!!appliedCoupon}
+                                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:bg-slate-100 disabled:text-slate-400"
+                            />
+                            {appliedCoupon ? (
+                                <button
+                                    type="button"
+                                    onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMessage(null); }}
+                                    className="bg-slate-200 text-slate-600 font-bold px-3 py-2 rounded-lg text-sm hover:bg-slate-300"
+                                >
+                                    Quit
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleValidateCoupon}
+                                    disabled={!couponCode || validatingCoupon}
+                                    className="bg-slate-800 text-white font-bold px-3 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50"
+                                >
+                                    {validatingCoupon ? '...' : 'Aplicar'}
+                                </button>
                             )}
                         </div>
+                        {couponMessage && (
+                            <p className={`text-xs text-center mb-4 ${couponMessage.type === 'success' ? 'text-green-600 font-bold' : 'text-red-500'}`}>
+                                {couponMessage.text}
+                            </p>
+                        )}
 
 
                         <div className="mt-6 text-center bg-blue-50/50 border-l-4 border-blue-300 p-3">
@@ -300,7 +409,8 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                                 {isProcessing ? 'Procesando...' :
                                     loadingToken ? 'Inicializando...' :
                                         !acceptanceToken ? 'Error de conexión' :
-                                            `Pagar ${planInterval === 'monthly' ? '$89.900' : '$1.000.000'} COP Ahora`}
+                                            !acceptanceToken ? 'Error de conexión' :
+                                                `Pagar $${getPrice().toLocaleString('es-CO')} COP Ahora`}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 text-center mt-4">Pagos seguros procesados por Wompi.</p>

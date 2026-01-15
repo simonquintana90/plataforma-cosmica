@@ -29,6 +29,10 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [withdrawalLoading, setWithdrawalLoading] = useState(false);
     const [pendingWithdrawal, setPendingWithdrawal] = useState(null);
 
+    // Coupon State
+    const [myAccountCoupon, setMyAccountCoupon] = useState('');
+    const [validatingMyAccountCoupon, setValidatingMyAccountCoupon] = useState(false);
+
     useEffect(() => {
         if (userProfile) {
             setCompanyName(userProfile.companyName || '');
@@ -199,6 +203,35 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         }
     };
 
+    const handleRedeemCoupon = async () => {
+        if (!myAccountCoupon) return;
+        setValidatingMyAccountCoupon(true);
+        try {
+            const validate = httpsCallable(getFunctions(), 'validateCoupon');
+            const result = await validate({ couponCode: myAccountCoupon });
+
+            if (result.data.valid) {
+                if (subscription.status === 'active') {
+                    // Si ya tiene suscripción, le decimos que contacte a soporte para aplicarlo
+                    toast.success(`Cupón ${result.data.code} válido. Contáctanos para aplicarlo a tu próxima factura.`);
+                } else {
+                    // Si NO tiene suscripción, redirigimos a la página de pago con el cupón
+                    toast.success("Cupón válido. Redirigiendo a suscripción...");
+                    setTimeout(() => {
+                        window.location.href = `/suscripcion?coupon=${myAccountCoupon}`;
+                    }, 1500);
+                }
+            } else {
+                toast.error(result.data.message || 'Cupón inválido');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al validar cupón");
+        } finally {
+            setValidatingMyAccountCoupon(false);
+        }
+    };
+
     return (
         <DashboardLayout>
             <div className="max-w-3xl mx-auto space-y-8">
@@ -282,6 +315,32 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                         </div>
                     </div>
                 )}
+
+                {/* CUPÓN DE DESCUENTO (Visible para todos) */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-slate-200 p-6">
+                        <h2 className="text-lg font-bold text-slate-800">Canjear Cupón</h2>
+                        <p className="text-sm text-slate-500 mt-1">Si tienes un código promocional, ingrésalo aquí.</p>
+                    </div>
+                    <div className="p-6">
+                        <div className="flex gap-4">
+                            <input
+                                type="text"
+                                placeholder="CÓDIGO"
+                                className="flex-1 border border-slate-300 rounded-lg px-4 py-2 uppercase font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                value={myAccountCoupon}
+                                onChange={(e) => setMyAccountCoupon(e.target.value.toUpperCase())}
+                            />
+                            <button
+                                onClick={handleRedeemCoupon}
+                                disabled={!myAccountCoupon || validatingMyAccountCoupon}
+                                className="bg-slate-900 text-white font-bold px-6 py-2 rounded-lg hover:bg-black transition-colors disabled:opacity-50"
+                            >
+                                {validatingMyAccountCoupon ? 'Validando...' : 'Canjear'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {userProfile?.role !== 'partner' && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
