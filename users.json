@@ -1,0 +1,67 @@
+{"users": [
+{
+  "localId": "BcHao3Gt5DXXzmwBKI9Yh1frj2n1",
+  "email": "bitvalcolombia@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "MKoxi3oOpWkVS1fKCal4tpHlHRc5taR1z918yMOAJnoKiH0udMlCmfjYRAmBAe8ho5ogObokG10FuDKsKqflDg==",
+  "salt": "qNbm1vTQks0zQw==",
+  "displayName": "SWEIF",
+  "lastSignedInAt": "1764896877200",
+  "createdAt": "1764896877200",
+  "providerUserInfo": []
+},
+{
+  "localId": "GfF0OKTNAjZA6g89hSvGeQhsfD63",
+  "email": "neli.itati21@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "XKxpye83p5iUinl4HNSqP2R5nOUClwpuW9ChghLwwcrhSHZG9sGwZXs1gBa+xjxav5UmCXhaCDGtEaMxGg9jug==",
+  "salt": "uKOmi4s6AEhhEA==",
+  "displayName": "Nelly ",
+  "lastSignedInAt": "1764076517359",
+  "createdAt": "1764076517359",
+  "providerUserInfo": []
+},
+{
+  "localId": "Jb8WTE2iorXbECYFTDydy8VNdFQ2",
+  "email": "pamequintana@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "LH2N6VLdzAw4y3AAJxUO387UI9L1HXvdIQ6lT5L9/5q65tU6zfOXhLLm16otU+eYancJWstPuO9wIK55EgBZMQ==",
+  "salt": "72MjVMRlII6qOg==",
+  "displayName": "Pamela",
+  "lastSignedInAt": "1768448859267",
+  "createdAt": "1768448859267",
+  "providerUserInfo": []
+},
+{
+  "localId": "SFYFi9u8uZYJHSNEEyGQaigIyip1",
+  "email": "simonquintana90@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "3ggc3YVkOUoc1Oa0yRrTuqM6Cb6vAQ7mcMM80udb3x8YyHnAI8ocIktsd923qSOMGPZKqTRm4xNqae/VbiBbtQ==",
+  "salt": "6YEoRbVfC4cQmQ==",
+  "displayName": "Simon",
+  "lastSignedInAt": "1768508621724",
+  "createdAt": "1752088079442",
+  "providerUserInfo": []
+},
+{
+  "localId": "icXdP5CF9cPr48fPKBM1CR0Imos1",
+  "email": "sweifpayment@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "EvrMfKJ9YqQ9PP4dd4NLC8bMklo+j3QKwiqdwxumaC+ihqyUAdh8dgOX9xzlTpNgZm+w+5NHwi+m0UhsjGgXoQ==",
+  "salt": "RVE9S89Nh3E0gg==",
+  "displayName": "Sweif",
+  "lastSignedInAt": "1768430493492",
+  "createdAt": "1768430493492",
+  "providerUserInfo": []
+},
+{
+  "localId": "tYKwFLy8H8N81hIoNvwLztSj8qI3",
+  "email": "camiloangel1136@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "LSnhThKafmkrkU9TSUFF8sQIkKowr+RE5CJBIh+b98xU3nLSGQ2GgtHGS2bSp3bdEgMbsLRoyP3351LzEQZNHQ==",
+  "salt": "yiSsBOFK0BGo8w==",
+  "displayName": "Camilo Angel",
+  "lastSignedInAt": "1766770530495",
+  "createdAt": "1766768540599",
+  "providerUserInfo": []
+}]}

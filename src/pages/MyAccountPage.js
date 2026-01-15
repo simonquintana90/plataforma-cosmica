@@ -10,6 +10,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [companyName, setCompanyName] = useState(userProfile?.companyName || '');
     const [phone, setPhone] = useState(userProfile?.phone || '');
     const [nit, setNit] = useState(userProfile?.nit || '');
+    const [address, setAddress] = useState(userProfile?.address || '');
     const [loading, setLoading] = useState(false);
 
     const [newPassword, setNewPassword] = useState('');
@@ -36,7 +37,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         if (userProfile) {
             setCompanyName(userProfile.companyName || '');
             setPhone(userProfile.phone || '');
+            setPhone(userProfile.phone || '');
             setNit(userProfile.nit || '');
+            setAddress(userProfile.address || '');
         }
     }, [userProfile]);
 
@@ -140,7 +143,10 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                 displayName: name,
                 companyName: companyName,
                 phone: phone,
-                nit: nit
+                companyName: companyName,
+                phone: phone,
+                nit: nit,
+                address: address
             });
 
             toast.success('Perfil actualizado con éxito');
@@ -231,6 +237,35 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         }
     };
 
+    const handleDownloadInvoice = async (paymentId) => {
+        const toastId = toast.loading("Generando factura...");
+        try {
+            const generateInvoice = httpsCallable(getFunctions(), 'generateInvoice');
+            const result = await generateInvoice({ paymentId });
+            const { pdfBase64, filename } = result.data;
+
+            // Convert Base64 to Blob
+            const byteCharacters = atob(pdfBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+            // Create download link
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+
+            toast.success("Factura descargada", { id: toastId });
+        } catch (error) {
+            console.error("Error downloading invoice:", error);
+            toast.error("Error al generar la factura. Intenta de nuevo.", { id: toastId });
+        }
+    };
+
     return (
         <DashboardLayout>
             <div className="max-w-3xl mx-auto space-y-8">
@@ -264,6 +299,10 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                             <div>
                                 <label htmlFor="nit" className="block text-sm font-medium text-slate-600 mb-2">NIT</label>
                                 <input id="nit" type="text" value={nit} onChange={(e) => setNit(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="address" className="block text-sm font-medium text-slate-600 mb-2">Dirección de Facturación</label>
+                                <input id="address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej: Calle 123 # 45-67, Bogotá" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500" />
                             </div>
                             <div className="flex justify-end pt-2">
                                 <button type="submit" disabled={loading} className="inline-flex justify-center py-2 px-5 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
@@ -362,6 +401,14 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                                                     <p className="text-xs text-slate-400 mt-1">{p.date ? new Date(p.date).toLocaleString('es-CO') : ''}</p>
                                                 </div>
                                                 <p className="font-bold text-slate-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(p.amount)}</p>
+                                            </div>
+                                            <div className="mt-2 text-right">
+                                                <button
+                                                    onClick={() => handleDownloadInvoice(p.paymentId)}
+                                                    className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                                                >
+                                                    Descargar Factura
+                                                </button>
                                             </div>
                                         </li>
                                     ))

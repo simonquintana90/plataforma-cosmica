@@ -14,6 +14,7 @@ const Busboy = require("busboy");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
+const PDFDocument = require("pdfkit");
 
 initializeApp();
 
@@ -1180,3 +1181,141 @@ exports.cancelLandingPageSubscription = onCall(
     }
   }
 );
+
+/**
+ * Genera una Cuenta de Cobro (PDF) para un pago específico.
+ * Retorna el PDF en base64 para descarga directa.
+ */
+exports.generateInvoice = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
+    }
+
+    const { paymentId } = request.data;
+    if (!paymentId) throw new functions.https.HttpsError('invalid-argument', 'Falta el ID del pago.');
+
+    const userId = request.auth.uid;
+    const db = getFirestore();
+
+    try {
+      // 1. Obtener datos del pago
+      const paymentRef = db.collection('users').doc(userId).collection('payments').doc(paymentId);
+      const paymentDoc = await paymentRef.get();
+      if (!paymentDoc.exists) throw new functions.https.HttpsError('not-found', 'Pago no encontrado.');
+      const payment = paymentDoc.data();
+
+      // 2. Obtener datos del usuario (Cliente)
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      const userData = userDoc.data();
+      const userProfile = userData.profile || {};
+
+      // 3. Generar PDF
+      const doc = new PDFDocument({ margin: 50 });
+      const buffers = [];
+      doc.on('data', buffers.push.bind(buffers));
+
+      return new Promise((resolve, reject) => {
+        doc.on('end', () => {
+          const pdfData = Buffer.concat(buffers);
+          resolve({
+            pdfBase64: pdfData.toString('base64'),
+            filename: `Factura_Cosmica_${paymentId.substring(0, 8)}.pdf`
+          });
+        });
+
+        doc.on('error', (err) => {
+          console.error("Error PDFKit:", err);
+          reject(new functions.https.HttpsError('internal', 'Error generando PDF'));
+        });
+
+        // --- DISEÑO DE LA FACTURA ---
+
+        // Encabezado
+        doc.fillColor('#444444')
+          .fontSize(20)
+          .text('CUENTA DE COBRO', 50, 57)
+          .fontSize(10)
+          .text('Simón Quintana', 200, 65, { align: 'right' })
+          .text('NIT: 1020756190', 200, 80, { align: 'right' })
+          .text('Régimen: Persona Natural', 200, 95, { align: 'right' })
+          .text('No Responsable de IVA', 200, 110, { align: 'right' })
+          .moveDown();
+
+        // Separador
+        doc.moveTo(50, 130).lineTo(550, 130).stroke();
+
+        // Datos del Cliente
+        doc.text(`Cliente: ${userData.displayName || userData.contactName || 'Cliente'}`, 50, 150)
+          .text(`NIT/CC: ${userProfile.nit || 'N/A'}`, 50, 165)
+          .text(`Dirección: ${userProfile.address || 'N/A'}`, 50, 180)
+          .text(`Teléfono: ${userProfile.phone || 'N/A'}`, 50, 195)
+          .moveDown();
+
+        // Detalles de la Factura
+        const invoiceDate = payment.date ? payment.date.toDate().toLocaleDateString('es-CO') : new Date().toLocaleDateString('es-CO');
+
+        doc.text(`No. Documento: ${paymentId.substring(0, 8).toUpperCase()}`, 400, 150)
+          .text(`Fecha: ${invoiceDate}`, 400, 165)
+          .text(`Estado: PAGADO`, 400, 180)
+          .moveDown();
+
+        // Tabla de Items
+        const invoiceTableTop = 250;
+        doc.font('Helvetica-Bold');
+        doc.text('Descripción', 50, invoiceTableTop)
+          .text('Valor', 450, invoiceTableTop, { width: 90, align: 'right' });
+        doc.moveTo(50, invoiceTableTop + 15).lineTo(550, invoiceTableTop + 15).stroke();
+        doc.font('Helvetica');
+
+        // Item 1
+        const amount = payment.amount || 0;
+        const description = payment.description || 'Servicios Digitales';
+
+        doc.text(description, 50, invoiceTableTop + 30)
+          .text(`$ ${amount.toLocaleString('es-CO')}`, 450, invoiceTableTop + 30, { width: 90, align: 'right' });
+
+        // Total
+        const totalPosition = invoiceTableTop + 60;
+        doc.moveTo(50, totalPosition - 10).lineTo(550, totalPosition - 10).stroke();
+        doc.font('Helvetica-Bold');
+        doc.text('Total a Pagar:', 350, totalPosition, { width: 90, align: 'right' })
+          .text(`$ ${amount.toLocaleString('es-CO')}`, 450, totalPosition, { width: 90, align: 'right' });
+
+        // Pie de página / Términos
+        doc.font('Helvetica')
+          .fontSize(10)
+          .text('Documento equivalente a factura para no responsables de IVA.', 50, 700, { align: 'center', width: 500 })
+          .text('Gracias por confiar en Cósmica.', 50, 715, { align: 'center', width: 500 });
+
+        doc.end();
+      });
+
+    } catch (error) {
+      console.error("Error generando factura:", error);
+      throw new functions.https.HttpsError('internal', 'No se pudo generar la factura.');
+    }
+  }
+);
+
+/**
+ * TEMP: Inject Test Payment
+ */
+exports.injectTestPayment = onRequest(async (req, res) => {
+  const userId = 'SFYFi9u8uZYJHSNEEyGQaigIyip1';
+  const db = getFirestore();
+  const paymentId = 'test_payment_' + Date.now();
+
+  await db.collection('users').doc(userId).collection('payments').doc(paymentId).set({
+    paymentId: paymentId,
+    date: admin.firestore.Timestamp.now(),
+    amount: 1560000,
+    description: "Suscripción Anual (Prueba)",
+    status: "approved",
+    type: "subscription"
+  });
+
+  res.send(`Pago inyectado: ${paymentId}`);
+});
