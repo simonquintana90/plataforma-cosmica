@@ -143,8 +143,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                 displayName: name,
                 companyName: companyName,
                 phone: phone,
-                companyName: companyName,
-                phone: phone,
                 nit: nit,
                 address: address
             });
