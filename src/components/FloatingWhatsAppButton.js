@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const FloatingWhatsAppButton = () => {
     return (
@@ -7,7 +6,7 @@ const FloatingWhatsAppButton = () => {
             href="https://wa.me/573183929342"
             target="_blank"
             rel="noopener noreferrer"
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-3 rounded-full shadow-lg transition-colors duration-300 group"
+            className="fixed bottom-6 right-6 z-[9999] flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-3 rounded-full shadow-lg transition-colors duration-300 group"
         >
             <span className="font-medium text-sm hidden md:block">¿Tienes dudas? Contáctanos</span>
             <svg
