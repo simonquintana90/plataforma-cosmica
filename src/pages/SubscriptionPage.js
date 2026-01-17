@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import FloatingWhatsAppButton from '../components/FloatingWhatsAppButton';
+
 
 const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, updateDoc }) => {
     const navigate = useNavigate();
@@ -420,6 +422,7 @@ const SubscriptionPage = ({ user, auth, getFunctions, httpsCallable, db, doc, up
                     </div>
                 </form>
             </main>
+            <FloatingWhatsAppButton />
         </div>
     );
 };

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { generateReferralCode } from '../utils/referralUtils';
 
+
+
 const AuthPage = ({ auth, updateProfile, db, doc, setDoc, serverTimestamp }) => {
     const location = useLocation();
     const navigate = useNavigate(); // Para cambiar de URL
