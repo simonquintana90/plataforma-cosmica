@@ -1327,27 +1327,39 @@ async function runRecurringPaymentsLogic() {
   const db = getFirestore();
   const now = admin.firestore.Timestamp.now();
 
-  // 1. Get Active Users with Due Payments
-  // Note: Firestore requires a composite index for 'subscriptionStatus' and 'nextPaymentDate'.
-  // If it fails, check the Firebase Console logs for the index creation link.
+  // 1. Get Active Users
+  // Optimization: Query ONLY by status to avoid "Missing Index" error for composite queries.
+  // We will filter by date in memory (safe for < 1000 active users).
   const usersQuery = db.collection('users')
-    .where('subscriptionStatus', '==', 'active')
-    .where('nextPaymentDate', '<=', now);
+    .where('subscriptionStatus', '==', 'active');
 
   const snapshot = await usersQuery.get();
   const results = { processed: 0, success: 0, failed: 0, errors: [] };
 
   if (snapshot.empty) {
-    console.log("No subscriptions due for renewal.");
+    console.log("No active subscriptions found.");
     return results;
   }
 
-  console.log(`Found ${snapshot.size} subscriptions due for renewal.`);
+  console.log(`Found ${snapshot.size} active subscriptions. Checking dates...`);
 
-  // Process sequentially to avoid rate limits or memory issues
+  // Process sequentially
   for (const doc of snapshot.docs) {
     const user = doc.data();
     const userId = doc.id;
+
+    // Memory Filter: Check if Next Payment Date is in the past
+    if (!user.nextPaymentDate) continue;
+
+    // Parse timestamp
+    const nextPaymentDate = user.nextPaymentDate.toDate ? user.nextPaymentDate.toDate() : new Date(user.nextPaymentDate);
+    const now = new Date();
+
+    // If future, skip
+    if (nextPaymentDate > now) {
+      continue;
+    }
+
     const userEmail = user.email;
 
     results.processed++;
