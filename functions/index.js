@@ -1234,36 +1234,51 @@ exports.generateInvoice = onCall(
         // --- DISEÑO DE LA FACTURA ---
 
         // Encabezado
+        // Encabezado
+        doc.fillColor('#0f172a') // Slate-900 like
+          .font('Helvetica-Bold')
+          .fontSize(24)
+          .text('CÓSMICA', 50, 50)
+          .fontSize(10)
+          .font('Helvetica')
+          .text('Software & Design Agency', 50, 75)
+          .moveDown();
+
         doc.fillColor('#444444')
           .fontSize(20)
-          .text('CUENTA DE COBRO', 50, 57)
-          .fontSize(10)
-          .text('Simón Quintana', 200, 65, { align: 'right' })
-          .text('NIT: 1020756190', 200, 80, { align: 'right' })
-          .text('Régimen: Persona Natural', 200, 95, { align: 'right' })
-          .text('No Responsable de IVA', 200, 110, { align: 'right' })
+          .font('Helvetica-Bold')
+          .text('FACTURA DE VENTA', 350, 50, { align: 'right' })
+          .font('Helvetica')
+          .fontSize(9)
+          .text('Simón Quintana Sanabria', 200, 80, { align: 'right' })
+          .text('NIT: 1020756190-1', 200, 92, { align: 'right' })
+          .text('Régimen: Persona Natural no responsable de IVA', 200, 104, { align: 'right' })
+          .text('3183929342', 200, 116, { align: 'right' })
+          .text('Vereda Pozo Hondo Tabio Casa 57A', 200, 128, { align: 'right' })
+          .text('simonquintana90@gmail.com', 200, 140, { align: 'right' })
+          .text('Tabio, Cundinamarca', 200, 152, { align: 'right' })
           .moveDown();
 
         // Separador
-        doc.moveTo(50, 130).lineTo(550, 130).stroke();
+        doc.moveTo(50, 170).lineTo(550, 170).stroke();
 
         // Datos del Cliente
-        doc.text(`Cliente: ${userData.displayName || userData.contactName || 'Cliente'}`, 50, 150)
-          .text(`NIT/CC: ${userProfile.nit || 'N/A'}`, 50, 165)
-          .text(`Dirección: ${userProfile.address || 'N/A'}`, 50, 180)
-          .text(`Teléfono: ${userProfile.phone || 'N/A'}`, 50, 195)
+        doc.text(`Cliente: ${userData.displayName || userData.contactName || 'Cliente'}`, 50, 190)
+          .text(`NIT/CC: ${userProfile.nit || 'N/A'}`, 50, 205)
+          .text(`Dirección: ${userProfile.address || 'N/A'}`, 50, 220)
+          .text(`Teléfono: ${userProfile.phone || 'N/A'}`, 50, 235)
           .moveDown();
 
         // Detalles de la Factura
         const invoiceDate = payment.date ? payment.date.toDate().toLocaleDateString('es-CO') : new Date().toLocaleDateString('es-CO');
 
-        doc.text(`No. Documento: ${paymentId.substring(0, 8).toUpperCase()}`, 400, 150)
-          .text(`Fecha: ${invoiceDate}`, 400, 165)
-          .text(`Estado: PAGADO`, 400, 180)
+        doc.text(`No. Documento: ${paymentId.substring(0, 8).toUpperCase()}`, 350, 190, { align: 'right' })
+          .text(`Fecha: ${invoiceDate}`, 350, 205, { align: 'right' })
+          .text(`Estado: PAGADO`, 350, 220, { align: 'right' })
           .moveDown();
 
         // Tabla de Items
-        const invoiceTableTop = 250;
+        const invoiceTableTop = 280;
         doc.font('Helvetica-Bold');
         doc.text('Descripción', 50, invoiceTableTop)
           .text('Valor', 450, invoiceTableTop, { width: 90, align: 'right' });
@@ -1272,9 +1287,10 @@ exports.generateInvoice = onCall(
 
         // Item 1
         const amount = payment.amount || 0;
-        const description = payment.description || 'Servicios Digitales';
+        const baseDescription = payment.description || 'Servicios Digitales';
+        const description = `${baseDescription} | Cloud Computing Service`;
 
-        doc.text(description, 50, invoiceTableTop + 30)
+        doc.text(description, 50, invoiceTableTop + 30, { width: 380 })
           .text(`$ ${amount.toLocaleString('es-CO')}`, 450, invoiceTableTop + 30, { width: 90, align: 'right' });
 
         // Total
@@ -1286,8 +1302,9 @@ exports.generateInvoice = onCall(
 
         // Pie de página / Términos
         doc.font('Helvetica')
-          .fontSize(10)
-          .text('Documento equivalente a factura para no responsables de IVA.', 50, 700, { align: 'center', width: 500 })
+          .fontSize(9)
+          .text('El numeral 21 del artículo 476 del estatuto tributario establece que los servicios de computación en la nube se encuentran excluidos de IVA.', 50, 680, { align: 'center', width: 500 })
+          .font('Helvetica-Bold')
           .text('Gracias por confiar en Cósmica.', 50, 715, { align: 'center', width: 500 });
 
         doc.end();
@@ -1300,22 +1317,151 @@ exports.generateInvoice = onCall(
   }
 );
 
+// --- RECURRING PAYMENTS SCHEDULER ---
+
 /**
- * TEMP: Inject Test Payment
+ * Core Logic to Process Recurring Paymets
+ * This function is shared by the Scheduled Trigger and the Manual Trigger.
  */
-exports.injectTestPayment = onRequest(async (req, res) => {
-  const userId = 'SFYFi9u8uZYJHSNEEyGQaigIyip1';
+async function runRecurringPaymentsLogic() {
   const db = getFirestore();
-  const paymentId = 'test_payment_' + Date.now();
+  const now = admin.firestore.Timestamp.now();
 
-  await db.collection('users').doc(userId).collection('payments').doc(paymentId).set({
-    paymentId: paymentId,
-    date: admin.firestore.Timestamp.now(),
-    amount: 1560000,
-    description: "Suscripción Anual (Prueba)",
-    status: "approved",
-    type: "subscription"
-  });
+  // 1. Get Active Users with Due Payments
+  // Note: Firestore requires a composite index for 'subscriptionStatus' and 'nextPaymentDate'.
+  // If it fails, check the Firebase Console logs for the index creation link.
+  const usersQuery = db.collection('users')
+    .where('subscriptionStatus', '==', 'active')
+    .where('nextPaymentDate', '<=', now);
 
-  res.send(`Pago inyectado: ${paymentId}`);
+  const snapshot = await usersQuery.get();
+  const results = { processed: 0, success: 0, failed: 0, errors: [] };
+
+  if (snapshot.empty) {
+    console.log("No subscriptions due for renewal.");
+    return results;
+  }
+
+  console.log(`Found ${snapshot.size} subscriptions due for renewal.`);
+
+  // Process sequentially to avoid rate limits or memory issues
+  for (const doc of snapshot.docs) {
+    const user = doc.data();
+    const userId = doc.id;
+    const userEmail = user.email;
+
+    results.processed++;
+    console.log(`Processing renewal for user: ${userEmail} (${userId})`);
+
+    try {
+      const paymentSourceId = user.wompiPaymentSourceId;
+      if (!paymentSourceId) {
+        throw new Error("No payment source (card) found for user.");
+      }
+
+      // Determine Amount
+      const interval = user.subscriptionInterval || 'monthly';
+      let amountInCents = (interval === 'yearly') ? 100000000 : 8990000; // Default prices
+      let nextPaymentDays = (interval === 'yearly') ? 365 : 30;
+      let description = (interval === 'yearly') ? "Renovación Suscripción Anual" : "Renovación Suscripción Mensual";
+
+      // Apply Recurring Coupon (if logic allows)
+      // Simplify for now: Use base price. 
+      // TODO: Logic to check 'recurringCoupon' field and apply discount again if valid.
+
+      const currency = "COP";
+      const reference = `renew_${userId}_${Date.now()}`;
+
+      // Generate Signature
+      const wompiIntegritySecret = 'prod_integrity_5arGHVwweUk0dR7WcmKebKvuLGUIUEcU';
+      const signatureString = `${reference}${amountInCents}${currency}${wompiIntegritySecret}`;
+      const signature = crypto.createHash('sha256').update(signatureString).digest('hex');
+
+      // Charge Wompi
+      // Usar Private Key de PROD
+      const wompiPrivateKey = 'prv_prod_9iyGRlZiXjzuRC7OeWGrLTdg1uVi5RhC';
+
+      const response = await axios.post(`${WOMPI_API_BASE}/transactions`, {
+        amount_in_cents: amountInCents,
+        currency: currency,
+        customer_email: userEmail,
+        payment_source_id: paymentSourceId,
+        reference: reference,
+        signature: signature,
+        payment_method: { installments: 1 }
+      }, {
+        headers: { Authorization: `Bearer ${wompiPrivateKey}` }
+      });
+
+      const transaction = response.data.data;
+
+      if (transaction.status === 'APPROVED' || transaction.status === 'PENDING') {
+        // Success
+        results.success++;
+
+        // Update User's Next Payment Date
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + nextPaymentDays);
+
+        await db.collection('users').doc(userId).update({
+          nextPaymentDate: admin.firestore.Timestamp.fromDate(nextDate),
+          lastTransactionId: transaction.id
+        });
+
+        // Record Payment
+        await db.collection('users').doc(userId).collection('payments').doc(transaction.id).set({
+          paymentId: transaction.id,
+          date: admin.firestore.Timestamp.now(),
+          amount: amountInCents / 100,
+          description: description,
+          status: transaction.status,
+          reference: reference,
+          type: 'subscription_renewal'
+        });
+
+        console.log(`Renewal SUCCESS for ${userEmail}. Trans: ${transaction.id}`);
+
+      } else {
+        // Failed / Declined
+        results.failed++;
+        console.error(`Renewal DECLINED for ${userEmail}. Status: ${transaction.status}`);
+        results.errors.push({ userId, error: `Declined: ${transaction.status}` });
+
+        // Optional: Mark subscription as past_due or failed
+        // await db.collection('users').doc(userId).update({ subscriptionStatus: 'past_due' });
+      }
+
+    } catch (error) {
+      console.error(`Error renewing user ${userId}:`, error.message);
+      results.failed++;
+      results.errors.push({ userId, error: error.message });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Scheduled Function: Runs every day to check for due payments.
+ */
+exports.processRecurringPayments = onSchedule("every 24 hours", async (event) => {
+  console.log("Starting Scheduled Recurring Payments Check...");
+  await runRecurringPaymentsLogic();
+  console.log("Finished Scheduled Recurring Payments Check.");
 });
+
+/**
+ * Manual Trigger: Allows Admin to force the check (e.g. to catch up missed payments).
+ */
+exports.forceRecurringPayments = onCall(
+  { secrets: ["WOMPI_PRIVATE_KEY"] }, // Optional secrets if needed
+  async (request) => {
+    if (!request.auth || request.auth.uid !== ADMIN_UID) {
+      throw new functions.https.HttpsError('permission-denied', 'Solo el admin puede forzar pagos.');
+    }
+
+    console.log("Admin forced recurring payments check.");
+    const result = await runRecurringPaymentsLogic();
+    return { message: "Proceso completado", result };
+  }
+);

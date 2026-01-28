@@ -409,6 +409,31 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
 
                             {/* 3. Right Column: Payments History */}
                             <div className="space-y-8">
+                                {/* Client Profile Data */}
+                                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100">
+                                        <h2 className="text-lg font-bold text-slate-800">Datos de Facturación</h2>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase">Empresa</p>
+                                            <p className="font-medium text-slate-900">{userDetail.companyName || 'No registrada'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase">NIT</p>
+                                            <p className="font-medium text-slate-900">{userDetail.nit || 'No registrado'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase">Celular</p>
+                                            <p className="font-medium text-slate-900">{userDetail.phone || 'No registrado'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase">Dirección</p>
+                                            <p className="font-medium text-slate-900">{userDetail.address || 'No registrada'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                                     <div className="p-6 border-b border-slate-100">
                                         <h2 className="text-lg font-bold text-slate-800">Historial de Pagos</h2>

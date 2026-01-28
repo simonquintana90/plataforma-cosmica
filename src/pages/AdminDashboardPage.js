@@ -214,6 +214,23 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                         <Link to="/?view=suscribirse" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Página de Suscripción</Link>
                         <Link to="/?view=website_form" className="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200/50 border border-slate-200 transition-colors">Ver Formulario Web</Link>
                         <Link to="/admin/templates" className="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 border border-indigo-600 transition-colors">Ver Librería de Plantillas (LEGOs)</Link>
+                        {/* Force Payments Button */}
+                        <button onClick={async () => {
+                            if (!window.confirm("¿Seguro de forzar el cobro recurrente? Esto revisará y cobrará a todos los usuarios vencidos.")) return;
+                            const loadingToast = toast.loading("Procesando pagos recurrentes...");
+                            try {
+                                const forceRecurringPayments = httpsCallable(getFunctions(), 'forceRecurringPayments');
+                                const result = await forceRecurringPayments();
+                                toast.success(`Proceso completado. Procesados: ${result.data.result.processed}, Exitosos: ${result.data.result.success}, Fallidos: ${result.data.result.failed}`, { duration: 5000 });
+                            } catch (error) {
+                                console.error(error);
+                                toast.error("Error al forzar pagos: " + error.message);
+                            } finally {
+                                toast.dismiss(loadingToast);
+                            }
+                        }} className="text-xs font-bold bg-rose-600 text-white px-3 py-1.5 rounded-md hover:bg-rose-700 border border-rose-600 transition-colors">
+                            Forzar Pagos Recurrentes ⚡
+                        </button>
                         {/* 2. Botón de "Subscription Wall" eliminado */}
                     </div>
                 </div>
