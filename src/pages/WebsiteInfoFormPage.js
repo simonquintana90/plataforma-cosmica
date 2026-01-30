@@ -56,18 +56,12 @@ const FONT_OPTIONS = [
     { id: 'Abril Fatface', name: 'Abril Fatface', category: 'Bold Display' }
 ];
 
-const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }) => {
+const WebsiteInfoFormPage = ({ user, auth, db, doc, getDoc, updateDoc, serverTimestamp }) => {
     const [activeSection, setActiveSection] = useState(1);
     const [formData, setFormData] = useState({
         domain: '',
         businessName: '',
-        brandColors: {
-            primary: '#3B82F6', // 60% - Dominant
-            secondary: '#1E293B', // 30% - Secondary
-            accent: '#F59E0B'     // 10% - Accent
-        },
-        fontPairing: 'Inter',
-        tone: 'friendly', // 'friendly' | 'serious'
+        // Removed brandColors and tone
         keywords: '',
         clientType: [],
         commonReasonsNotToChoose: '',
@@ -82,12 +76,42 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         certifications: '',
         civilInsurance: '',
         logoUrl: '',
-        logoFileName: ''
+        logoFileName: '',
+        images: [] // New: Array of URLs/Objects
     });
     const [logoFile, setLogoFile] = useState(null);
+    const [imageFiles, setImageFiles] = useState([]); // New: File objects for upload
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef(null);
+    const imagesInputRef = useRef(null); // New ref for multiple images
+
+    // Load existing data
+    useEffect(() => {
+        if (user?.uid && db && getDoc) {
+            const fetchUserData = async () => {
+                try {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userSnap = await getDoc(userDocRef);
+
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        if (userData.websiteInfo) {
+                            // Merge existing info with default structure
+                            setFormData(prev => ({
+                                ...prev,
+                                ...userData.websiteInfo
+                            }));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error loading data", e);
+                    toast.error("No se pudo cargar la información existente.");
+                }
+            };
+            fetchUserData();
+        }
+    }, [user, db, doc, getDoc]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -110,27 +134,43 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
         }
     };
 
-    const handleColorChange = (type, value) => {
+    // New Image Handlers
+    const handleImagesChange = (e) => {
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+
+            // Limit check (Total new + existing should be reasonable, e.g. 20)
+            const currentCount = (formData.images ? formData.images.length : 0) + imageFiles.length;
+            if (currentCount + files.length > 20) {
+                toast.error("Máximo 20 imágenes en total.");
+                return;
+            }
+
+            // Size check (4MB)
+            const oversized = files.filter(f => f.size > 4 * 1024 * 1024);
+            if (oversized.length > 0) {
+                toast.error(`Algunas imágenes pesan más de 4MB: ${oversized.map(f => f.name).join(', ')}`);
+                return;
+            }
+
+            setImageFiles(prev => [...prev, ...files]);
+        }
+    };
+
+    const removeImageFile = (index) => {
+        setImageFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeExistingImage = (url) => {
         setFormData(prev => ({
             ...prev,
-            brandColors: {
-                ...prev.brandColors,
-                [type]: value
-            }
+            images: prev.images.filter(img => img !== url)
         }));
     };
 
-
-
-    // Load all fonts
-    useEffect(() => {
-        const link = document.createElement('link');
-        const families = FONT_OPTIONS.map(f => f.id.replace(' ', '+') + ':wght@400;700').join('&family=');
-        link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
-        link.rel = 'stylesheet';
-        document.head.appendChild(link);
-        return () => document.head.removeChild(link);
-    }, []);
+    // Load all fonts - Keeping for generic purposes or removing if unused. 
+    // Since I removed font selection, I can remove this effect too to save load.
+    // useEffect(() => { ... }, []); // REMOVED
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -163,6 +203,7 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
 
         let finalData = { ...formData };
 
+        // 1. Upload Logo if exists
         if (logoFile) {
             setIsUploading(true);
             toast.dismiss();
@@ -173,61 +214,73 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
 
             try {
                 const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
-                    method: 'POST',
-                    body: formPayload,
+                    method: 'POST', body: formPayload,
                 });
-
                 if (!response.ok) { throw new Error('La subida del logo falló.'); }
                 const uploadResponse = await response.json();
                 finalData.logoUrl = uploadResponse.fileURL;
                 finalData.logoFileName = uploadResponse.fileName;
-                toast.dismiss();
-                toast.loading('Logotipo subido. Guardando formulario...');
             } catch (error) {
                 console.error("Error al subir el logo:", error);
-                toast.dismiss();
-                toast.error("Error al subir tu logo. Por favor, intenta de nuevo.");
-                setIsSaving(false);
-                setIsUploading(false);
-                return;
+                toast.error("Error al subir tu logo.");
+                setIsSaving(false); setIsUploading(false); return;
             }
-            setIsUploading(false);
+        }
+
+        // 2. Upload Images (Multiple)
+        if (imageFiles.length > 0) {
+            console.log("Subiendo imágenes adicionales...");
+            toast.dismiss();
+            toast.loading(`Subiendo ${imageFiles.length} imágenes...`);
+            const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadLogo';
+
+            const uploadedImages = [...(finalData.images || [])];
+
+            for (const file of imageFiles) {
+                const formPayload = new FormData();
+                formPayload.append('file', file);
+
+                try {
+                    const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
+                        method: 'POST', body: formPayload,
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        uploadedImages.push(data.fileURL);
+                    }
+                } catch (e) { console.error("Error subiendo imagen", e); }
+            }
+            finalData.images = uploadedImages;
         }
 
         try {
-            // 1. Generate Website Config based on Form Data
-            const generatorInput = {
-                ...finalData,
-                businessName: finalData.businessName || finalData.domain || "Mi Negocio",
-                industry: 'general',
-                description: finalData.mainService + ". " + finalData.uniqueAspect,
-                style: 'impact'
-            };
-
-            const generatedConfig = generateWebsiteConfig(generatorInput);
-
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, {
                 websiteInfo: {
                     ...finalData,
                     lastEdited: serverTimestamp()
                 },
-                websiteInfoStatus: 'completed',
-                websiteConfig: generatedConfig // Save the generated site
+                websiteInfoStatus: 'completed'
             });
 
             toast.dismiss();
-            toast.success('¡Sitio web generado con éxito!');
+            toast.success('¡Información guardada con éxito!');
+            setIsSaving(false);
+            setIsUploading(false);
+            setImageFiles([]);
 
-            // Redirect to the builder
-            window.location.href = '/admin/builder';
+            // Redirect or stay? The original code redirected to builder. 
+            // Since this is now an editor, maybe we stay or go to profile?
+            // "Make it persistently editable". 
+            // If they came from profile, they might want to return there.
+            // For now, I'll redirect to /cuenta to confirm it's done.
+            window.location.href = '/cuenta';
 
         } catch (error) {
-            console.error("Error al guardar el formulario:", error);
-            toast.dismiss();
+            console.error("Error al guardar:", error);
             toast.error("Hubo un error al guardar tu información.");
-        } finally {
             setIsSaving(false);
+            setIsUploading(false);
         }
     };
 
@@ -264,78 +317,54 @@ const WebsiteInfoFormPage = ({ user, auth, db, doc, updateDoc, serverTimestamp }
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Paleta de Colores (Regla 60-30-10)</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Dominante (60%)</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="color"
-                                                    value={formData.brandColors.primary}
-                                                    onChange={(e) => handleColorChange('primary', e.target.value)}
-                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
-                                                />
-                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.primary}</span>
-                                            </div>
-                                        </div>
-                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Secundario (30%)</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="color"
-                                                    value={formData.brandColors.secondary}
-                                                    onChange={(e) => handleColorChange('secondary', e.target.value)}
-                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
-                                                />
-                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.secondary}</span>
-                                            </div>
-                                        </div>
-                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                            <label className="block text-xs font-semibold text-slate-500 mb-1">Acento (10%)</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="color"
-                                                    value={formData.brandColors.accent}
-                                                    onChange={(e) => handleColorChange('accent', e.target.value)}
-                                                    className="h-8 w-12 rounded cursor-pointer border border-slate-300"
-                                                />
-                                                <span className="text-xs font-mono text-slate-600">{formData.brandColors.accent}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Fotos para tu Web</label>
+                                    <p className="text-xs text-slate-500 mb-2">Sube imágenes de tu trabajo, equipo o local. Máximo 20 imágenes. 4MB por archivo.</p>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Tono de Comunicación</label>
-                                    <div className="flex gap-4 mb-4">
-                                        <label className={`flex-1 cursor-pointer p-3 rounded-lg border text-center transition-all ${formData.tone === 'friendly' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                                            <input type="radio" name="tone" value="friendly" onChange={handleInputChange} checked={formData.tone === 'friendly'} className="hidden" />
-                                            <span className="block font-bold text-slate-900">Amigable 👋</span>
-                                            <span className="text-xs text-slate-500">Cercano, usa "tú", emojis opcionales.</span>
-                                        </label>
-                                        <label className={`flex-1 cursor-pointer p-3 rounded-lg border text-center transition-all ${formData.tone === 'serious' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                                            <input type="radio" name="tone" value="serious" onChange={handleInputChange} checked={formData.tone === 'serious'} className="hidden" />
-                                            <span className="block font-bold text-slate-900">Serio / Corporativo 👔</span>
-                                            <span className="text-xs text-slate-500">Profesional, usa "usted", sin emojis.</span>
-                                        </label>
-                                    </div>
-                                </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => imagesInputRef.current.click()}
+                                        className="bg-blue-50 text-blue-600 font-bold text-sm px-4 py-3 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-2 w-full justify-center border-dashed border-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                        Agregar Fotos
+                                    </button>
+                                    <input type="file" ref={imagesInputRef} onChange={handleImagesChange} accept="image/*" multiple className="hidden" />
 
-                                {/* <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Tipografía</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 border border-slate-100 rounded-lg custom-scrollbar">
-                                        {FONT_OPTIONS.map((font) => (
-                                            <div
-                                                key={font.id}
-                                                onClick={() => setFormData(prev => ({ ...prev, fontPairing: font.id }))}
-                                                className={`cursor-pointer p-2 rounded border transition-all ${formData.fontPairing === font.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
-                                            >
-                                                <div className="text-sm font-medium text-slate-900 truncate" style={{ fontFamily: font.id }}>{font.name}</div>
-                                                <div className="text-[10px] text-slate-500 truncate" style={{ fontFamily: font.id }}>{font.category}</div>
+                                    {/* Selected Files (New) */}
+                                    {imageFiles.length > 0 && (
+                                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {imageFiles.map((file, idx) => (
+                                                <div key={idx} className="relative group">
+                                                    <div className="h-24 w-full bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center">
+                                                        <span className="text-xs text-slate-400 p-2 text-center break-all">{file.name}</span>
+                                                    </div>
+                                                    <button type="button" onClick={() => removeImageFile(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Existing Images (From DB) */}
+                                    {formData.images && formData.images.length > 0 && (
+                                        <div className="mt-4">
+                                            <p className="text-xs font-bold text-slate-700 mb-2">Fotos Guardadas:</p>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                {formData.images.map((url, idx) => (
+                                                    <div key={idx} className="relative group">
+                                                        <div className="h-24 w-full bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                                                            <img src={url} alt={`Foto ${idx}`} className="h-full w-full object-cover" />
+                                                        </div>
+                                                        <button type="button" onClick={() => removeExistingImage(url)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                </div> */}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div>

@@ -253,6 +253,26 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                     </div>
                 </div>
 
+                {/* Website Info Section (New) */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-slate-200 p-6 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-800">Información del Sitio Web</h2>
+                        <Link to="/website-info" className="text-sm font-bold text-blue-600 hover:text-blue-800">
+                            Editar Información &rarr;
+                        </Link>
+                    </div>
+                    <div className="p-6">
+                        <p className="text-slate-500 text-sm">
+                            Aquí puedes gestionar la información que usamos para construir tu sitio web, como tu descripción, servicios y galería de imágenes.
+                        </p>
+                        <div className="mt-4">
+                            <Link to="/website-info" className="inline-flex items-center justify-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50">
+                                Gestionar Información del Sitio
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
 
                 {userProfile?.role !== 'partner' && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">

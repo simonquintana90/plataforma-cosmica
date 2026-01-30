@@ -1476,4 +1476,104 @@ exports.forceRecurringPayments = onCall(
     const result = await runRecurringPaymentsLogic();
     return { message: "Proceso completado", result };
   }
+);// --- SOFT DELETION LOGIC ---
+
+exports.sendDeletionWarning = onDocumentUpdated(
+    {
+        document: "users/{userId}",
+        secrets: ["RESEND_API_KEY"],
+    },
+    async (event) => {
+        const dataBefore = event.data.before.data();
+        const dataAfter = event.data.after.data();
+
+        // Trigger only when deletionStatus changes TO 'scheduled'
+        if (dataBefore.deletionStatus !== 'scheduled' && dataAfter.deletionStatus === 'scheduled') {
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            const userEmail = dataAfter.email;
+            const scheduledDate = dataAfter.deletionScheduledAt ? new Date(dataAfter.deletionScheduledAt.seconds * 1000).toLocaleDateString('es-CO') : '15 días';
+
+            const emailHtml = `
+        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #FEF2F2; padding: 20px; text-align: center; border-bottom: 2px solid #DC2626;">
+            <h1 style="color: #991B1B; font-size: 24px; font-weight: 700;">⚠️ Acción Requerida: Tu cuenta será eliminada</h1>
+          </div>
+          <div style="padding: 30px;">
+            <p>Hola,</p>
+            <p>Hemos notado que tu cuenta ha estado inactiva o sin una suscripción válida.</p>
+            <p>Tu cuenta ha sido programada para <strong>ELIMINACIÓN AUTOMÁTICA</strong> el día: <strong>${scheduledDate}</strong>.</p>
+            <p>Si deseas conservar tu cuenta y todos tus datos asociada (incluyendo tus landing pages), por favor suscríbete a un plan antes de esa fecha.</p>
+            <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+              <a href="https://app.cosmicaweb.com/?view=suscribirse" style="background-color: #DC2626; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Reactivar mi Cuenta</a>
+            </div>
+            <p style="font-size: 13px; color: #666;">Si ya te has suscrito, por favor ignora este mensaje. Si no haces nada, tu cuenta y todos los datos serán borrados permanentemente.</p>
+          </div>
+        </div>
+      `;
+
+            try {
+                await resend.emails.send({
+                    from: "Alerta Cósmica <notificaciones@send.cosmicaweb.com>",
+                    to: userEmail,
+                    subject: "⚠️ Tu cuenta será eliminada en 15 días - Acción Requerida",
+                    html: emailHtml
+                });
+                console.log(`Advertencia de eliminación enviada a ${userEmail}`);
+            } catch (error) {
+                console.error("Error al enviar advertencia de eliminación:", error);
+            }
+        }
+    }
 );
+
+exports.processScheduledDeletions = onSchedule("every 24 hours", async (event) => {
+    console.log("Iniciando proceso de eliminación de cuentas programadas...");
+    const db = getFirestore();
+    const now = admin.firestore.Timestamp.now();
+
+    // Query users scheduled for deletion in the past (deadline passed)
+    const querySnapshot = await db.collection("users")
+        .where("deletionStatus", "==", "scheduled")
+        .where("deletionScheduledAt", "<=", now)
+        .get();
+
+    if (querySnapshot.empty) {
+        console.log("No hay cuentas expiradas para eliminar.");
+        return;
+    }
+
+    const batch = db.batch();
+    let deleteCount = 0;
+
+    for (const doc of querySnapshot.docs) {
+        const userData = doc.data();
+
+        // SAFETY CHECK: If user subscribed in the meantime, CANCEL deletion
+        if (userData.subscriptionStatus === 'active') {
+            console.log(`Usuario ${doc.id} tiene suscripción activa. Cancelando eliminación.`);
+            const userRef = db.collection("users").doc(doc.id);
+            batch.update(userRef, {
+                deletionStatus: null,
+                deletionScheduledAt: null
+            });
+        } else {
+            console.log(`Eliminando usuario expirado: ${doc.id} (${userData.email})`);
+            const userRef = db.collection("users").doc(doc.id);
+            // Delete the User Document
+            batch.delete(userRef);
+            // NOTE: Deleting Auth user requires Admin SDK auth().deleteUser(doc.id), 
+            // which can be done here but let's stick to Firestore doc first as per safety.
+            // To strictly follow request "se borra la cuenta":
+            try {
+                await admin.auth().deleteUser(doc.id);
+                console.log(`Auth User ${doc.id} deleted.`);
+            } catch (e) {
+                console.error(`Error deleting Auth user ${doc.id}:`, e);
+            }
+            deleteCount++;
+        }
+    }
+
+    await batch.commit();
+    console.log(`Proceso completado. ${deleteCount} cuentas eliminadas.`);
+});

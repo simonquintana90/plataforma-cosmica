@@ -334,9 +334,77 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
                     </header>
                     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
                         {/* 1. Header & Quick Stats */}
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                            <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
-                            <p className="text-sm text-slate-500">{userDetail.email}</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 relative overflow-hidden">
+                            {userDetail.deletionStatus === 'scheduled' && (
+                                <div className="absolute top-0 left-0 w-full bg-red-50 border-b border-red-100 px-6 py-2 flex justify-between items-center animate-pulse">
+                                    <p className="text-xs font-bold text-red-600 uppercase flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Eliminación Programada: {userDetail.deletionScheduledAt?.seconds ? new Date(userDetail.deletionScheduledAt.seconds * 1000).toLocaleDateString() : 'En 15 días'}
+                                    </p>
+                                    <button
+                                        onClick={async () => {
+                                            if (!window.confirm("¿Cancelar la eliminación programada?")) return;
+                                            toast.loading("Cancelando eliminación...");
+                                            try {
+                                                await updateDoc(doc(db, "users", userId), {
+                                                    deletionStatus: null,
+                                                    deletionScheduledAt: null
+                                                });
+                                                toast.dismiss();
+                                                toast.success("Eliminación cancelada");
+                                                setUserDetail(prev => ({ ...prev, deletionStatus: null }));
+                                            } catch (error) {
+                                                console.error(error);
+                                                toast.error("Error al cancelar");
+                                            }
+                                        }}
+                                        className="text-xs font-bold text-red-700 underline hover:text-red-900"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className={`flex justify-between items-start ${userDetail.deletionStatus === 'scheduled' ? 'mt-8' : ''}`}>
+                                <div>
+                                    <h1 className="font-heading text-2xl font-bold text-slate-900">{userDetail.displayName}</h1>
+                                    <p className="text-sm text-slate-500">{userDetail.email}</p>
+                                </div>
+                                <div>
+                                    {userDetail.deletionStatus !== 'scheduled' && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!window.confirm("¿Programar ELIMINACIÓN de esta cuenta? Se notificará al usuario y se borrará en 15 días si no se suscribe.")) return;
+                                                const scheduledDate = new Date();
+                                                scheduledDate.setDate(scheduledDate.getDate() + 15);
+
+                                                toast.loading("Programando eliminación...");
+                                                try {
+                                                    await updateDoc(doc(db, "users", userId), {
+                                                        deletionStatus: 'scheduled',
+                                                        deletionScheduledAt: scheduledDate
+                                                    });
+                                                    // Note: We need to reload or manually update state.
+                                                    toast.dismiss();
+                                                    toast.success("Eliminación programada para 15 días");
+                                                    setUserDetail(prev => ({ ...prev, deletionStatus: 'scheduled', deletionScheduledAt: { seconds: Math.floor(scheduledDate.getTime() / 1000) } }));
+                                                } catch (error) {
+                                                    console.error(error);
+                                                    toast.error("Error al programar");
+                                                }
+                                            }}
+                                            className="text-xs font-bold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Programar Eliminación
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
 
                             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
