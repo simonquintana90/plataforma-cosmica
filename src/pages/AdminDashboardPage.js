@@ -332,15 +332,22 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
                                             {/* BOTÓN PARA NOTIFICAR WEB LISTA */}
                                             {u.status === 'approved' && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        setNotificationModal({ isOpen: true, userId: u.id, userName: u.displayName });
-                                                    }}
-                                                    className="bg-indigo-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                                                >
-                                                    Notificar Web Lista 🚀
-                                                </button>
+                                                u.siteReady ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                                        Sitio Notificado
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setNotificationModal({ isOpen: true, userId: u.id, userName: u.displayName });
+                                                        }}
+                                                        className="bg-indigo-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                                    >
+                                                        Notificar Web Lista 🚀
+                                                    </button>
+                                                )
                                             )}
                                         </div>
                                     </Link>
