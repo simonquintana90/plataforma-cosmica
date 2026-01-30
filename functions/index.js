@@ -1479,21 +1479,21 @@ exports.forceRecurringPayments = onCall(
 );// --- SOFT DELETION LOGIC ---
 
 exports.sendDeletionWarning = onDocumentUpdated(
-    {
-        document: "users/{userId}",
-        secrets: ["RESEND_API_KEY"],
-    },
-    async (event) => {
-        const dataBefore = event.data.before.data();
-        const dataAfter = event.data.after.data();
+  {
+    document: "users/{userId}",
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (event) => {
+    const dataBefore = event.data.before.data();
+    const dataAfter = event.data.after.data();
 
-        // Trigger only when deletionStatus changes TO 'scheduled'
-        if (dataBefore.deletionStatus !== 'scheduled' && dataAfter.deletionStatus === 'scheduled') {
-            const resend = new Resend(process.env.RESEND_API_KEY);
-            const userEmail = dataAfter.email;
-            const scheduledDate = dataAfter.deletionScheduledAt ? new Date(dataAfter.deletionScheduledAt.seconds * 1000).toLocaleDateString('es-CO') : '15 días';
+    // Trigger only when deletionStatus changes TO 'scheduled'
+    if (dataBefore.deletionStatus !== 'scheduled' && dataAfter.deletionStatus === 'scheduled') {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const userEmail = dataAfter.email;
+      const scheduledDate = dataAfter.deletionScheduledAt ? new Date(dataAfter.deletionScheduledAt.seconds * 1000).toLocaleDateString('es-CO') : '15 días';
 
-            const emailHtml = `
+      const emailHtml = `
         <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #FEF2F2; padding: 20px; text-align: center; border-bottom: 2px solid #DC2626;">
             <h1 style="color: #991B1B; font-size: 24px; font-weight: 700;">⚠️ Acción Requerida: Tu cuenta será eliminada</h1>
@@ -1511,69 +1511,273 @@ exports.sendDeletionWarning = onDocumentUpdated(
         </div>
       `;
 
-            try {
-                await resend.emails.send({
-                    from: "Alerta Cósmica <notificaciones@send.cosmicaweb.com>",
-                    to: userEmail,
-                    subject: "⚠️ Tu cuenta será eliminada en 15 días - Acción Requerida",
-                    html: emailHtml
-                });
-                console.log(`Advertencia de eliminación enviada a ${userEmail}`);
-            } catch (error) {
-                console.error("Error al enviar advertencia de eliminación:", error);
-            }
-        }
+      try {
+        await resend.emails.send({
+          from: "Alerta Cósmica <notificaciones@send.cosmicaweb.com>",
+          to: userEmail,
+          subject: "⚠️ Tu cuenta será eliminada en 15 días - Acción Requerida",
+          html: emailHtml
+        });
+        console.log(`Advertencia de eliminación enviada a ${userEmail}`);
+      } catch (error) {
+        console.error("Error al enviar advertencia de eliminación:", error);
+      }
     }
+  }
 );
 
 exports.processScheduledDeletions = onSchedule("every 24 hours", async (event) => {
-    console.log("Iniciando proceso de eliminación de cuentas programadas...");
-    const db = getFirestore();
-    const now = admin.firestore.Timestamp.now();
+  console.log("Iniciando proceso de eliminación de cuentas programadas...");
+  const db = getFirestore();
+  const now = admin.firestore.Timestamp.now();
 
-    // Query users scheduled for deletion in the past (deadline passed)
-    const querySnapshot = await db.collection("users")
-        .where("deletionStatus", "==", "scheduled")
-        .where("deletionScheduledAt", "<=", now)
+  // Query users scheduled for deletion in the past (deadline passed)
+  const querySnapshot = await db.collection("users")
+    .where("deletionStatus", "==", "scheduled")
+    .where("deletionScheduledAt", "<=", now)
+    .get();
+
+  if (querySnapshot.empty) {
+    console.log("No hay cuentas expiradas para eliminar.");
+    return;
+  }
+
+  const batch = db.batch();
+  let deleteCount = 0;
+
+  for (const doc of querySnapshot.docs) {
+    const userData = doc.data();
+
+    // SAFETY CHECK: If user subscribed in the meantime, CANCEL deletion
+    if (userData.subscriptionStatus === 'active') {
+      console.log(`Usuario ${doc.id} tiene suscripción activa. Cancelando eliminación.`);
+      const userRef = db.collection("users").doc(doc.id);
+      batch.update(userRef, {
+        deletionStatus: null,
+        deletionScheduledAt: null
+      });
+    } else {
+      console.log(`Eliminando usuario expirado: ${doc.id} (${userData.email})`);
+      const userRef = db.collection("users").doc(doc.id);
+      // Delete the User Document
+      batch.delete(userRef);
+      // NOTE: Deleting Auth user requires Admin SDK auth().deleteUser(doc.id), 
+      // which can be done here but let's stick to Firestore doc first as per safety.
+      // To strictly follow request "se borra la cuenta":
+      try {
+        await admin.auth().deleteUser(doc.id);
+        console.log(`Auth User ${doc.id} deleted.`);
+      } catch (e) {
+        console.error(`Error deleting Auth user ${doc.id}:`, e);
+      }
+      deleteCount++;
+    }
+  }
+
+  await batch.commit();
+  console.log(`Proceso completado. ${deleteCount} cuentas eliminadas.`);
+});
+
+// --- HELPER FUNCTIONS PARA EMAILS ---
+
+function generateManosALaObraHtml(userName, deliveryDateString) {
+  return `
+        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+          </div>
+          <div style="padding: 30px;">
+            <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Recibimos todo, ${userName}! 🚀</h1>
+            <p>El equipo de diseño ya tiene tus fotos y textos. <strong>Tu sitio entra en etapa de producción HOY.</strong></p>
+            
+            <div style="background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 25px 0;">
+                <p style="margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #0369a1; font-weight: bold;">Fecha Estimada de Entrega</p>
+                <p style="margin: 5px 0 0; font-size: 18px; color: #0c4a6e; font-weight: bold;">${deliveryDateString}</p>
+            </div>
+
+            <p>Nos pondremos manos a la obra de inmediato.</p>
+            <p>Si necesitamos algo más de ti, te contactaremos por este medio.</p>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="https://app.cosmicaweb.com/cuenta" style="background-color: #0D0D0D; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a mi Portal de Cliente</a>
+            </div>
+          </div>
+        </div>
+      `;
+}
+
+function generateLaunchAnniversaryHtml(userName, domain) {
+  return `
+            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+                <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+              </div>
+              <div style="padding: 30px;">
+                <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Tu web cumple 1 semana! 🎂</h1>
+                <p>Hola, <strong>${userName}</strong>.</p>
+                <p>Han pasado 7 días desde que lanzamos <strong>${domain}</strong>. Tu sitio ya está siendo indexado por los motores de búsqueda y está listo para recibir tráfico.</p>
+                
+                <h3 style="margin-top: 25px;">3 Tips para compartirla hoy:</h3>
+                <ul style="padding-left: 20px; line-height: 1.6;">
+                    <li>Agrega el link en tu biografía de Instagram/TikTok.</li>
+                    <li>Compártela en tus estados de WhatsApp.</li>
+                    <li>Envíala a tus 5 clientes más cercanos para pedir feedback.</li>
+                </ul>
+
+                <p style="margin-top: 25px; font-size: 14px; color: #666;">Estamos aquí para apoyarte en tu crecimiento digital.</p>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="https://${domain}" style="background-color: #3e6cff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver mi Sitio</a>
+                </div>
+              </div>
+            </div>
+          `;
+}
+
+// --- NUEVAS NOTIFICACIONES ---
+
+/**
+ * 1. "Manos a la Obra" (Confirmación Inmediata)
+ * Trigger: Cuando user.websiteInfoStatus cambia a 'completed'.
+ */
+exports.sendWebsiteInfoConfirmation = onDocumentUpdated(
+  {
+    document: "users/{userId}",
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (event) => {
+    const dataBefore = event.data.before.data();
+    const dataAfter = event.data.after.data();
+
+    // Verificar cambio de estado a 'completed'
+    if (dataBefore.websiteInfoStatus !== 'completed' && dataAfter.websiteInfoStatus === 'completed') {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const userEmail = dataAfter.email;
+      const userName = dataAfter.displayName || "Cliente";
+
+      // Calcular fecha estimada (Hoy + 7 días)
+      const deliveryDate = new Date();
+      deliveryDate.setDate(deliveryDate.getDate() + 7);
+      const deliveryDateString = deliveryDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const emailHtml = generateManosALaObraHtml(userName, deliveryDateString);
+
+      try {
+        await resend.emails.send({
+          from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
+          to: userEmail,
+          subject: "👷 Manos a la obra: Tu sitio está en producción",
+          html: emailHtml
+        });
+        console.log(`Notificación 'Manos a la Obra' enviada a ${userEmail}`);
+      } catch (error) {
+        console.error("Error al enviar notificación 'Manos a la Obra':", error);
+      }
+    }
+  }
+);
+
+/**
+ * 2. "Reporte de Despegue" (7 días Post-Lanzamiento)
+ * Trigger: Programado (Diario).
+ * Revisa usuarios cuyo siteReadyDate fue hace 7 días.
+ */
+exports.sendSiteLaunchAnniversary = onSchedule(
+  {
+    schedule: "every 24 hours",
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (event) => {
+    console.log("Iniciando chequeo de aniversarios de lanzamiento (7 días)...");
+    const db = getFirestore();
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    // Calcular rango de fecha para "hace 7 días"
+    const today = new Date();
+    const sevenDaysAgoStart = new Date(today);
+    sevenDaysAgoStart.setDate(today.getDate() - 7);
+    sevenDaysAgoStart.setHours(0, 0, 0, 0);
+
+    const sevenDaysAgoEnd = new Date(today);
+    sevenDaysAgoEnd.setDate(today.getDate() - 7);
+    sevenDaysAgoEnd.setHours(23, 59, 59, 999);
+
+    const startTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgoStart);
+    const endTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgoEnd);
+
+    try {
+      const querySnapshot = await db.collection("users")
+        .where("siteReady", "==", true)
+        .where("siteReadyDate", ">=", startTimestamp)
+        .where("siteReadyDate", "<=", endTimestamp)
         .get();
 
-    if (querySnapshot.empty) {
-        console.log("No hay cuentas expiradas para eliminar.");
+      if (querySnapshot.empty) {
+        console.log("No hay sitios que cumplan 7 días hoy.");
         return;
-    }
+      }
 
-    const batch = db.batch();
-    let deleteCount = 0;
+      console.log(`Encontrados ${querySnapshot.size} sitios para 'Reporte de Despegue'.`);
 
-    for (const doc of querySnapshot.docs) {
+      const batchPromises = querySnapshot.docs.map(async (doc) => {
         const userData = doc.data();
+        const userEmail = userData.email;
+        const userName = userData.displayName || "Cliente";
+        const domain = userData.websiteInfo ? userData.websiteInfo.domain : "tu sitio web";
 
-        // SAFETY CHECK: If user subscribed in the meantime, CANCEL deletion
-        if (userData.subscriptionStatus === 'active') {
-            console.log(`Usuario ${doc.id} tiene suscripción activa. Cancelando eliminación.`);
-            const userRef = db.collection("users").doc(doc.id);
-            batch.update(userRef, {
-                deletionStatus: null,
-                deletionScheduledAt: null
-            });
-        } else {
-            console.log(`Eliminando usuario expirado: ${doc.id} (${userData.email})`);
-            const userRef = db.collection("users").doc(doc.id);
-            // Delete the User Document
-            batch.delete(userRef);
-            // NOTE: Deleting Auth user requires Admin SDK auth().deleteUser(doc.id), 
-            // which can be done here but let's stick to Firestore doc first as per safety.
-            // To strictly follow request "se borra la cuenta":
-            try {
-                await admin.auth().deleteUser(doc.id);
-                console.log(`Auth User ${doc.id} deleted.`);
-            } catch (e) {
-                console.error(`Error deleting Auth user ${doc.id}:`, e);
-            }
-            deleteCount++;
+        const emailHtml = generateLaunchAnniversaryHtml(userName, domain);
+
+        try {
+          await resend.emails.send({
+            from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
+            to: userEmail,
+            subject: "🚀 Reporte de Despegue: Tu web cumple 1 semana",
+            html: emailHtml
+          });
+          console.log(`Email de aniversario enviado a ${userEmail}`);
+        } catch (err) {
+          console.error(`Error enviando email a ${userEmail}:`, err);
         }
+      });
+
+      await Promise.all(batchPromises);
+      console.log("Proceso de 'Reporte de Despegue' finalizado.");
+
+    } catch (error) {
+      console.error("Error en proceso de aniversarios:", error);
+    }
+  }
+);
+
+/**
+ * Endpoint para previsualizar correos (Admin).
+ * Retorna el HTML puro del correo solicitado.
+ */
+exports.getNotificationPreview = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
     }
 
-    await batch.commit();
-    console.log(`Proceso completado. ${deleteCount} cuentas eliminadas.`);
-});
+    // TODO: Validate Admin permission if strict needed.
+    // if (request.auth.uid !== ADMIN_UID) ...
+
+    const { type } = request.data;
+    const mockUser = "Juan Pérez";
+    const mockDomain = "www.tinegocio.com";
+    const mockDate = new Date();
+    mockDate.setDate(mockDate.getDate() + 7);
+    const mockDateString = mockDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    if (type === 'manos_a_la_obra') {
+      return { html: generateManosALaObraHtml(mockUser, mockDateString) };
+    }
+    else if (type === 'reporte_despegue') {
+      return { html: generateLaunchAnniversaryHtml(mockUser, mockDomain) };
+    }
+    else {
+      throw new functions.https.HttpsError('invalid-argument', 'Tipo de correo no válido.');
+    }
+  }
+);

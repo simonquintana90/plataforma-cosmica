@@ -14,6 +14,7 @@ const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
 const ReferralsPage = lazy(() => import('./pages/ReferralsPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminUserDetailPage = lazy(() => import('./pages/AdminUserDetailPage'));
+const AdminEmailPreviewsPage = lazy(() => import('./pages/AdminEmailPreviewsPage'));
 
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const ProfileErrorPage = lazy(() => import('./pages/ProfileErrorPage'));
@@ -88,6 +89,7 @@ const AppRoutes = () => {
             <Route path="/admin" element={user.uid === ADMIN_UID ? <AdminDashboardPage user={user} {...firebaseServices} /> : <Navigate to="/" />} />
 
             <Route path="/admin/user/:userId" element={user.uid === ADMIN_UID ? <AdminUserDetailPage {...firebaseServices} /> : <Navigate to="/" />} />
+            <Route path="/admin/emails" element={user.uid === ADMIN_UID ? <AdminEmailPreviewsPage /> : <Navigate to="/" />} />
 
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>
