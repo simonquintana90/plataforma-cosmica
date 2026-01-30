@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { generateWebsiteConfig } from '../utils/aiGenerator';
+// Removed unused import
 
 const AccordionSection = ({ sectionNumber, title, children, activeSection, setActiveSection }) => (
     <div className="border-b border-slate-200">
@@ -29,32 +29,6 @@ const AccordionSection = ({ sectionNumber, title, children, activeSection, setAc
         </div>
     </div>
 );
-
-const FONT_OPTIONS = [
-    // Sans Serif (Modern/Clean)
-    { id: 'Inter', name: 'Inter', category: 'Modern Sans' },
-    { id: 'Roboto', name: 'Roboto', category: 'Neutral Sans' },
-    { id: 'Open Sans', name: 'Open Sans', category: 'Legible Sans' },
-    { id: 'Lato', name: 'Lato', category: 'Corporate Sans' },
-    { id: 'Montserrat', name: 'Montserrat', category: 'Geometric Sans' },
-    { id: 'Oswald', name: 'Oswald', category: 'Bold Condensed' },
-    { id: 'Raleway', name: 'Raleway', category: 'Elegant Sans' },
-    { id: 'Poppins', name: 'Poppins', category: 'Friendly Sans' },
-    { id: 'Nunito', name: 'Nunito', category: 'Rounded Sans' },
-    { id: 'Ubuntu', name: 'Ubuntu', category: 'Tech Sans' },
-
-    // Serif (Elegant/Trust)
-    { id: 'Playfair Display', name: 'Playfair Display', category: 'Elegant Serif' },
-    { id: 'Merriweather', name: 'Merriweather', category: 'Readable Serif' },
-    { id: 'Lora', name: 'Lora', category: 'Artistic Serif' },
-    { id: 'PT Serif', name: 'PT Serif', category: 'Formal Serif' },
-    { id: 'Spectral', name: 'Spectral', category: 'Modern Serif' },
-
-    // Display/Handwriting (Creative)
-    { id: 'Lobster', name: 'Lobster', category: 'Creative Display' },
-    { id: 'Pacifico', name: 'Pacifico', category: 'Handwriting' },
-    { id: 'Abril Fatface', name: 'Abril Fatface', category: 'Bold Display' }
-];
 
 const WebsiteInfoFormPage = ({ user, auth, db, doc, getDoc, updateDoc, serverTimestamp }) => {
     const [activeSection, setActiveSection] = useState(1);
