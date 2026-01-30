@@ -1,51 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import toast from 'react-hot-toast';
+import WithdrawalModal from '../components/WithdrawalModal';
 
-const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
-    const [loadingWithdraw, setLoadingWithdraw] = useState(false);
+const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimestamp, query, where, onSnapshot }) => {
+    const [referralCount, setReferralCount] = useState(0);
+    const [referralEarnings, setReferralEarnings] = useState(0);
+    const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+    const [withdrawalLoading, setWithdrawalLoading] = useState(false);
+    const [pendingWithdrawal, setPendingWithdrawal] = useState(null);
 
-    // Generate a simple referral code from UID or use email
-    const referralCode = user.uid ? user.uid.substring(0, 6).toUpperCase() : 'NO DISPONIBLE';
-
-    // Static data for now, matching the screenshot logic
-    const activeClients = 0;
-    const monthlyEarnings = activeClients * 20000;
-    const paymentThreshold = 50000;
+    // Generate a simple referral code from UID or use email if not in profile (fallback)
+    const displayReferralCode = userProfile?.referralCode || (user.uid ? user.uid.substring(0, 6).toUpperCase() : 'NO DISPONIBLE');
 
     const shareUrl = "https://cosmicaweb.com";
-    const shareMessage = `¡Hola! Te recomiendo usar Cósmica para tu sitio web. Gana $20.000 COP mensuales por cada cliente. Usa mi código: ${referralCode} en ${shareUrl}`;
-
+    const shareMessage = `¡Hola! Te recomiendo usar Cósmica para tu sitio web. Gana $20.000 COP mensuales por cada cliente. Usa mi código: ${displayReferralCode} en ${shareUrl}`;
     const whatsappLink = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
 
+    useEffect(() => {
+        if (userProfile?.referralCode) {
+            // Check for referrals
+            const qReferrals = query(collection(db, "users"), where("referredBy", "==", userProfile.referralCode));
+            const unsubscribeReferrals = onSnapshot(qReferrals, (querySnapshot) => {
+                const count = querySnapshot.size;
+                setReferralCount(count);
+                setReferralEarnings(count * 20000);
+            });
+
+            // Check for pending withdrawals
+            const qWithdrawals = query(
+                collection(db, "payouts"),
+                where("userId", "==", user.uid),
+                where("status", "==", "pending")
+            );
+            const unsubscribeWithdrawals = onSnapshot(qWithdrawals, (querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    setPendingWithdrawal(querySnapshot.docs[0].data());
+                } else {
+                    setPendingWithdrawal(null);
+                }
+            });
+
+            return () => {
+                unsubscribeReferrals();
+                unsubscribeWithdrawals();
+            };
+        }
+    }, [userProfile, db, collection, query, where, user.uid, onSnapshot]);
+
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(referralCode);
+        navigator.clipboard.writeText(displayReferralCode);
         toast.success("Código copiado al portapapeles");
     };
 
-    const handleWithdraw = async () => {
-        setLoadingWithdraw(true);
-        toast.loading("Procesando solicitud...");
+    const handleRequestWithdrawal = async (bankDetails) => {
+        if (referralEarnings < 50000) {
+            toast.error("El monto mínimo de retiro es $50.000 COP");
+            return;
+        }
 
+        setWithdrawalLoading(true);
         try {
-            await addDoc(collection(db, "requests"), {
-                title: "Solicitud de Retiro de Ganancias",
-                description: `El usuario solicita retirar sus ganancias acumuladas de referidos. Monto estimado: $${monthlyEarnings.toLocaleString()}`,
-                type: "Retiro",
+            await addDoc(collection(db, "payouts"), {
                 userId: user.uid,
                 userEmail: user.email,
                 userName: user.displayName,
+                amount: referralEarnings,
+                status: 'pending',
                 createdAt: serverTimestamp(),
-                status: 'pending'
+                bankDetails: bankDetails
             });
-            toast.dismiss();
-            toast.success("Solicitud de retiro enviada. Te contactaremos pronto.");
+            toast.success("Solicitud de retiro enviada con éxito");
+            setIsWithdrawalModalOpen(false);
         } catch (error) {
-            console.error("Error creating withdraw request:", error);
-            toast.dismiss();
-            toast.error("Error al procesar la solicitud.");
+            console.error("Error requesting withdrawal:", error);
+            toast.error("Error al solicitar el retiro");
         } finally {
-            setLoadingWithdraw(false);
+            setWithdrawalLoading(false);
         }
     };
 
@@ -64,7 +95,7 @@ const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                             <p className="text-xs font-bold text-blue-600 uppercase mb-3 tracking-wider">Tu código de referido</p>
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-3xl font-mono font-bold text-slate-900 tracking-wider">
-                                    {referralCode}
+                                    {displayReferralCode}
                                 </span>
                                 <button
                                     onClick={handleCopyCode}
@@ -81,20 +112,26 @@ const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                         <div className="bg-green-50 rounded-xl p-6 border border-green-100 flex flex-col">
                             <p className="text-xs font-bold text-green-700 uppercase mb-3 tracking-wider">Ganancia Mensual Estimada</p>
                             <div className="text-4xl font-bold text-slate-900 mb-2">
-                                ${monthlyEarnings.toLocaleString()}
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(referralEarnings)}
                             </div>
-                            <p className="text-sm text-slate-600 mb-6">Basado en {activeClients} clientes activos.</p>
+                            <p className="text-sm text-slate-600 mb-6">Basado en {referralCount} cliente{referralCount !== 1 ? 's' : ''} activo{referralCount !== 1 ? 's' : ''}.</p>
 
-                            <button
-                                onClick={handleWithdraw}
-                                disabled={monthlyEarnings < paymentThreshold || loadingWithdraw}
-                                className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${monthlyEarnings >= paymentThreshold
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
-                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                    }`}
-                            >
-                                {loadingWithdraw ? 'Procesando...' : (monthlyEarnings >= paymentThreshold ? 'Solicitar Retiro' : `Mínimo $${paymentThreshold.toLocaleString()} para retirar`)}
-                            </button>
+                            {pendingWithdrawal ? (
+                                <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold text-center border border-yellow-200">
+                                    Retiro Pendiente: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pendingWithdrawal.amount)}
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setIsWithdrawalModalOpen(true)}
+                                    disabled={referralEarnings < 50000}
+                                    className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${referralEarnings >= 50000
+                                        ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-500/20'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                >
+                                    {referralEarnings < 50000 ? 'Mínimo $50.000 para retirar' : 'Solicitar Retiro'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -112,6 +149,15 @@ const ReferralsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                         </button>
                     </div>
                 </div>
+
+                <WithdrawalModal
+                    isOpen={isWithdrawalModalOpen}
+                    onClose={() => setIsWithdrawalModalOpen(false)}
+                    onSubmit={handleRequestWithdrawal}
+                    loading={withdrawalLoading}
+                    amount={referralEarnings}
+                />
+
             </div>
         </DashboardLayout>
     );

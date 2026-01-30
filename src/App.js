@@ -82,7 +82,7 @@ const AppRoutes = () => {
             <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
             <Route path="/cuenta" element={<MyAccountPage user={user} userProfile={userProfile} {...firebaseServices} />} />
             <Route path="/conexiones" element={<ConnectionsPage user={user} {...firebaseServices} />} />
-            <Route path="/referidos" element={<ReferralsPage user={user} {...firebaseServices} />} />
+            <Route path="/referidos" element={<ReferralsPage user={user} userProfile={userProfile} {...firebaseServices} />} />
             <Route path="/suscripcion" element={<SubscriptionPage user={user} auth={firebaseServices.auth} {...firebaseServices} />} />
             <Route path="/landing-pages" element={<LandingPagesPage user={user} {...firebaseServices} />} />
 

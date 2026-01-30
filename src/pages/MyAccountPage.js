@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import WithdrawalModal from '../components/WithdrawalModal';
+
 import DashboardLayout from '../components/layout/DashboardLayout';
 
 
@@ -23,11 +23,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
     const [paymentHistory, setPaymentHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
 
-    const [referralCount, setReferralCount] = useState(0);
-    const [referralEarnings, setReferralEarnings] = useState(0);
-    const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
-    const [withdrawalLoading, setWithdrawalLoading] = useState(false);
-    const [pendingWithdrawal, setPendingWithdrawal] = useState(null);
+
 
     // Coupon State
     const [myAccountCoupon, setMyAccountCoupon] = useState('');
@@ -71,63 +67,9 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
         fetchHistory();
     }, [getFunctions, httpsCallable]);
 
-    useEffect(() => {
-        if (userProfile?.referralCode) {
-            // Check for referrals
-            const qReferrals = query(collection(db, "users"), where("referredBy", "==", userProfile.referralCode));
-            const unsubscribeReferrals = onSnapshot(qReferrals, (querySnapshot) => {
-                const count = querySnapshot.size;
-                setReferralCount(count);
-                setReferralEarnings(count * 20000);
-            });
 
-            // Check for pending withdrawals
-            const qWithdrawals = query(
-                collection(db, "payouts"),
-                where("userId", "==", user.uid),
-                where("status", "==", "pending")
-            );
-            const unsubscribeWithdrawals = onSnapshot(qWithdrawals, (querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    setPendingWithdrawal(querySnapshot.docs[0].data());
-                } else {
-                    setPendingWithdrawal(null);
-                }
-            });
 
-            return () => {
-                unsubscribeReferrals();
-                unsubscribeWithdrawals();
-            };
-        }
-    }, [userProfile, db, collection, query, where, user.uid, onSnapshot]);
 
-    const handleRequestWithdrawal = async (bankDetails) => {
-        if (referralEarnings < 50000) {
-            toast.error("El monto mínimo de retiro es $50.000 COP");
-            return;
-        }
-
-        setWithdrawalLoading(true);
-        try {
-            await addDoc(collection(db, "payouts"), {
-                userId: user.uid,
-                userEmail: user.email,
-                userName: user.displayName,
-                amount: referralEarnings,
-                status: 'pending',
-                createdAt: serverTimestamp(),
-                bankDetails: bankDetails
-            });
-            toast.success("Solicitud de retiro enviada con éxito");
-            setIsWithdrawalModalOpen(false);
-        } catch (error) {
-            console.error("Error requesting withdrawal:", error);
-            toast.error("Error al solicitar el retiro");
-        } finally {
-            setWithdrawalLoading(false);
-        }
-    };
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -415,74 +357,7 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                     </div>
                 )}
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
 
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                        <div className="border-b border-slate-200 p-6">
-                            <h2 className="text-lg font-bold text-slate-800">Cuenta Recompensa</h2>
-                            <p className="text-sm text-slate-500 mt-1">Gana $20.000 COP mensuales por cada cliente que traigas a Cósmica.</p>
-                        </div>
-
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Tu Código de Referido</p>
-                                    <div className="mt-2 flex items-center gap-3">
-                                        <span className="text-2xl font-mono font-bold text-slate-900 tracking-wider">
-                                            {userProfile?.referralCode || "NO DISPONIBLE"}
-                                        </span>
-                                        {userProfile?.referralCode && (
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(userProfile.referralCode);
-                                                    toast.success("Código copiado al portapapeles");
-                                                }}
-                                                className="p-2 bg-white rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
-                                                title="Copiar código"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
-                                            </button>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-2">Comparte este código con tus amigos.</p>
-                                </div>
-
-                                <div className="bg-green-50 p-5 rounded-xl border border-green-100">
-                                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider">Ganancia Mensual Estimada</p>
-                                    <p className="mt-2 text-3xl font-bold text-slate-900">
-                                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(referralEarnings)}
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-2 mb-4">Basado en {referralCount} cliente{referralCount !== 1 ? 's' : ''} activo{referralCount !== 1 ? 's' : ''}.</p>
-
-                                    {pendingWithdrawal ? (
-                                        <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold text-center border border-yellow-200">
-                                            Retiro Pendiente: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pendingWithdrawal.amount)}
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => setIsWithdrawalModalOpen(true)}
-                                            disabled={referralEarnings < 50000}
-                                            className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm"
-                                        >
-                                            {referralEarnings < 50000 ? 'Mínimo $50.000 para retirar' : 'Solicitar Retiro'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <WithdrawalModal
-                            isOpen={isWithdrawalModalOpen}
-                            onClose={() => setIsWithdrawalModalOpen(false)}
-                            onSubmit={handleRequestWithdrawal}
-                            loading={withdrawalLoading}
-                            amount={referralEarnings}
-                        />
-
-                    </div>
-                </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                     <div className="border-b border-slate-200 p-6">
