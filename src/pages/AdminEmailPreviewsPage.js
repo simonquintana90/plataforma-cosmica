@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 function AdminEmailPreviewsPage() {
+    const { getFunctions, httpsCallable } = useAuth();
     const [selectedTemplate, setSelectedTemplate] = useState('manos_a_la_obra');
     const [previewHtml, setPreviewHtml] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +57,7 @@ function AdminEmailPreviewsPage() {
                         >
                             <option value="manos_a_la_obra">👷 Manos a la Obra</option>
                             <option value="reporte_despegue">🚀 Reporte de Despegue</option>
+                            <option value="solicitud_resena">⭐ Solicitud de Reseña</option>
                         </select>
                     </div>
                     <div className="pt-6">

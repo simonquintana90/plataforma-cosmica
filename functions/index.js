@@ -1634,6 +1634,32 @@ function generateLaunchAnniversaryHtml(userName, domain) {
           `;
 }
 
+
+function generateReviewRequestHtml(userName) {
+  return `
+            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+                <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+              </div>
+              <div style="padding: 30px;">
+                <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Hola, ${userName}! 👋</h1>
+                <p>Ha pasado un mes desde que lanzamos tu sitio web. Esperamos que esté trabajando duro para ti.</p>
+                <p>En Cósmica nos alimentamos de las opiniones de nuestros clientes. ¿Nos regalarías 1 minuto para contarnos tu experiencia?</p>
+                
+                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #92400e;">Tu opinión nos ayuda a que más emprendedores confíen en nosotros.</p>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="https://maps.app.goo.gl/aGu83iSJgKEbibbg6" style="background-color: #0D0D0D; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Dejar una Reseña en Google</a>
+                </div>
+                
+                <p style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">Si algo no ha sido perfecto, por favor respóndenos este correo para solucionarlo de inmediato.</p>
+              </div>
+            </div>
+          `;
+}
+
 // --- NUEVAS NOTIFICACIONES ---
 
 /**
@@ -1750,6 +1776,77 @@ exports.sendSiteLaunchAnniversary = onSchedule(
 );
 
 /**
+ * 3. "Solicitud de Reseña" (30 días Post-Lanzamiento)
+ * Trigger: Programado (Diario).
+ * Revisa usuarios cuyo siteReadyDate fue hace 30 días.
+ */
+exports.sendReviewRequest = onSchedule(
+  {
+    schedule: "every 24 hours",
+    secrets: ["RESEND_API_KEY"],
+  },
+  async (event) => {
+    console.log("Iniciando chequeo de solicitud de reseñas (30 días)...");
+    const db = getFirestore();
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    // Calcular rango de fecha para "hace 30 días"
+    const today = new Date();
+    const thirtyDaysAgoStart = new Date(today);
+    thirtyDaysAgoStart.setDate(today.getDate() - 30);
+    thirtyDaysAgoStart.setHours(0, 0, 0, 0);
+
+    const thirtyDaysAgoEnd = new Date(today);
+    thirtyDaysAgoEnd.setDate(today.getDate() - 30);
+    thirtyDaysAgoEnd.setHours(23, 59, 59, 999);
+
+    const startTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgoStart);
+    const endTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgoEnd);
+
+    try {
+      const querySnapshot = await db.collection("users")
+        .where("siteReady", "==", true)
+        .where("siteReadyDate", ">=", startTimestamp)
+        .where("siteReadyDate", "<=", endTimestamp)
+        .get();
+
+      if (querySnapshot.empty) {
+        console.log("No hay sitios que cumplan 30 días hoy.");
+        return;
+      }
+
+      console.log(`Encontrados ${querySnapshot.size} usuarios para 'Solicitud de Reseña'.`);
+
+      const batchPromises = querySnapshot.docs.map(async (doc) => {
+        const userData = doc.data();
+        const userEmail = userData.email;
+        const userName = userData.displayName || "Cliente";
+
+        const emailHtml = generateReviewRequestHtml(userName);
+
+        try {
+          await resend.emails.send({
+            from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
+            to: userEmail,
+            subject: "⭐ ¿Cómo te ha ido con tu nueva web?",
+            html: emailHtml
+          });
+          console.log(`Solicitud de reseña enviada a ${userEmail}`);
+        } catch (err) {
+          console.error(`Error enviando solicitud de reseña a ${userEmail}:`, err);
+        }
+      });
+
+      await Promise.all(batchPromises);
+      console.log("Proceso de 'Solicitud de Reseña' finalizado.");
+
+    } catch (error) {
+      console.error("Error en proceso de reseñas:", error);
+    }
+  }
+);
+
+/**
  * Endpoint para previsualizar correos (Admin).
  * Retorna el HTML puro del correo solicitado.
  */
@@ -1759,9 +1856,6 @@ exports.getNotificationPreview = onCall(
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
     }
-
-    // TODO: Validate Admin permission if strict needed.
-    // if (request.auth.uid !== ADMIN_UID) ...
 
     const { type } = request.data;
     const mockUser = "Juan Pérez";
@@ -1775,6 +1869,9 @@ exports.getNotificationPreview = onCall(
     }
     else if (type === 'reporte_despegue') {
       return { html: generateLaunchAnniversaryHtml(mockUser, mockDomain) };
+    }
+    else if (type === 'solicitud_resena') {
+      return { html: generateReviewRequestHtml(mockUser) };
     }
     else {
       throw new functions.https.HttpsError('invalid-argument', 'Tipo de correo no válido.');
