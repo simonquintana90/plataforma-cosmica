@@ -27,7 +27,7 @@ function AdminEmailPreviewsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [functions]);
+    }, [functions, httpsCallable]);
 
     useEffect(() => {
         fetchPreview(selectedTemplate);
