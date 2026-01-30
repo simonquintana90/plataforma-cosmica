@@ -58,6 +58,13 @@ function AdminEmailPreviewsPage() {
                             <option value="manos_a_la_obra">👷 Manos a la Obra</option>
                             <option value="reporte_despegue">🚀 Reporte de Despegue</option>
                             <option value="solicitud_resena">⭐ Solicitud de Reseña</option>
+                            <option value="alerta_eliminacion">⚠️ Alerta Eliminación</option>
+                            <option value="nueva_solicitud_cliente">📩 Nueva Solicitud (Cliente)</option>
+                            <option value="nueva_solicitud_admin">🔔 Nueva Solicitud (Admin)</option>
+                            <option value="solicitud_completada">✅ Solicitud Completada</option>
+                            <option value="mensaje_chat_cliente">💬 Mensaje Chat (Cliente)</option>
+                            <option value="mensaje_chat_admin">💬 Mensaje Chat (Admin)</option>
+                            <option value="nuevo_usuario_admin">👤 Nuevo Usuario (Admin)</option>
                         </select>
                     </div>
                     <div className="pt-6">

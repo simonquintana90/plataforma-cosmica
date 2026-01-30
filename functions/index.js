@@ -490,17 +490,7 @@ exports.notifyAdminOnNewUser = onDocumentCreated(
 
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      const adminEmailHtml = `
-        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
-          <h1 style="font-size: 22px;">Nuevo Usuario Registrado</h1>
-          <p>Un nuevo usuario se ha registrado en la plataforma.</p>
-          <ul style="list-style: none; padding: 0;">
-            <li style="padding: 5px 0;"><strong>Email:</strong> ${user.email}</li>
-            <li style="padding: 5px 0;"><strong>Nombre:</strong> ${user.displayName || "No proporcionado"}</li>
-          </ul>
-          <p>El usuario ha sido aprobado automáticamente y puede proceder al pago.</p>
-        </div>
-      `;
+      const adminEmailHtml = generateNewUserAdminHtml(user);
       const adminEmail = {
         from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
         to: ADMIN_EMAIL,
@@ -530,48 +520,9 @@ exports.sendEmailOnNewRequest = onDocumentCreated(
     }
     const newRequest = snapshot.data();
 
-    const fileLinkHtml = newRequest.fileUrl
-      ? `<tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Archivo Adjunto:</td><td style="padding: 12px 0;"><a href="${newRequest.fileUrl}" target="_blank" style="color: #3e6cff; text-decoration: none;">Ver Archivo Adjunto</a></td></tr>`
-      : '';
+    const adminEmailHtml = generateNewRequestAdminHtml(newRequest);
 
-    const adminEmailHtml = `
-    <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-      <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-        <img src="https://app.cosmicaweb.com/Logo.png" alt="Logo Cósmica" style="height: 30px; width: auto;">
-      </div>
-      <div style="padding: 20px 30px;">
-        <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">Nueva Solicitud de Cambio Recibida</h1>
-        <p>Un cliente ha enviado una nueva solicitud a través de la plataforma.</p>
-        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-        <h2 style="color: #0D0D0D; font-size: 18px; border-bottom: 2px solid #3e6cff; padding-bottom: 5px; font-weight: 700;">Detalles de la Solicitud</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
-          <tbody>
-            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold; width: 120px;">Cliente:</td><td style="padding: 12px 0;">${newRequest.userName || newRequest.userEmail}</td></tr>
-            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Email:</td><td style="padding: 12px 0;">${newRequest.userEmail}</td></tr>
-            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Título:</td><td style="padding: 12px 0;">${newRequest.title}</td></tr>
-            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Tipo de Cambio:</td><td style="padding: 12px 0;">${newRequest.type}</td></tr>
-            ${fileLinkHtml}
-          </tbody>
-        </table>
-        <h3 style="color: #0D0D0D; font-size: 16px; margin-top: 25px; font-weight: 700;">Descripción:</h3>
-        <div style="background-color: #fdfdfd; border: 1px solid #e9e9e9; border-radius: 4px; padding: 15px; margin-top: 5px; font-size: 14px;"><p style="margin: 0;">${newRequest.description}</p></div>
-        <div style="text-align: center; margin-top: 30px;"><a href="https://console.firebase.google.com/project/plataforma-cosmica/firestore/data/~2Frequests" style="background-color: #3e6cff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver en Firebase</a></div>
-      </div>
-    </div>
-  `;
-
-    const clientEmailHtml = `
-    <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-      <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-        <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
-      </div>
-      <div style="padding: 20px 30px;">
-        <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Hemos recibido tu solicitud!</h1>
-        <p>Hola, <strong>${newRequest.userName || ''}</strong>.</p>
-        <p>Te confirmamos que hemos recibido tu solicitud. Muy pronto verás los cambios reflejados en tu web.</p>
-      </div>
-    </div>
-  `;
+    const clientEmailHtml = generateNewRequestClientHtml(newRequest);
 
     const adminEmail = { from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>", to: ADMIN_EMAIL, subject: `Nueva Solicitud de Cambio: ${newRequest.title}`, html: adminEmailHtml };
     const clientEmail = { from: "Cósmica Web <notificaciones@send.cosmicaweb.com>", to: newRequest.userEmail, subject: `Confirmación de tu solicitud: ${newRequest.title}`, html: clientEmailHtml };
@@ -596,19 +547,7 @@ exports.sendCompletionEmail = onDocumentUpdated(
     if (dataBefore.status !== "completed" && dataAfter.status === "completed") {
       const resend = new Resend(process.env.RESEND_API_KEY);
 
-      const completionEmailHtml = `
-        <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-          <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
-          </div>
-          <div style="padding: 20px 30px;">
-            <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Tu solicitud ha sido completada!</h1>
-            <p>Hola, <strong>${dataAfter.userName || ''}</strong>.</p>
-            <p>Nos complace informarte que tu solicitud de cambio titulada "<strong>${dataAfter.title}</strong>" ya ha sido implementada en tu sitio web.</p>
-            <p>Por favor, revisa tu página para confirmar que todo se vea como esperabas. Si tienes alguna duda, no dudes en crear una nueva solicitud.</p>
-          </div>
-        </div>
-      `;
+      const completionEmailHtml = generateRequestCompletedHtml(dataAfter.userName, dataAfter.title);
 
       const clientEmail = {
         from: "Cósmica Web <notificaciones@send.cosmicaweb.com>",
@@ -649,14 +588,7 @@ exports.sendChatMessageNotification = onDocumentCreated(
     let emailToSend;
 
     if (messageData.senderId === ADMIN_UID) {
-      const clientEmailHtml = `
-            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
-                <h1 style="font-size: 22px;">Tienes un nuevo mensaje de Cósmica</h1>
-                <p>Hola, ${requestData.userName || ''}.</p>
-                <p>Nuestro equipo ha dejado un comentario sobre tu solicitud "<strong>${requestData.title}</strong>".</p>
-                <p style="background-color: #f4f4f4; padding: 15px; border-radius: 5px;"><em>"${messageData.text}"</em></p>
-                <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver la conversación</a>
-            </div>`;
+      const clientEmailHtml = generateNewMessageClientHtml(requestData.userName, requestData.title, messageData.text, appUrl);
 
       emailToSend = {
         from: "Cósmica Web <notificaciones@send.cosmicaweb.com>",
@@ -666,13 +598,7 @@ exports.sendChatMessageNotification = onDocumentCreated(
       };
     }
     else {
-      const adminEmailHtml = `
-            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
-                <h1 style="font-size: 22px;">Nuevo mensaje de un cliente</h1>
-                <p>El cliente <strong>${requestData.userName}</strong> ha respondido en la solicitud "<strong>${requestData.title}</strong>".</p>
-                <p style="background-color: #f4f4f4; padding: 15px; border-radius: 5px;"><em>"${messageData.text}"</em></p>
-                <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a la solicitud</a>
-            </div>`;
+      const adminEmailHtml = generateNewMessageAdminHtml(requestData.userName, requestData.title, messageData.text, appUrl);
 
       emailToSend = {
         from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
@@ -1580,6 +1506,8 @@ exports.processScheduledDeletions = onSchedule("every 24 hours", async (event) =
 
 // --- HELPER FUNCTIONS PARA EMAILS ---
 
+// --- HELPER FUNCTIONS PARA EMAILS ---
+
 function generateManosALaObraHtml(userName, deliveryDateString) {
   return `
         <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
@@ -1660,191 +1588,125 @@ function generateReviewRequestHtml(userName) {
           `;
 }
 
+function generateNewUserAdminHtml(user) {
+  return `
+        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
+          <h1 style="font-size: 22px;">Nuevo Usuario Registrado</h1>
+          <p>Un nuevo usuario se ha registrado en la plataforma.</p>
+          <ul style="list-style: none; padding: 0;">
+            <li style="padding: 5px 0;"><strong>Email:</strong> ${user.email}</li>
+            <li style="padding: 5px 0;"><strong>Nombre:</strong> ${user.displayName || "No proporcionado"}</li>
+          </ul>
+          <p>El usuario ha sido aprobado automáticamente y puede proceder al pago.</p>
+        </div>
+      `;
+}
+
+function generateNewRequestAdminHtml(newRequest) {
+  const fileLinkHtml = newRequest.fileUrl
+    ? `<tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Archivo Adjunto:</td><td style="padding: 12px 0;"><a href="${newRequest.fileUrl}" target="_blank" style="color: #3e6cff; text-decoration: none;">Ver Archivo Adjunto</a></td></tr>`
+    : '';
+
+  return `
+    <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+        <img src="https://app.cosmicaweb.com/Logo.png" alt="Logo Cósmica" style="height: 30px; width: auto;">
+      </div>
+      <div style="padding: 20px 30px;">
+        <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">Nueva Solicitud de Cambio Recibida</h1>
+        <p>Un cliente ha enviado una nueva solicitud a través de la plataforma.</p>
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+        <h2 style="color: #0D0D0D; font-size: 18px; border-bottom: 2px solid #3e6cff; padding-bottom: 5px; font-weight: 700;">Detalles de la Solicitud</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
+          <tbody>
+            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold; width: 120px;">Cliente:</td><td style="padding: 12px 0;">${newRequest.userName || newRequest.userEmail}</td></tr>
+            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Email:</td><td style="padding: 12px 0;">${newRequest.userEmail}</td></tr>
+            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Título:</td><td style="padding: 12px 0;">${newRequest.title}</td></tr>
+            <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 12px 0; font-weight: bold;">Tipo de Cambio:</td><td style="padding: 12px 0;">${newRequest.type}</td></tr>
+            ${fileLinkHtml}
+          </tbody>
+        </table>
+        <h3 style="color: #0D0D0D; font-size: 16px; margin-top: 25px; font-weight: 700;">Descripción:</h3>
+        <div style="background-color: #fdfdfd; border: 1px solid #e9e9e9; border-radius: 4px; padding: 15px; margin-top: 5px; font-size: 14px;"><p style="margin: 0;">${newRequest.description}</p></div>
+        <div style="text-align: center; margin-top: 30px;"><a href="https://console.firebase.google.com/project/plataforma-cosmica/firestore/data/~2Frequests" style="background-color: #3e6cff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver en Firebase</a></div>
+      </div>
+    </div>
+  `;
+}
+
+function generateNewRequestClientHtml(newRequest) {
+  return `
+    <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+        <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+      </div>
+      <div style="padding: 20px 30px;">
+        <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Hemos recibido tu solicitud!</h1>
+        <p>Hola, <strong>${newRequest.userName || ''}</strong>.</p>
+        <p>Te confirmamos que hemos recibido tu solicitud. Muy pronto verás los cambios reflejados en tu web.</p>
+      </div>
+    </div>
+  `;
+}
+
+function generateRequestCompletedHtml(userName, title) {
+  return `
+        <div style="font-family: 'Archivo', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+          </div>
+          <div style="padding: 20px 30px;">
+            <h1 style="color: #0D0D0D; font-size: 24px; font-weight: 700;">¡Tu solicitud ha sido completada!</h1>
+            <p>Hola, <strong>${userName || ''}</strong>.</p>
+            <p>Nos complace informarte que tu solicitud de cambio titulada "<strong>${title}</strong>" ya ha sido implementada en tu sitio web.</p>
+            <p>Por favor, revisa tu página para confirmar que todo se vea como esperabas. Si tienes alguna duda, no dudes en crear una nueva solicitud.</p>
+          </div>
+        </div>
+      `;
+}
+
+function generateNewMessageClientHtml(userName, title, text, appUrl) {
+  return `
+            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
+                <h1 style="font-size: 22px;">Tienes un nuevo mensaje de Cósmica</h1>
+                <p>Hola, ${userName || ''}.</p>
+                <p>Nuestro equipo ha dejado un comentario sobre tu solicitud "<strong>${title}</strong>".</p>
+                <p style="background-color: #f4f4f4; padding: 15px; border-radius: 5px;"><em>"${text}"</em></p>
+                <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver la conversación</a>
+            </div>`;
+}
+
+function generateNewMessageAdminHtml(userName, title, text, appUrl) {
+  return `
+            <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto;">
+                <h1 style="font-size: 22px;">Nuevo mensaje de un cliente</h1>
+                <p>El cliente <strong>${userName}</strong> ha respondido en la solicitud "<strong>${title}</strong>".</p>
+                <p style="background-color: #f4f4f4; padding: 15px; border-radius: 5px;"><em>"${text}"</em></p>
+                <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #3e6cff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">Ir a la solicitud</a>
+            </div>`;
+}
+
+function generateDeletionWarningHtml(scheduledDate) {
+  return `
+        <div style="font-family: 'Archivo', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; border-top: 4px solid #DC2626;">
+          <div style="background-color: #FEF2F2; padding: 20px; text-align: center;">
+            <img src="https://cdn.prod.website-files.com/68026a0651df0f492c75ff17/680535faac041774d1d2256c_CO%CC%81SMICA_Logo_FAV.png?alt=media&token=e40ee3c1-c85c-4967-a814-e8dc3197353a" alt="Logo Cósmica" style="height: 30px; width: auto;">
+          </div>
+          <div style="padding: 30px;">
+            <p>Hola,</p>
+            <p>Hemos notado que tu cuenta ha estado inactiva o sin una suscripción válida.</p>
+            <p>Tu cuenta ha sido programada para <strong>ELIMINACIÓN AUTOMÁTICA</strong> el día: <strong>${scheduledDate}</strong>.</p>
+            <p>Si deseas conservar tu cuenta y todos tus datos asociada (incluyendo tus landing pages), por favor suscríbete a un plan antes de esa fecha.</p>
+            <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+              <a href="https://app.cosmicaweb.com/?view=suscribirse" style="background-color: #DC2626; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Reactivar mi Cuenta</a>
+            </div>
+            <p style="font-size: 13px; color: #666;">Si ya te has suscrito, por favor ignora este mensaje. Si no haces nada, tu cuenta y todos los datos serán borrados permanentemente.</p>
+          </div>
+        </div>
+      `;
+}
+
 // --- NUEVAS NOTIFICACIONES ---
-
-/**
- * 1. "Manos a la Obra" (Confirmación Inmediata)
- * Trigger: Cuando user.websiteInfoStatus cambia a 'completed'.
- */
-exports.sendWebsiteInfoConfirmation = onDocumentUpdated(
-  {
-    document: "users/{userId}",
-    secrets: ["RESEND_API_KEY"],
-  },
-  async (event) => {
-    const dataBefore = event.data.before.data();
-    const dataAfter = event.data.after.data();
-
-    // Verificar cambio de estado a 'completed'
-    if (dataBefore.websiteInfoStatus !== 'completed' && dataAfter.websiteInfoStatus === 'completed') {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const userEmail = dataAfter.email;
-      const userName = dataAfter.displayName || "Cliente";
-
-      // Calcular fecha estimada (Hoy + 7 días)
-      const deliveryDate = new Date();
-      deliveryDate.setDate(deliveryDate.getDate() + 7);
-      const deliveryDateString = deliveryDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-      const emailHtml = generateManosALaObraHtml(userName, deliveryDateString);
-
-      try {
-        await resend.emails.send({
-          from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
-          to: userEmail,
-          subject: "👷 Manos a la obra: Tu sitio está en producción",
-          html: emailHtml
-        });
-        console.log(`Notificación 'Manos a la Obra' enviada a ${userEmail}`);
-      } catch (error) {
-        console.error("Error al enviar notificación 'Manos a la Obra':", error);
-      }
-    }
-  }
-);
-
-/**
- * 2. "Reporte de Despegue" (7 días Post-Lanzamiento)
- * Trigger: Programado (Diario).
- * Revisa usuarios cuyo siteReadyDate fue hace 7 días.
- */
-exports.sendSiteLaunchAnniversary = onSchedule(
-  {
-    schedule: "every 24 hours",
-    secrets: ["RESEND_API_KEY"],
-  },
-  async (event) => {
-    console.log("Iniciando chequeo de aniversarios de lanzamiento (7 días)...");
-    const db = getFirestore();
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    // Calcular rango de fecha para "hace 7 días"
-    const today = new Date();
-    const sevenDaysAgoStart = new Date(today);
-    sevenDaysAgoStart.setDate(today.getDate() - 7);
-    sevenDaysAgoStart.setHours(0, 0, 0, 0);
-
-    const sevenDaysAgoEnd = new Date(today);
-    sevenDaysAgoEnd.setDate(today.getDate() - 7);
-    sevenDaysAgoEnd.setHours(23, 59, 59, 999);
-
-    const startTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgoStart);
-    const endTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgoEnd);
-
-    try {
-      const querySnapshot = await db.collection("users")
-        .where("siteReady", "==", true)
-        .where("siteReadyDate", ">=", startTimestamp)
-        .where("siteReadyDate", "<=", endTimestamp)
-        .get();
-
-      if (querySnapshot.empty) {
-        console.log("No hay sitios que cumplan 7 días hoy.");
-        return;
-      }
-
-      console.log(`Encontrados ${querySnapshot.size} sitios para 'Reporte de Despegue'.`);
-
-      const batchPromises = querySnapshot.docs.map(async (doc) => {
-        const userData = doc.data();
-        const userEmail = userData.email;
-        const userName = userData.displayName || "Cliente";
-        const domain = userData.websiteInfo ? userData.websiteInfo.domain : "tu sitio web";
-
-        const emailHtml = generateLaunchAnniversaryHtml(userName, domain);
-
-        try {
-          await resend.emails.send({
-            from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
-            to: userEmail,
-            subject: "🚀 Reporte de Despegue: Tu web cumple 1 semana",
-            html: emailHtml
-          });
-          console.log(`Email de aniversario enviado a ${userEmail}`);
-        } catch (err) {
-          console.error(`Error enviando email a ${userEmail}:`, err);
-        }
-      });
-
-      await Promise.all(batchPromises);
-      console.log("Proceso de 'Reporte de Despegue' finalizado.");
-
-    } catch (error) {
-      console.error("Error en proceso de aniversarios:", error);
-    }
-  }
-);
-
-/**
- * 3. "Solicitud de Reseña" (30 días Post-Lanzamiento)
- * Trigger: Programado (Diario).
- * Revisa usuarios cuyo siteReadyDate fue hace 30 días.
- */
-exports.sendReviewRequest = onSchedule(
-  {
-    schedule: "every 24 hours",
-    secrets: ["RESEND_API_KEY"],
-  },
-  async (event) => {
-    console.log("Iniciando chequeo de solicitud de reseñas (30 días)...");
-    const db = getFirestore();
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    // Calcular rango de fecha para "hace 30 días"
-    const today = new Date();
-    const thirtyDaysAgoStart = new Date(today);
-    thirtyDaysAgoStart.setDate(today.getDate() - 30);
-    thirtyDaysAgoStart.setHours(0, 0, 0, 0);
-
-    const thirtyDaysAgoEnd = new Date(today);
-    thirtyDaysAgoEnd.setDate(today.getDate() - 30);
-    thirtyDaysAgoEnd.setHours(23, 59, 59, 999);
-
-    const startTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgoStart);
-    const endTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgoEnd);
-
-    try {
-      const querySnapshot = await db.collection("users")
-        .where("siteReady", "==", true)
-        .where("siteReadyDate", ">=", startTimestamp)
-        .where("siteReadyDate", "<=", endTimestamp)
-        .get();
-
-      if (querySnapshot.empty) {
-        console.log("No hay sitios que cumplan 30 días hoy.");
-        return;
-      }
-
-      console.log(`Encontrados ${querySnapshot.size} usuarios para 'Solicitud de Reseña'.`);
-
-      const batchPromises = querySnapshot.docs.map(async (doc) => {
-        const userData = doc.data();
-        const userEmail = userData.email;
-        const userName = userData.displayName || "Cliente";
-
-        const emailHtml = generateReviewRequestHtml(userName);
-
-        try {
-          await resend.emails.send({
-            from: "Equipo Cósmica <notificaciones@send.cosmicaweb.com>",
-            to: userEmail,
-            subject: "⭐ ¿Cómo te ha ido con tu nueva web?",
-            html: emailHtml
-          });
-          console.log(`Solicitud de reseña enviada a ${userEmail}`);
-        } catch (err) {
-          console.error(`Error enviando solicitud de reseña a ${userEmail}:`, err);
-        }
-      });
-
-      await Promise.all(batchPromises);
-      console.log("Proceso de 'Solicitud de Reseña' finalizado.");
-
-    } catch (error) {
-      console.error("Error en proceso de reseñas:", error);
-    }
-  }
-);
 
 /**
  * Endpoint para previsualizar correos (Admin).
@@ -1858,11 +1720,26 @@ exports.getNotificationPreview = onCall(
     }
 
     const { type } = request.data;
+
+    // Mock Data
     const mockUser = "Juan Pérez";
+    const mockEmail = "juan@example.com";
     const mockDomain = "www.tinegocio.com";
     const mockDate = new Date();
     mockDate.setDate(mockDate.getDate() + 7);
     const mockDateString = mockDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const mockRequest = {
+      userName: mockUser,
+      userEmail: mockEmail,
+      title: "Cambio de Logo",
+      type: "Diseño",
+      description: "Quisiera cambiar el logo por el adjunto.",
+      fileUrl: "https://example.com/logo.png"
+    };
+    const mockTitle = "Cambio de Logo";
+    const mockText = "Claro, hemos recibido tu archivo. Lo revisaremos pronto.";
+    const mockAppUrl = "https://app.cosmicaweb.com/solicitud/123";
 
     if (type === 'manos_a_la_obra') {
       return { html: generateManosALaObraHtml(mockUser, mockDateString) };
@@ -1872,6 +1749,27 @@ exports.getNotificationPreview = onCall(
     }
     else if (type === 'solicitud_resena') {
       return { html: generateReviewRequestHtml(mockUser) };
+    }
+    else if (type === 'alerta_eliminacion') {
+      return { html: generateDeletionWarningHtml(mockDateString) };
+    }
+    else if (type === 'nueva_solicitud_cliente') {
+      return { html: generateNewRequestClientHtml(mockRequest) };
+    }
+    else if (type === 'nueva_solicitud_admin') {
+      return { html: generateNewRequestAdminHtml(mockRequest) };
+    }
+    else if (type === 'solicitud_completada') {
+      return { html: generateRequestCompletedHtml(mockUser, mockTitle) };
+    }
+    else if (type === 'mensaje_chat_cliente') {
+      return { html: generateNewMessageClientHtml(mockUser, mockTitle, mockText, mockAppUrl) };
+    }
+    else if (type === 'mensaje_chat_admin') {
+      return { html: generateNewMessageAdminHtml(mockUser, mockTitle, mockText, mockAppUrl) };
+    }
+    else if (type === 'nuevo_usuario_admin') {
+      return { html: generateNewUserAdminHtml({ email: mockEmail, displayName: mockUser }) };
     }
     else {
       throw new functions.https.HttpsError('invalid-argument', 'Tipo de correo no válido.');

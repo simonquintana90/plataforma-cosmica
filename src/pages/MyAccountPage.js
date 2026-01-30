@@ -257,9 +257,6 @@ const MyAccountPage = ({ user, userProfile, auth, updateProfile, db, doc, update
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                     <div className="border-b border-slate-200 p-6 flex justify-between items-center">
                         <h2 className="text-lg font-bold text-slate-800">Información del Sitio Web</h2>
-                        <Link to="/website-info" className="text-sm font-bold text-blue-600 hover:text-blue-800">
-                            Editar Información &rarr;
-                        </Link>
                     </div>
                     <div className="p-6">
                         <p className="text-slate-500 text-sm">
