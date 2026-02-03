@@ -131,7 +131,7 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
                         >
                             <option value="">{banksLoading ? "Cargando bancos..." : "Selecciona un banco"}</option>
                             {!banksLoading && banks.map(bank => (
-                                <option key={bank.id} value={bank.id}>{bank.financial_institution_name}</option>
+                                <option key={bank.id} value={bank.id}>{bank.name || bank.financial_institution_name}</option>
                             ))}
                         </select>
                     </div>
