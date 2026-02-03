@@ -1907,7 +1907,10 @@ exports.requestWompiPayout = onCall(
 
 
     // SKIP VALIDATIONS FOR ADMIN TO ALLOW TESTING
-    if (userId !== ADMIN_UID) {
+    const isAdmin = userId === ADMIN_UID || userDoc.data()?.role === 'admin';
+    console.log(`Checking Payout Rules for ${userId} (Role: ${userDoc.data()?.role}) -> Bypass: ${isAdmin}`);
+
+    if (!isAdmin) {
       if (amount > availableBalance) {
         throw new functions.https.HttpsError('failed-precondition', 'Fondos insuficientes. Verifica tus retiros anteriores.');
       }
