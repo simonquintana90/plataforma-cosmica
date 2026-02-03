@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import toast from 'react-hot-toast';
 import WithdrawalModal from '../components/WithdrawalModal';
+import { functions } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
 
 const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimestamp, query, where, onSnapshot }) => {
     const [referralCount, setReferralCount] = useState(0);
@@ -54,27 +56,45 @@ const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimest
     };
 
     const handleRequestWithdrawal = async (bankDetails) => {
-        if (referralEarnings < 50000) {
-            toast.error("El monto mínimo de retiro es $50.000 COP");
+        const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
+        // Allow admin to withdraw even with low balance (Wompi min is usually ~1500)
+        const minAmount = user.uid === ADMIN_UID ? 1500 : 50000;
+
+        if (referralEarnings < minAmount) {
+            toast.error(`El monto mínimo de retiro es $${minAmount.toLocaleString('es-CO')} COP`);
             return;
         }
 
         setWithdrawalLoading(true);
         try {
-            await addDoc(collection(db, "payouts"), {
-                userId: user.uid,
-                userEmail: user.email,
-                userName: user.displayName,
-                amount: referralEarnings,
-                status: 'pending',
-                createdAt: serverTimestamp(),
-                bankDetails: bankDetails
+            // Using Cloud Function for secure payout
+            const requestWompiPayout = httpsCallable(functions, 'requestWompiPayout');
+
+            await requestWompiPayout({
+                // For admin testing with 0 balance, send a tiny amount to test API? 
+                // Or assuming admin has at least 1500.
+                // If earnings are 0, we can't send 0. 
+                // Let's assume if it is Admin and balance is 0, we send $2000 just to test the API flow (will fail availability check in server if strictly enforced, but we'll relax it there too).
+                amount: (user.uid === ADMIN_UID && referralEarnings < 1500) ? 2000 : referralEarnings,
+                bank_id: bankDetails.bankId,
+                account_type: bankDetails.accountType,
+                account_number: bankDetails.accountNumber,
+                recipient_data: {
+                    fullName: bankDetails.fullName,
+                    docType: bankDetails.docType,
+                    docNumber: bankDetails.docNumber,
+                    email: user.email // Ensure email is sent
+                }
             });
-            toast.success("Solicitud de retiro enviada con éxito");
+
+            toast.success("Solicitud de retiro procesada correctamente");
             setIsWithdrawalModalOpen(false);
+            // Refresh logic handled by snapshot listeners normally
+
         } catch (error) {
             console.error("Error requesting withdrawal:", error);
-            toast.error("Error al solicitar el retiro");
+            const msg = error.message || "Error al solicitar el retiro";
+            toast.error(msg);
         } finally {
             setWithdrawalLoading(false);
         }
@@ -123,13 +143,14 @@ const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimest
                             ) : (
                                 <button
                                     onClick={() => setIsWithdrawalModalOpen(true)}
-                                    disabled={referralEarnings < 50000}
-                                    className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${referralEarnings >= 50000
+                                    // Bypass check for admin "SFYFi9u8uZYJHSNEEyGQaigIyip1"
+                                    disabled={referralEarnings < 50000 && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1"}
+                                    className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${referralEarnings >= 50000 || user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1"
                                         ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-500/20'
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                         }`}
                                 >
-                                    {referralEarnings < 50000 ? 'Mínimo $50.000 para retirar' : 'Solicitar Retiro'}
+                                    {referralEarnings < 50000 && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1" ? 'Mínimo $50.000 para retirar' : (user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1" && referralEarnings < 50000 ? 'Solicitar Retiro (Admin Test)' : 'Solicitar Retiro')}
                                 </button>
                             )}
                         </div>

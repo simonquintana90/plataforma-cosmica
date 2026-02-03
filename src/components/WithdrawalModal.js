@@ -1,28 +1,46 @@
-import React, { useState } from 'react';
-
-const BANKS = [
-    "Bancolombia",
-    "Nequi",
-    "Daviplata",
-    "Davivienda",
-    "Banco de Bogotá",
-    "BBVA",
-    "Banco de Occidente",
-    "Banco Popular",
-    "Banco AV Villas",
-    "Scotiabank Colpatria",
-    "Banco Caja Social"
-];
+import React, { useState, useEffect } from 'react';
+import { functions } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import toast from 'react-hot-toast';
 
 const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
+    const [banks, setBanks] = useState([]);
+    const [banksLoading, setBanksLoading] = useState(true);
     const [formData, setFormData] = useState({
         fullName: '',
         docType: 'CC',
         docNumber: '',
-        bank: '',
-        accountType: 'Ahorros',
+        bankId: '', // Changed from bank string to bankId UUID
+        accountType: 'AHORROS', // Changed to uppercase to match Wompi expected enum
         accountNumber: ''
     });
+
+    // Fetch banks when modal opens
+    useEffect(() => {
+        if (isOpen && banks.length === 0) {
+            const fetchBanks = async () => {
+                setBanksLoading(true);
+                try {
+                    const getWompiBanks = httpsCallable(functions, 'getWompiBanks');
+                    const response = await getWompiBanks();
+                    // Assumes response.data is the list of banks from Wompi
+                    if (response.data && Array.isArray(response.data)) {
+                        setBanks(response.data);
+                    } else {
+                        console.error("Format error fetching banks:", response);
+                        toast.error("Error al cargar lista de bancos");
+                    }
+                } catch (error) {
+                    console.error("Error fetching banks:", error);
+                    toast.error("No se pudieron cargar los bancos");
+                    // Fallback to manual entry if needed, or retry
+                } finally {
+                    setBanksLoading(false);
+                }
+            };
+            fetchBanks();
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -33,6 +51,11 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        // Add minimal validation
+        if (!formData.bankId) {
+            toast.error("Debes seleccionar un banco");
+            return;
+        }
         onSubmit(formData);
     };
 
@@ -99,15 +122,16 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Banco</label>
                         <select
-                            name="bank"
+                            name="bankId"
                             required
-                            value={formData.bank}
+                            value={formData.bankId}
                             onChange={handleChange}
+                            disabled={banksLoading}
                             className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         >
-                            <option value="">Selecciona un banco</option>
-                            {BANKS.map(bank => (
-                                <option key={bank} value={bank}>{bank}</option>
+                            <option value="">{banksLoading ? "Cargando bancos..." : "Selecciona un banco"}</option>
+                            {!banksLoading && banks.map(bank => (
+                                <option key={bank.id} value={bank.id}>{bank.financial_institution_name}</option>
                             ))}
                         </select>
                     </div>
@@ -121,8 +145,8 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
                                 onChange={handleChange}
                                 className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             >
-                                <option value="Ahorros">Ahorros</option>
-                                <option value="Corriente">Corriente</option>
+                                <option value="AHORROS">Ahorros</option>
+                                <option value="CORRIENTE">Corriente</option>
                             </select>
                         </div>
                         <div className="col-span-2">
@@ -148,7 +172,7 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || banksLoading}
                             className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
                         >
                             {loading ? 'Enviando...' : 'Confirmar Retiro'}
