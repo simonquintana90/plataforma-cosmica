@@ -21,7 +21,13 @@ initializeApp();
 const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
 const ADMIN_EMAIL = "simonquintana90@gmail.com";
 // URL de Producción
+// URL de Producción
 const WOMPI_API_BASE = "https://production.wompi.co/v1";
+const WOMPI_PAYOUTS_API_BASE = "https://api.payouts.wompi.co/v1"; // Nueva URL para dispersiones
+
+// Credenciales para Dispersiones (Payouts)
+const WOMPI_PAYOUT_API_KEY = "5DHePCcZDr61xqmXMFLOACZmy2bNINd4c2GaOqne";
+const WOMPI_PAYOUT_USER_ID = "2a0efd1f-c067-4493-a47b-6dd590613832";
 
 const wompiApi = axios.create({
   baseURL: WOMPI_API_BASE,
@@ -1854,16 +1860,16 @@ exports.getWompiBanks = onCall(
       throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
     }
 
-    // Usar clave PÚBLICA (general) para leer bancos
-    const wompiPublicKey = 'pub_prod_t98LASUQBr0VyCiCw3f4VWVkoBrBh4JX';
-
     try {
-      const response = await axios.get(`${WOMPI_API_BASE}/banks`, {
+      // Usar API de Dispersiones (Payouts)
+      const response = await axios.get(`${WOMPI_PAYOUTS_API_BASE}/banks`, {
         headers: {
-          'Authorization': `Bearer ${wompiPublicKey}`
+          'x-api-key': WOMPI_PAYOUT_API_KEY,
+          'user-principal-id': WOMPI_PAYOUT_USER_ID,
+          'Content-Type': 'application/json'
         }
       });
-      return response.data; // Wompi returns { data: [...] }, we return the full object or just data? Wrapper usually returns .data
+      return response.data;
     } catch (error) {
       console.error("Error getting Wompi banks:", error.response?.data || error.message);
       throw new functions.https.HttpsError('internal', 'No se pudieron obtener los bancos.');
@@ -1935,10 +1941,6 @@ exports.requestWompiPayout = onCall(
     }
 
     // 2. PREPARE WOMPI REQUEST
-    // 2. PREPARE WOMPI REQUEST
-    const WOMPI_PAYOUT_API_KEY = "5DHePCcZDr61xqmXMFLOACZmy2bNINd4c2GaOqne";
-    const WOMPI_PAYOUT_USER_ID = "2a0efd1f-c067-4493-a47b-6dd590613832";
-
     const reference = `payout_${userId}_${Date.now()}`;
 
     try {
@@ -1967,7 +1969,9 @@ exports.requestWompiPayout = onCall(
 
       console.log("Enviando pago a Wompi:", JSON.stringify(payload));
 
-      const response = await axios.post(`${WOMPI_API_BASE}/payouts`, payload, {
+      console.log("Enviando pago a Wompi:", JSON.stringify(payload));
+
+      const response = await axios.post(`${WOMPI_PAYOUTS_API_BASE}/payouts`, payload, {
         headers: {
           'x-api-key': WOMPI_PAYOUT_API_KEY,
           'user-principal-id': WOMPI_PAYOUT_USER_ID,
