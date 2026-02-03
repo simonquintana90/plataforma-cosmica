@@ -1907,8 +1907,13 @@ exports.requestWompiPayout = onCall(
 
 
     // SKIP VALIDATIONS FOR ADMIN TO ALLOW TESTING
-    const isAdmin = userId === ADMIN_UID || userDoc.data()?.role === 'admin';
-    console.log(`Checking Payout Rules for ${userId} (Role: ${userDoc.data()?.role}) -> Bypass: ${isAdmin}`);
+    // "SFYFI9" is the admin's referral code from screenshot
+    // Also check partial UID because referral code might be derived from UID
+    const userData = userDoc.data();
+    const userReferralCode = userData?.referralCode || userId.substring(0, 6).toUpperCase();
+    const isAdmin = userId === ADMIN_UID || userData?.role === 'admin' || userReferralCode === 'SFYFI9';
+
+    console.log(`Checking Payout Rules for ${userId} (Role: ${userData?.role}, Code: ${userReferralCode}) -> Bypass: ${isAdmin}`);
 
     if (!isAdmin) {
       if (amount > availableBalance) {

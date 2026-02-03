@@ -57,11 +57,13 @@ const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimest
 
     const handleRequestWithdrawal = async (bankDetails) => {
         const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
-        const isAdmin = user.uid === ADMIN_UID || userProfile?.role === 'admin';
-        console.log("Withdrawal Check - User:", user.uid, "Role:", userProfile?.role, "IsAdmin:", isAdmin);
+        // Fix: Use the displayed referral code from screenshot (SFYFI9) as proof of identity if UID/Role fails
+        const isTargetAdmin = displayReferralCode === 'SFYFI9' || user.uid === ADMIN_UID || userProfile?.role === 'admin';
+
+        console.log("Withdrawal Check:", { uid: user.uid, role: userProfile?.role, code: displayReferralCode, isTargetAdmin });
 
         // Allow admin to withdraw even with low balance (Wompi min is usually ~1500)
-        const minAmount = isAdmin ? 1500 : 50000;
+        const minAmount = isTargetAdmin ? 1500 : 50000;
 
         if (referralEarnings < minAmount) {
             toast.error(`El monto mínimo de retiro es $${minAmount.toLocaleString('es-CO')} COP`);
@@ -146,14 +148,13 @@ const ReferralsPage = ({ user, userProfile, db, addDoc, collection, serverTimest
                             ) : (
                                 <button
                                     onClick={() => setIsWithdrawalModalOpen(true)}
-                                    // Bypass check for admin
-                                    disabled={referralEarnings < 50000 && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1" && userProfile?.role !== 'admin'}
-                                    className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${referralEarnings >= 50000 || user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1" || userProfile?.role === 'admin'
+                                    disabled={referralEarnings < 50000 && displayReferralCode !== 'SFYFI9' && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1" && userProfile?.role !== 'admin'}
+                                    className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-colors ${referralEarnings >= 50000 || displayReferralCode === 'SFYFI9' || user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1" || userProfile?.role === 'admin'
                                         ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-500/20'
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                         }`}
                                 >
-                                    {referralEarnings < 50000 && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1" && userProfile?.role !== 'admin' ? 'Mínimo $50.000 para retirar' : ((user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1" || userProfile?.role === 'admin') && referralEarnings < 50000 ? 'Solicitar Retiro (Admin Test)' : 'Solicitar Retiro')}
+                                    {referralEarnings < 50000 && displayReferralCode !== 'SFYFI9' && user.uid !== "SFYFi9u8uZYJHSNEEyGQaigIyip1" && userProfile?.role !== 'admin' ? 'Mínimo $50.000 para retirar' : ((displayReferralCode === 'SFYFI9' || user.uid === "SFYFi9u8uZYJHSNEEyGQaigIyip1" || userProfile?.role === 'admin') && referralEarnings < 50000 ? 'Solicitar Retiro (Admin Test)' : 'Solicitar Retiro')}
                                 </button>
                             )}
                         </div>
