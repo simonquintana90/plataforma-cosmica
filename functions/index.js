@@ -1856,11 +1856,13 @@ exports.getNotificationPreview = onCall(
 exports.getWompiBanks = onCall(
   {},
   async (request) => {
+    console.log("DEBUG: getWompiBanks called.");
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Usuario no autenticado.');
     }
 
     try {
+      console.log(`DEBUG: Fetching banks from ${WOMPI_PAYOUTS_API_BASE}/banks`);
       // Usar API de Dispersiones (Payouts)
       const response = await axios.get(`${WOMPI_PAYOUTS_API_BASE}/banks`, {
         headers: {
@@ -1869,9 +1871,15 @@ exports.getWompiBanks = onCall(
           'Content-Type': 'application/json'
         }
       });
-      return response.data;
+      console.log("DEBUG: Wompi Response Status:", response.status);
+
+      // Handle response structure (Wompi wraps in { data: [...] })
+      const banks = response.data.data || response.data;
+      console.log(`DEBUG: Banks found: ${Array.isArray(banks) ? banks.length : 'Not an array'}`);
+
+      return banks;
     } catch (error) {
-      console.error("Error getting Wompi banks:", error.response?.data || error.message);
+      console.error("Error getting Wompi banks:", JSON.stringify(error.response?.data || error.message));
       throw new functions.https.HttpsError('internal', 'No se pudieron obtener los bancos.');
     }
   }
