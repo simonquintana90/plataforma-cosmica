@@ -40,7 +40,7 @@ const WithdrawalModal = ({ isOpen, onClose, onSubmit, loading, amount }) => {
             };
             fetchBanks();
         }
-    }, [isOpen]);
+    }, [isOpen, banks.length]);
 
     if (!isOpen) return null;
 
