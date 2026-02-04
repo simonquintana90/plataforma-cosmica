@@ -6,13 +6,14 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 const ConnectionsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
     const [analyticsId, setAnalyticsId] = useState('');
     const [consoleCode, setConsoleCode] = useState('');
+    const [metaPixelId, setMetaPixelId] = useState('');
     const [loading, setLoading] = useState(false);
     const [requestSent, setRequestSent] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!analyticsId && !consoleCode) {
+        if (!analyticsId && !consoleCode && !metaPixelId) {
             toast.error("Por favor ingresa al menos un código.");
             return;
         }
@@ -23,7 +24,7 @@ const ConnectionsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
         try {
             await addDoc(collection(db, "requests"), {
                 title: "Nueva Conexión de Servicios",
-                description: `Solicitud de conexión de servicios.\n\nGoogle Analytics ID: ${analyticsId || 'N/A'}\nSearch Console Code: ${consoleCode || 'N/A'}`,
+                description: `Solicitud de conexión de servicios.\n\nGoogle Analytics ID: ${analyticsId || 'N/A'}\nSearch Console Code: ${consoleCode || 'N/A'}\nMeta Pixel ID: ${metaPixelId || 'N/A'}`,
                 type: 'Connection',
                 userId: user.uid,
                 userEmail: user.email,
@@ -38,6 +39,7 @@ const ConnectionsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
             setRequestSent(true);
             setAnalyticsId('');
             setConsoleCode('');
+            setMetaPixelId('');
 
             // Reset success message after 5 seconds
             setTimeout(() => setRequestSent(false), 5000);
@@ -108,6 +110,28 @@ const ConnectionsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                                 </ol>
                             </div>
                         </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-3 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-8 w-8">
+                                    <path fill="#1877F2" d="M24 4C12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20S35.05 4 24 4z" />
+                                    <path fill="#fff" d="M26.57 32.57L31.83 22l-10.57 5.26 5.31 5.31zM24 14.5c-5.25 0-9.5 4.25-9.5 9.5s4.25 9.5 9.5 9.5 9.5-4.25 9.5-9.5-4.25-9.5-9.5-9.5z" />
+                                </svg>
+                                <h3 className="font-bold text-slate-900 text-lg">Meta Pixel</h3>
+                            </div>
+                            <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                                El Píxel de Meta es una herramienta de análisis que te permite medir la eficacia de tu publicidad al entender las acciones que las personas realizan en tu sitio web.
+                            </p>
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">¿Cómo obtener tu ID?</p>
+                                <ol className="list-decimal list-inside text-sm text-slate-700 space-y-2 marker:font-bold marker:text-slate-400">
+                                    <li>Ve al <a href="https://business.facebook.com/events_manager2" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Administrador de Eventos</a>.</li>
+                                    <li>Haz clic en <strong>Orígenes de datos</strong> (ícono verde con +).</li>
+                                    <li>Selecciona <strong>Web</strong> y conecta tu sitio.</li>
+                                    <li>Ve a Configuración y copia el <strong>"Identificador del conjunto de datos"</strong>.</li>
+                                </ol>
+                            </div>
+                        </div>
                     </div>
 
                     {/* FORM COLUMN */}
@@ -169,6 +193,26 @@ const ConnectionsPage = ({ user, db, addDoc, collection, serverTimestamp }) => {
                                                 placeholder='<meta name="google-site-verification" content="..." />'
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-xs text-slate-600 leading-relaxed"
                                             ></textarea>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="metapixel" className="block text-sm font-bold text-slate-700 mb-2">
+                                                ID de Meta Pixel
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <span className="text-slate-400 font-mono text-sm">ID:</span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    id="metapixel"
+                                                    value={metaPixelId}
+                                                    onChange={(e) => setMetaPixelId(e.target.value)}
+                                                    placeholder="123456789012345"
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-slate-600"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-slate-400 mt-1.5 align-right">Ej: 123456789012345</p>
                                         </div>
 
                                         <div className="pt-2">
