@@ -2,15 +2,24 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 
+import { useLocation } from 'react-router-dom';
+
 const DashboardLayout = ({ children }) => {
-    const { user, auth } = useAuth();
+    const { user, auth, userProfile } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Check for admin "view as affiliate" mode
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const viewAsReferidos = queryParams.get('view') === 'referidos';
+    const ADMIN_UID = "SFYFi9u8uZYJHSNEEyGQaigIyip1";
+    const simulatePartner = viewAsReferidos && user.uid === ADMIN_UID;
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
             {/* Desktop Sidebar */}
             <div className="hidden lg:block w-64 flex-shrink-0 h-full shadow-xl shadow-slate-200/50 z-20">
-                <Sidebar user={user} auth={auth} />
+                <Sidebar user={user} auth={auth} userProfile={userProfile} simulatePartner={simulatePartner} />
             </div>
 
             {/* Mobile Sidebar Overlay */}
@@ -23,7 +32,7 @@ const DashboardLayout = ({ children }) => {
 
             {/* Mobile Sidebar */}
             <div className={`fixed inset-y-0 left-0 w-64 bg-white z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <Sidebar user={user} auth={auth} onCloseMobile={() => setIsMobileMenuOpen(false)} />
+                <Sidebar user={user} auth={auth} userProfile={userProfile} simulatePartner={simulatePartner} onCloseMobile={() => setIsMobileMenuOpen(false)} />
             </div>
 
             {/* Main Content */}

@@ -50,6 +50,9 @@ const AppRoutes = () => {
         if (viewAsAdmin === 'website_form') {
             return <WebsiteInfoFormPage user={user} {...firebaseServices} />;
         }
+        if (viewAsAdmin === 'referidos') {
+            return <ReferralsPage user={user} userProfile={userProfile} {...firebaseServices} db={firebaseServices.db} />;
+        }
     }
 
     if (userProfile === undefined) {
@@ -76,7 +79,7 @@ const AppRoutes = () => {
         <Routes>
             <Route path="/" element={
                 userProfile?.role === 'partner'
-                    ? <Navigate to="/cuenta" />
+                    ? <Navigate to="/referidos" />
                     : <DashboardPage user={user} {...firebaseServices} />
             } />
             <Route path="/solicitud/:requestId" element={<RequestDetailPage user={user} {...firebaseServices} />} />
