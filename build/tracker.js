@@ -68,16 +68,23 @@
                 const chunkData = [...events];
                 events = []; // Clear array for next batch
 
+                const bodyString = JSON.stringify({
+                    userId: uid,
+                    sessionId: sessionId,
+                    events: chunkData
+                });
+
+                console.log(`[Cosmica Tracker] Sending chunk of ${chunkData.length} events... Size: ${Math.round(bodyString.length / 1024)} KB`);
+
                 fetch(`${baseUrl}/saveRecordingChunk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: uid,
-                        sessionId: sessionId,
-                        events: chunkData
-                    })
+                    body: bodyString
+                }).then(res => {
+                    if (!res.ok) console.error(`[Cosmica Tracker] Server returned ${res.status}`);
+                    else console.log(`[Cosmica Tracker] Chunk saved OK`);
                 }).catch(e => {
-                    console.error("Cosmica Tracking Error [Save Chunk]:", e);
+                    console.error("[Cosmica Tracker] Fetch Error [Save Chunk]:", e.message || e);
                     // Push back events if failed to not lose data (naive approach, can grow large if offline)
                     events = events.concat(chunkData);
                 });
