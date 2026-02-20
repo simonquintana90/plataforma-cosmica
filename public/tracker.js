@@ -75,8 +75,7 @@
                         userId: uid,
                         sessionId: sessionId,
                         events: chunkData
-                    }),
-                    keepalive: true
+                    })
                 }).catch(e => {
                     console.error("Cosmica Tracking Error [Save Chunk]:", e);
                     // Push back events if failed to not lose data (naive approach, can grow large if offline)
