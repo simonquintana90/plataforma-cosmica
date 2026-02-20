@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
 import Skeleton from '../components/Skeleton';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getFunctions, httpsCallable }) => {
     const [activeTab, setActiveTab] = useState('requests');
@@ -22,6 +24,14 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         value: 0,
         active: true
     });
+
+    // Formulario Mailing
+    const [mailingData, setMailingData] = useState({
+        subject: '',
+        htmlBody: '',
+        audience: 'approved'
+    });
+    const [sendingMailing, setSendingMailing] = useState(false);
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
     const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -168,6 +178,31 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         setNotificationData({ provisionalUrl: '', dnsARecord: '', dnsCnameRecord: '' });
     };
 
+    const handleSendMailing = async (e) => {
+        e.preventDefault();
+        if (!mailingData.subject || !mailingData.htmlBody) return toast.error("Asunto y mensaje son requeridos.");
+        if (!window.confirm(`¿Estás seguro de enviar esta campaña masiva a los usuarios: ${mailingData.audience}?`)) return;
+
+        setSendingMailing(true);
+        const sendAdminMassEmail = httpsCallable(getFunctions(), 'sendAdminMassEmail');
+
+        toast.promise(
+            sendAdminMassEmail({
+                subject: mailingData.subject,
+                htmlBody: mailingData.htmlBody,
+                audience: mailingData.audience
+            }),
+            {
+                loading: 'Procesando y enviando campaña masiva...',
+                success: (res) => res.data.message || `Campaña enviada a ${res.data.count} usuarios.`,
+                error: (err) => `Error: ${err.message}`
+            }
+        ).finally(() => {
+            setSendingMailing(false);
+            setMailingData({ subject: '', htmlBody: '', audience: 'approved' });
+        });
+    };
+
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredRequests = requests.filter(req =>
@@ -248,6 +283,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                             {pendingUsersCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-white text-[10px]">{pendingUsersCount}</span></span>}
                         </button>
                         <button onClick={() => setActiveTab('coupons')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'coupons' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}>Cupones</button>
+                        <button onClick={() => setActiveTab('mailing')} className={`px-3 py-2 font-bold text-sm rounded-md ${activeTab === 'mailing' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500 hover:bg-indigo-50'}`}>Mailing masivo</button>
                     </nav>
                 </div>
 
@@ -358,6 +394,68 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                )}
+
+                {activeTab === 'mailing' && (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-6">
+                        <h2 className="text-xl font-bold font-heading text-slate-800 mb-4 flex items-center gap-2">
+                            <span>📧</span> Enviar Campaña de Correo Masivo
+                        </h2>
+                        <form onSubmit={handleSendMailing} className="space-y-4 max-w-4xl">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Público Objetivo</label>
+                                <select
+                                    className="w-full md:w-1/3 border border-slate-300 rounded-lg px-3 py-2"
+                                    value={mailingData.audience}
+                                    onChange={e => setMailingData({ ...mailingData, audience: e.target.value })}
+                                >
+                                    <option value="approved">Solo Usuarios Activos (Aprobados)</option>
+                                    <option value="pending">Solo Usuarios Pendientes</option>
+                                    <option value="all">Todos los Usuarios</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Asunto del Correo</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: Nuevas actualizaciones en Cósmica"
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-bold text-slate-800"
+                                    value={mailingData.subject}
+                                    onChange={e => setMailingData({ ...mailingData, subject: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Cuerpo del Mensaje</label>
+                                <p className="text-xs text-slate-500 mb-2">Para insertar imágenes, haz click en el icono de imagen en la barra y pega la URL de tu imagen.</p>
+                                <div className="bg-white border-slate-300 rounded-lg overflow-hidden">
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={mailingData.htmlBody}
+                                        onChange={content => setMailingData({ ...mailingData, htmlBody: content })}
+                                        style={{ height: '300px', marginBottom: '40px' }}
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                                ['link', 'image'],
+                                                ['clean']
+                                            ],
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-slate-100">
+                                <button
+                                    type="submit"
+                                    disabled={sendingMailing}
+                                    className="bg-indigo-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                >
+                                    {sendingMailing ? 'Enviando campaña...' : 'Enviar Campaña Masiva 🚀'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 )}
 

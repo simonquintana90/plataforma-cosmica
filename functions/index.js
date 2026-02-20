@@ -660,6 +660,71 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
 
 // --- FUNCIONES DE MERCADOPAGO ELIMINADAS ---
 
+exports.sendAdminMassEmail = onCall(
+  { secrets: ["RESEND_API_KEY"] },
+  async (request) => {
+    if (!request.auth || request.auth.uid !== ADMIN_UID) {
+      throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para realizar esta acción.');
+    }
+
+    const { subject, htmlBody, audience } = request.data;
+    if (!subject || !htmlBody) {
+      throw new functions.https.HttpsError('invalid-argument', 'El asunto y el mensaje son requeridos.');
+    }
+
+    const db = getFirestore();
+    let usersQuery = db.collection('users');
+
+    if (audience === 'approved') {
+      usersQuery = usersQuery.where('status', '==', 'approved');
+    } else if (audience === 'pending') {
+      usersQuery = usersQuery.where('status', '==', 'pending_approval');
+    }
+
+    try {
+      const usersSnap = await usersQuery.get();
+      if (usersSnap.empty) {
+        return { success: true, count: 0, message: "No se encontraron destinatarios." };
+      }
+
+      const emailsToProcess = [];
+      usersSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.email) {
+          emailsToProcess.push({
+            from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
+            to: data.email,
+            subject: subject,
+            html: htmlBody
+          });
+        }
+      });
+
+      if (emailsToProcess.length === 0) {
+        return { success: true, count: 0, message: "Ningún usuario tiene email configurado." };
+      }
+
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      // Resend batch API limit is usually 100 emails per request
+      const chunkSize = 100;
+      let sentCount = 0;
+      for (let i = 0; i < emailsToProcess.length; i += chunkSize) {
+        const chunk = emailsToProcess.slice(i, i + chunkSize);
+        await resend.batch.send(chunk);
+        sentCount += chunk.length;
+      }
+
+      console.log(`Campaña masiva enviada a ${sentCount} usuarios.`);
+      return { success: true, count: sentCount, message: `Correos enviados a ${sentCount} usuarios con éxito.` };
+
+    } catch (error) {
+      console.error("Error al enviar campaña masiva:", error);
+      throw new functions.https.HttpsError('internal', 'Hubo un error al enviar los correos.');
+    }
+  }
+);
+
 
 
 
