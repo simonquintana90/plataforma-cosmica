@@ -74,7 +74,13 @@ const RecordingsPage = ({ db }) => {
             let allEvents = [];
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
-                if (data.events && Array.isArray(data.events)) {
+                if (data.eventsString) {
+                    try {
+                        allEvents = allEvents.concat(JSON.parse(data.eventsString));
+                    } catch (e) {
+                        console.error("Error parsing events string", e);
+                    }
+                } else if (data.events && Array.isArray(data.events)) {
                     allEvents = allEvents.concat(data.events);
                 }
             });

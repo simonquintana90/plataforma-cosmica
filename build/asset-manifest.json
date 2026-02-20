@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/static/css/main.0baf53e0.css",
-    "main.js": "/static/js/main.05c01f6a.js",
+    "main.js": "/static/js/main.cd592993.js",
     "static/js/331.a8600e9d.chunk.js": "/static/js/331.a8600e9d.chunk.js",
     "static/js/40.eed7217f.chunk.js": "/static/js/40.eed7217f.chunk.js",
     "static/js/188.4931b62c.chunk.js": "/static/js/188.4931b62c.chunk.js",
@@ -17,12 +17,12 @@
     "static/js/689.8eae1d29.chunk.js": "/static/js/689.8eae1d29.chunk.js",
     "static/js/969.4aadbd94.chunk.js": "/static/js/969.4aadbd94.chunk.js",
     "static/css/584.24e4c7d5.chunk.css": "/static/css/584.24e4c7d5.chunk.css",
-    "static/js/584.f7ae5b19.chunk.js": "/static/js/584.f7ae5b19.chunk.js",
+    "static/js/584.b271de0a.chunk.js": "/static/js/584.b271de0a.chunk.js",
     "static/js/625.353860c4.chunk.js": "/static/js/625.353860c4.chunk.js",
     "static/js/728.2ee769a9.chunk.js": "/static/js/728.2ee769a9.chunk.js",
     "index.html": "/index.html",
     "main.0baf53e0.css.map": "/static/css/main.0baf53e0.css.map",
-    "main.05c01f6a.js.map": "/static/js/main.05c01f6a.js.map",
+    "main.cd592993.js.map": "/static/js/main.cd592993.js.map",
     "331.a8600e9d.chunk.js.map": "/static/js/331.a8600e9d.chunk.js.map",
     "40.eed7217f.chunk.js.map": "/static/js/40.eed7217f.chunk.js.map",
     "188.4931b62c.chunk.js.map": "/static/js/188.4931b62c.chunk.js.map",
@@ -38,12 +38,12 @@
     "689.8eae1d29.chunk.js.map": "/static/js/689.8eae1d29.chunk.js.map",
     "969.4aadbd94.chunk.js.map": "/static/js/969.4aadbd94.chunk.js.map",
     "584.24e4c7d5.chunk.css.map": "/static/css/584.24e4c7d5.chunk.css.map",
-    "584.f7ae5b19.chunk.js.map": "/static/js/584.f7ae5b19.chunk.js.map",
+    "584.b271de0a.chunk.js.map": "/static/js/584.b271de0a.chunk.js.map",
     "625.353860c4.chunk.js.map": "/static/js/625.353860c4.chunk.js.map",
     "728.2ee769a9.chunk.js.map": "/static/js/728.2ee769a9.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.0baf53e0.css",
-    "static/js/main.05c01f6a.js"
+    "static/js/main.cd592993.js"
   ]
 }

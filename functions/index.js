@@ -2060,7 +2060,7 @@ exports.saveRecordingChunk = functions.https.onRequest((req, res) => {
       const chunksRef = recordingRef.collection("chunks");
 
       await chunksRef.add({
-        events: events,
+        eventsString: JSON.stringify(events),
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
 
