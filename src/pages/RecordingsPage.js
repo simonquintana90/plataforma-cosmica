@@ -132,6 +132,29 @@ const RecordingsPage = ({ db }) => {
         });
     };
 
+    const formatDuration = (start, end) => {
+        if (!start || !end) return 'Desconocido';
+        const tStart = start.seconds ? start.seconds * 1000 : new Date(start).getTime();
+        const tEnd = end.seconds ? end.seconds * 1000 : new Date(end).getTime();
+        let diffSecs = Math.floor((tEnd - tStart) / 1000);
+        if (diffSecs < 0) diffSecs = 0;
+        if (diffSecs < 60) return `${diffSecs}s`;
+        const mins = Math.floor(diffSecs / 60);
+        const secs = diffSecs % 60;
+        return `${mins}m ${secs}s`;
+    };
+
+    const formatUrl = (urlString) => {
+        if (!urlString) return 'Visita a la web';
+        try {
+            const url = new URL(urlString);
+            let path = url.pathname + url.search + url.hash;
+            return path === '/' ? 'Página Principal' : path;
+        } catch (e) {
+            return urlString;
+        }
+    };
+
     const getDeviceType = (userAgent) => {
         if (!userAgent) return 'Desconocido';
         if (/mobile/i.test(userAgent)) return 'Móvil';
@@ -175,12 +198,14 @@ const RecordingsPage = ({ db }) => {
                                         </span>
                                         <span className="text-xs text-slate-400">{formatDate(rec.startTime)}</span>
                                     </div>
-                                    <p className="font-bold text-slate-800 text-sm truncate">{rec.metadata?.url || 'URL Desconocida'}</p>
+                                    <p className="font-bold text-slate-800 text-sm truncate" title={rec.metadata?.url}>{formatUrl(rec.metadata?.url)}</p>
                                     <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                                         <span className="flex items-center gap-1">
                                             {getDeviceType(rec.metadata?.userAgent) === 'Móvil' ? '📱 Móvil' : '💻 PC'}
                                         </span>
-                                        <span>Bloques: {rec.chunkCount || 0}</span>
+                                        <span className="flex items-center gap-1">
+                                            ⏱️ {formatDuration(rec.startTime, rec.lastUpdated)}
+                                        </span>
                                     </div>
                                 </div>
                             ))
