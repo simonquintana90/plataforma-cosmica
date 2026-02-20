@@ -2013,3 +2013,67 @@ exports.requestWompiPayout = onCall(
     }
   }
 );
+
+// --- RRWEB RECORDINGS FUNCTIONS ---
+
+exports.startSessionRecording = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== "POST") return res.status(405).json({ message: "Metodo no permitido." });
+
+    const { userId, sessionId, metadata } = req.body;
+    if (!userId || !sessionId) return res.status(400).json({ message: "Faltan datos." });
+
+    try {
+      const db = admin.firestore();
+      
+      // Creamos el documento padre de la sesion
+      await db.collection("users").doc(userId).collection("recordings").doc(sessionId).set({
+        sessionId: sessionId,
+        metadata: metadata,
+        startTime: admin.firestore.FieldValue.serverTimestamp(),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        chunkCount: 0 // Cuantos bloques de video se han subido
+      }, { merge: true });
+
+      res.status(200).json({ message: "Sesion iniciada." });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "Error interno del servidor." });
+    }
+  });
+});
+
+exports.saveRecordingChunk = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== "POST") return res.status(405).json({ message: "Metodo no permitido." });
+
+    const { userId, sessionId, events } = req.body;
+    if (!userId || !sessionId || !events || !events.length) {
+       return res.status(400).json({ message: "Faltan datos." });
+    }
+
+    try {
+      const db = admin.firestore();
+      const recordingRef = db.collection("users").doc(userId).collection("recordings").doc(sessionId);
+      
+      // Guardamos este chunk en una subcoleccion para no sobrepasar el limite de 1MB por documento de Firestore
+      const chunksRef = recordingRef.collection("chunks");
+      
+      await chunksRef.add({
+        events: events,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Actualizamos la sesion padre
+      await recordingRef.update({
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        chunkCount: admin.firestore.FieldValue.increment(1)
+      });
+
+      res.status(200).json({ message: "Chunk guardado exitosamente." });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "Error interno del servidor al guardar el chunk." });
+    }
+  });
+});

@@ -58,26 +58,11 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
 
     const handleCopyPixel = () => {
         const trackingScript = `
-<!-- Cósmica Analytics -->
+<!-- Cósmica Analytics & Grabaciones -->
 <script>
-(function() {
-  const uid = "${userId}";
-  const baseUrl = "https://us-central1-plataforma-cosmica.cloudfunctions.net";
-  
-  // 1. Track Visit
-  fetch(\`\${baseUrl}/trackVisit?userId=\${uid}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
-    .catch(e => console.error("Tracking Error:", e));
-
-  // 2. Track Clicks (Only .cta class)
-  document.addEventListener("click", function(e) {
-    const target = e.target.closest(".cta"); // Only track elements with 'cta' class
-    if (target) {
-      fetch(\`\${baseUrl}/trackClick?userId=\${uid}&t=\${Date.now()}\`, { method: 'GET', keepalive: true, mode: 'no-cors' })
-        .catch(e => console.error("Tracking Error:", e));
-    }
-  });
-})();
+  window.CosmicaConfig = { clientId: "${userId}" };
 </script>
+<script src="https://plataforma-cosmica.web.app/tracker.js" async></script>
 <!-- End Analytics -->`;
 
         navigator.clipboard.writeText(trackingScript.trim());
