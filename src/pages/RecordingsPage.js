@@ -7,7 +7,7 @@ import 'rrweb-player/dist/style.css';
 import toast from 'react-hot-toast';
 
 const RecordingsPage = ({ db }) => {
-    const { user, userProfile } = useAuth();
+    const { user } = useAuth();
     const [recordings, setRecordings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedSession, setSelectedSession] = useState(null);
@@ -24,6 +24,7 @@ const RecordingsPage = ({ db }) => {
     useEffect(() => {
         if (!activeUserId) return;
         fetchRecordings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeUserId]);
 
     const fetchRecordings = async () => {
