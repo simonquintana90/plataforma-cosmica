@@ -35,6 +35,16 @@ service cloud.firestore {
       match /analytics_monthly/{monthId} {
           allow read: if isAdmin() || isOwner(userId);
       }
+
+      // Recordings subcollection
+      match /recordings/{recordingId} {
+          allow read, write: if isAdmin() || isOwner(userId);
+          
+          // Chunks for recordings
+          match /chunks/{chunkId} {
+              allow read, write: if isAdmin() || isOwner(userId);
+          }
+      }
     }
 
     // Requests collection
