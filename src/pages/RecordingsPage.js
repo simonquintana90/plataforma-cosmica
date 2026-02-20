@@ -70,23 +70,29 @@ const RecordingsPage = ({ db }) => {
                 return;
             }
 
-            // Combine all events from chunks
             let allEvents = [];
+            let parseErrors = 0;
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
                 if (data.eventsString) {
                     try {
-                        allEvents = allEvents.concat(JSON.parse(data.eventsString));
+                        const parsed = JSON.parse(data.eventsString);
+                        allEvents = allEvents.concat(parsed);
                     } catch (e) {
                         console.error("Error parsing events string", e);
+                        parseErrors++;
                     }
                 } else if (data.events && Array.isArray(data.events)) {
                     allEvents = allEvents.concat(data.events);
                 }
             });
 
+            if (parseErrors > 0) {
+                toast.error(`Hubo ${parseErrors} errores al analizar los datos.`);
+            }
+
             if (allEvents.length < 2) {
-                toast.error("La grabación es muy corta para reproducir.");
+                toast.error(`La grabación es muy corta (${allEvents.length} eventos). Bloques leídos: ${snapshot.size}`);
                 setVideoLoading(false);
                 return;
             }
