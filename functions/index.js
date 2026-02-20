@@ -2025,7 +2025,7 @@ exports.startSessionRecording = functions.https.onRequest((req, res) => {
 
     try {
       const db = admin.firestore();
-      
+
       // Creamos el documento padre de la sesion
       await db.collection("users").doc(userId).collection("recordings").doc(sessionId).set({
         sessionId: sessionId,
@@ -2049,26 +2049,26 @@ exports.saveRecordingChunk = functions.https.onRequest((req, res) => {
 
     const { userId, sessionId, events } = req.body;
     if (!userId || !sessionId || !events || !events.length) {
-       return res.status(400).json({ message: "Faltan datos." });
+      return res.status(400).json({ message: "Faltan datos." });
     }
 
     try {
       const db = admin.firestore();
       const recordingRef = db.collection("users").doc(userId).collection("recordings").doc(sessionId);
-      
+
       // Guardamos este chunk en una subcoleccion para no sobrepasar el limite de 1MB por documento de Firestore
       const chunksRef = recordingRef.collection("chunks");
-      
+
       await chunksRef.add({
         events: events,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Actualizamos la sesion padre
-      await recordingRef.update({
+      // Actualizamos la sesion padre (usar set con merge para evitar errores si no existe aún por race conditions)
+      await recordingRef.set({
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         chunkCount: admin.firestore.FieldValue.increment(1)
-      });
+      }, { merge: true });
 
       res.status(200).json({ message: "Chunk guardado exitosamente." });
     } catch (e) {
