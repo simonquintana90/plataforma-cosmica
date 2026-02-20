@@ -1462,7 +1462,7 @@ exports.sendDeletionWarning = onDocumentUpdated(
 exports.processScheduledDeletions = onSchedule("every 24 hours", async (event) => {
   console.log("Iniciando proceso de eliminación de cuentas programadas...");
   const db = getFirestore();
-  const now = admin.firestore.Timestamp.now();
+  const now = admin.firestore.Timestamp ? admin.firestore.Timestamp.now() : new Date();
 
   // Query users scheduled for deletion in the past (deadline passed)
   const querySnapshot = await db.collection("users")
