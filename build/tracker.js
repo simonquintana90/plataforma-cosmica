@@ -68,26 +68,31 @@
                 const chunkData = [...events];
                 events = []; // Clear array for next batch
 
-                const bodyString = JSON.stringify({
-                    userId: uid,
-                    sessionId: sessionId,
-                    events: chunkData
-                });
+                // Send in smaller batches of max 50 events to avoid 'Failed to fetch' due to large payloads
+                const MAX_EVENTS_PER_REQ = 50;
+                for (let i = 0; i < chunkData.length; i += MAX_EVENTS_PER_REQ) {
+                    const batch = chunkData.slice(i, i + MAX_EVENTS_PER_REQ);
+                    const bodyString = JSON.stringify({
+                        userId: uid,
+                        sessionId: sessionId,
+                        events: batch
+                    });
 
-                console.log(`[Cosmica Tracker] Sending chunk of ${chunkData.length} events... Size: ${Math.round(bodyString.length / 1024)} KB`);
+                    console.log(`[Cosmica Tracker] Sending sub-chunk ${i / MAX_EVENTS_PER_REQ + 1} of ${batch.length} events... Size: ${Math.round(bodyString.length / 1024)} KB`);
 
-                fetch(`${baseUrl}/saveRecordingChunk`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: bodyString
-                }).then(res => {
-                    if (!res.ok) console.error(`[Cosmica Tracker] Server returned ${res.status}`);
-                    else console.log(`[Cosmica Tracker] Chunk saved OK`);
-                }).catch(e => {
-                    console.error("[Cosmica Tracker] Fetch Error [Save Chunk]:", e.message || e);
-                    // Push back events if failed to not lose data (naive approach, can grow large if offline)
-                    events = events.concat(chunkData);
-                });
+                    fetch(`${baseUrl}/saveRecordingChunk`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: bodyString
+                    }).then(res => {
+                        if (!res.ok) console.error(`[Cosmica Tracker] Server returned ${res.status}`);
+                        else console.log(`[Cosmica Tracker] Sub-chunk saved OK`);
+                    }).catch(e => {
+                        console.error("[Cosmica Tracker] Fetch Error [Save Chunk]:", e.message || e);
+                        // Push back just the failed batch
+                        events = events.concat(batch);
+                    });
+                }
             }
         }, 10000); // 10 seconds
     }
