@@ -660,6 +660,37 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
 
 // --- FUNCIONES DE MERCADOPAGO ELIMINADAS ---
 
+exports.sendAdminTestEmail = onCall(
+  { secrets: ["RESEND_API_KEY"] },
+  async (request) => {
+    if (!request.auth || request.auth.uid !== ADMIN_UID) {
+      throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para realizar esta acción.');
+    }
+
+    const { subject, htmlBody, testEmail } = request.data;
+    if (!subject || !htmlBody || !testEmail) {
+      throw new functions.https.HttpsError('invalid-argument', 'El asunto, el mensaje y el correo de prueba son requeridos.');
+    }
+
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      await resend.emails.send({
+        from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
+        to: testEmail,
+        subject: `[PRUEBA] ${subject}`,
+        html: htmlBody
+      });
+
+      console.log(`Correo de prueba enviado a ${testEmail}`);
+      return { success: true, message: `Correo de prueba enviado a ${testEmail}` };
+
+    } catch (error) {
+      console.error("Error al enviar correo de prueba:", error);
+      throw new functions.https.HttpsError('internal', 'Hubo un error al enviar el correo de prueba.');
+    }
+  }
+);
 exports.sendAdminMassEmail = onCall(
   { secrets: ["RESEND_API_KEY"] },
   async (request) => {

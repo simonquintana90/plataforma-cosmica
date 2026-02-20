@@ -25,13 +25,14 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         active: true
     });
 
-    // Formulario Mailing
     const [mailingData, setMailingData] = useState({
         subject: '',
         htmlBody: '',
         audience: 'approved'
     });
     const [sendingMailing, setSendingMailing] = useState(false);
+    const [testEmail, setTestEmail] = useState('');
+    const [sendingTest, setSendingTest] = useState(false);
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
     const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -200,6 +201,29 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         ).finally(() => {
             setSendingMailing(false);
             setMailingData({ subject: '', htmlBody: '', audience: 'approved' });
+        });
+    };
+
+    const handleSendTestEmail = async (e) => {
+        e.preventDefault();
+        if (!mailingData.subject || !mailingData.htmlBody || !testEmail) return toast.error("Asunto, mensaje y correo de prueba son requeridos.");
+
+        setSendingTest(true);
+        const sendAdminTestEmail = httpsCallable(getFunctions(), 'sendAdminTestEmail');
+
+        toast.promise(
+            sendAdminTestEmail({
+                subject: mailingData.subject,
+                htmlBody: mailingData.htmlBody,
+                testEmail: testEmail
+            }),
+            {
+                loading: 'Enviando correo de prueba...',
+                success: 'Correo de prueba enviado con éxito.',
+                error: (err) => `Error: ${err.message}`
+            }
+        ).finally(() => {
+            setSendingTest(false);
         });
     };
 
@@ -446,13 +470,48 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                     />
                                 </div>
                             </div>
-                            <div className="pt-4 border-t border-slate-100">
+
+                            {/* PREVIEW BLOCK */}
+                            {mailingData.htmlBody && (
+                                <div className="mt-8 border-t border-slate-200 pt-6">
+                                    <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                        <span>👁️</span> Vista Previa del Correo
+                                    </h3>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-inner">
+                                        <div className="bg-white rounded border border-slate-200 p-8 min-h-[200px]"
+                                            dangerouslySetInnerHTML={{ __html: mailingData.htmlBody }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PRE-SEND & TEST EMAIL BLOCK */}
+                            <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center gap-6 justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6">
+
+                                <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-3">
+                                    <input
+                                        type="email"
+                                        placeholder="Tu correo para prueba..."
+                                        className="w-full sm:w-64 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        value={testEmail}
+                                        onChange={e => setTestEmail(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleSendTestEmail}
+                                        disabled={sendingTest || !testEmail || !mailingData.htmlBody}
+                                        className="w-full sm:w-auto bg-slate-800 text-white font-bold px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
+                                    >
+                                        {sendingTest ? 'Enviando...' : 'Enviar Prueba'}
+                                    </button>
+                                </div>
+
                                 <button
                                     type="submit"
                                     disabled={sendingMailing}
-                                    className="bg-indigo-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                    className="w-full md:w-auto bg-indigo-600 text-white font-bold px-8 py-3 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 shadow-md shadow-indigo-200"
                                 >
-                                    {sendingMailing ? 'Enviando campaña...' : 'Enviar Campaña Masiva 🚀'}
+                                    {sendingMailing ? 'Enviando campaña...' : 'Enviar Campaña Oficial 🚀'}
                                 </button>
                             </div>
                         </form>
