@@ -62,7 +62,7 @@ const AdminUserDetailPage = ({ db, doc, getDoc, collection, query, where, orderB
 <script>
   window.CosmicaConfig = { clientId: "${userId}" };
 </script>
-<script src="https://plataforma-cosmica.web.app/tracker.js" async></script>
+<script src="https://plataforma-cosmica.web.app/tracker.js?v=2" async></script>
 <!-- End Analytics -->`;
 
         navigator.clipboard.writeText(trackingScript.trim());
