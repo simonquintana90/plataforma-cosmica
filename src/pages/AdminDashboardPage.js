@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
@@ -7,6 +7,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getFunctions, httpsCallable }) => {
+    const quillRef = useRef(null);
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
@@ -226,6 +227,55 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
             setSendingTest(false);
         });
     };
+
+    const imageHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const loadingToast = toast.loading('Subiendo imagen a los servidores...');
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadFile';
+                const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                if (!response.ok) throw new Error('Error al subir imagen');
+                const data = await response.json();
+
+                const quill = quillRef.current.getEditor();
+                const range = quill.getSelection(true);
+                quill.insertEmbed(range.index, 'image', data.fileURL);
+                toast.success('Imagen insertada correctamente', { id: loadingToast });
+            } catch (error) {
+                console.error('Upload failed', error);
+                toast.error('No se pudo subir la imagen.', { id: loadingToast });
+            }
+        };
+    };
+
+    const quillModules = useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image'],
+                ['clean']
+            ],
+            handlers: {
+                image: imageHandler
+            }
+        }
+    }), []); // eslint-disable-next-line
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -454,19 +504,12 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 <p className="text-xs text-slate-500 mb-2">Para insertar imágenes, haz click en el icono de imagen en la barra y pega la URL de tu imagen.</p>
                                 <div className="bg-white border-slate-300 rounded-lg overflow-hidden">
                                     <ReactQuill
+                                        ref={quillRef}
                                         theme="snow"
                                         value={mailingData.htmlBody}
                                         onChange={content => setMailingData({ ...mailingData, htmlBody: content })}
                                         style={{ height: '300px', marginBottom: '40px' }}
-                                        modules={{
-                                            toolbar: [
-                                                [{ 'header': [1, 2, 3, false] }],
-                                                ['bold', 'italic', 'underline', 'strike'],
-                                                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                                ['link', 'image'],
-                                                ['clean']
-                                            ],
-                                        }}
+                                        modules={quillModules}
                                     />
                                 </div>
                             </div>
