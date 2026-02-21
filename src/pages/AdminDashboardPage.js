@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
-import Skeleton from '../components/Skeleton';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import useFileUpload from '../hooks/useFileUpload';
 
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc }) => {
@@ -51,6 +51,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         });
         setTestEmail('');
     };
+
+    const { uploadFile, uploading: uploadingImage } = useFileUpload();
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
     const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -482,15 +484,32 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">URL de Imagen (Opcional)</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Imagen Cabecera (Opcional)</label>
                                 <input
-                                    type="url"
-                                    placeholder="https://tudominio.com/imagen.jpg"
-                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                    value={mailingData.imageUrl}
-                                    onChange={e => setMailingData({ ...mailingData, imageUrl: e.target.value })}
+                                    type="file"
+                                    accept="image/*"
+                                    disabled={uploadingImage}
+                                    onChange={async (e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        const loadingToast = toast.loading('Subiendo imagen a los servidores de Cósmica...');
+                                        try {
+                                            const data = await uploadFile(file, user.uid);
+                                            setMailingData({ ...mailingData, imageUrl: data.fileURL });
+                                            toast.success('Imagen cargada exitosamente', { id: loadingToast });
+                                        } catch (error) {
+                                            console.error('Error subiendo', error);
+                                            toast.error('Hubo un error al subir la imagen.', { id: loadingToast });
+                                        }
+                                    }}
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50"
                                 />
-                                <p className="text-xs text-slate-500 mt-1">Pega un enlace directo a una imagen. Aparecerá en el encabezado.</p>
+                                {uploadingImage && <p className="text-xs text-indigo-600 mt-2 font-bold animate-pulse">Subiendo foto al servidor...</p>}
+                                {mailingData.imageUrl && !uploadingImage && (
+                                    <div className="mt-2 text-xs text-emerald-600 font-bold flex items-center gap-1">
+                                        <span>✓</span> Imagen subida con éxito y enlazada a la campaña.
+                                    </div>
+                                )}
                             </div>
 
                             <div>
