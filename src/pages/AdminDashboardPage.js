@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
@@ -228,7 +228,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         });
     };
 
-    const imageHandler = () => {
+    const imageHandler = useCallback(() => {
         const input = document.createElement('input');
         input.setAttribute('type', 'file');
         input.setAttribute('accept', 'image/*');
@@ -260,7 +260,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                 toast.error('No se pudo subir la imagen.', { id: loadingToast });
             }
         };
-    };
+    }, [user.uid]);
 
     const quillModules = useMemo(() => ({
         toolbar: {
@@ -275,7 +275,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                 image: imageHandler
             }
         }
-    }), []); // eslint-disable-next-line
+    }), [imageHandler]);
 
     const [searchTerm, setSearchTerm] = useState('');
 
