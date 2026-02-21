@@ -672,6 +672,22 @@ exports.sendAdminTestEmail = onCall(
       throw new functions.https.HttpsError('invalid-argument', 'El asunto, el mensaje y el correo de prueba son requeridos.');
     }
 
+    // Create a plain text fallback to improve deliverability and prevent spam
+    const textFallback = htmlBody.replace(/<[^>]+>/g, ' ');
+
+    // Wrap the React Quill output in standard email HTML tags
+    const fullHtmlEmail = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          ${htmlBody}
+      </body>
+      </html>
+    `;
+
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -679,7 +695,8 @@ exports.sendAdminTestEmail = onCall(
         from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
         to: testEmail,
         subject: `[PRUEBA] ${subject}`,
-        html: htmlBody
+        html: fullHtmlEmail,
+        text: textFallback
       });
 
       console.log(`Correo de prueba enviado a ${testEmail}`);
@@ -719,6 +736,20 @@ exports.sendAdminMassEmail = onCall(
       }
 
       const emailsToProcess = [];
+
+      const textFallback = htmlBody.replace(/<[^>]+>/g, ' ');
+      const fullHtmlEmail = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            ${htmlBody}
+        </body>
+        </html>
+      `;
+
       usersSnap.forEach(doc => {
         const data = doc.data();
         if (data.email) {
@@ -726,7 +757,8 @@ exports.sendAdminMassEmail = onCall(
             from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
             to: data.email,
             subject: subject,
-            html: htmlBody
+            html: fullHtmlEmail,
+            text: textFallback
           });
         }
       });
