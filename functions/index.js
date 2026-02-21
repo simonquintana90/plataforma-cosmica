@@ -679,7 +679,7 @@ const generateTemplatedEmailHtml = (subject, imageUrl, bodyText, buttonText, but
                     <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); max-width: 600px; margin: 0 auto;">
                         <tr>
                             <td align="center" style="padding: 30px 20px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
-                                <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/1000008587%20(1).png?alt=media&token=c41ac7ee-d142-4217-bcbf-4d37c9808381" alt="Plataforma Cósmica" height="40" style="display: block; margin: 0 auto;">
+                                <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" height="40" style="display: block; margin: 0 auto;">
                             </td>
                         </tr>
   `;
@@ -722,7 +722,8 @@ const generateTemplatedEmailHtml = (subject, imageUrl, bodyText, buttonText, but
                         </tr>
                         <tr>
                             <td align="center" style="padding: 24px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px;">
-                                <p style="margin: 0 0 8px 0;">Este correo fue enviado por Plataforma Cósmica.</p>
+                                <p style="margin: 0 0 8px 0;">Este correo fue enviado por Cósmica.</p>
+                                <p style="margin: 0 0 8px 0;"><a href="https://www.cosmicaweb.com" style="color: #64748b; text-decoration: underline;">www.cosmicaweb.com</a></p>
                                 <p style="margin: 0;">&copy; ${new Date().getFullYear()} Cósmica Web. Todos los derechos reservados.</p>
                             </td>
                         </tr>

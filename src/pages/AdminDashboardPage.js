@@ -565,7 +565,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: '#f8fafc', padding: '40px 20px' }}>
                                     <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', maxWidth: '600px', margin: '0 auto' }}>
                                         <div style={{ padding: '30px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                            <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/1000008587%20(1).png?alt=media&token=c41ac7ee-d142-4217-bcbf-4d37c9808381" alt="Logo" height="40" style={{ display: 'block', margin: '0 auto' }} />
+                                            <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" height="40" style={{ display: 'block', margin: '0 auto' }} />
                                         </div>
                                         {mailingData.imageUrl && (
                                             <div style={{ textAlign: 'center' }}>
@@ -588,7 +588,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                             )}
                                         </div>
                                         <div style={{ textAlign: 'center', padding: '24px', backgroundColor: '#f1f5f9', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
-                                            <p style={{ margin: '0 0 8px 0' }}>Este correo fue enviado por Plataforma Cósmica.</p>
+                                            <p style={{ margin: '0 0 8px 0' }}>Este correo fue enviado por Cósmica.</p>
+                                            <p style={{ margin: '0 0 8px 0' }}><a href="https://www.cosmicaweb.com" style={{ color: '#64748b', textDecoration: 'underline' }}>www.cosmicaweb.com</a></p>
                                             <p style={{ margin: '0' }}>&copy; {new Date().getFullYear()} Cósmica Web.</p>
                                         </div>
                                     </div>
