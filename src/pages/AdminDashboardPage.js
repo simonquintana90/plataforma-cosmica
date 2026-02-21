@@ -565,7 +565,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: '#f8fafc', padding: '40px 20px' }}>
                                     <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', maxWidth: '600px', margin: '0 auto' }}>
                                         <div style={{ padding: '30px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                            <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" height="40" style={{ display: 'block', margin: '0 auto' }} />
+                                            <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" style={{ display: 'block', margin: '0 auto', maxWidth: '200px', height: 'auto' }} />
                                         </div>
                                         {mailingData.imageUrl && (
                                             <div style={{ textAlign: 'center' }}>
@@ -581,7 +581,7 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                             </div>
                                             {mailingData.buttonText && mailingData.buttonUrl && (
                                                 <div style={{ textAlign: 'center' }}>
-                                                    <a href={mailingData.buttonUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', padding: '14px 28px', backgroundColor: '#4f46e5', color: '#ffffff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+                                                    <a href={mailingData.buttonUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', padding: '16px 32px', backgroundColor: '#2563eb', color: '#ffffff', textDecoration: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.4), 0 2px 4px -1px rgba(37, 99, 235, 0.2)' }}>
                                                         {mailingData.buttonText}
                                                     </a>
                                                 </div>

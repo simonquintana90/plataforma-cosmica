@@ -679,7 +679,7 @@ const generateTemplatedEmailHtml = (subject, imageUrl, bodyText, buttonText, but
                     <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); max-width: 600px; margin: 0 auto;">
                         <tr>
                             <td align="center" style="padding: 30px 20px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
-                                <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" height="40" style="display: block; margin: 0 auto;">
+                                <img src="https://assets-global.website-files.com/68026a0651df0f492c75ff17/680528ad858ac75ca9598b70_CO%CC%81SMICA_Logo_N.avif" alt="Cósmica" style="display: block; margin: 0 auto; max-width: 200px; height: auto;">
                             </td>
                         </tr>
   `;
@@ -708,7 +708,7 @@ const generateTemplatedEmailHtml = (subject, imageUrl, bodyText, buttonText, but
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                     <tr>
                                         <td align="center">
-                                            <a href="${buttonUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; text-align: center;">
+                                            <a href="${buttonUrl}" target="_blank" style="display: inline-block; padding: 16px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 16px; text-align: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.4), 0 2px 4px -1px rgba(37, 99, 235, 0.2);">
                                                 ${buttonText}
                                             </a>
                                         </td>
