@@ -660,6 +660,83 @@ exports.cleanupOldRequests = onSchedule("every 24 hours", async (event) => {
 
 // --- FUNCIONES DE MERCADOPAGO ELIMINADAS ---
 
+// --- FUNCIONES DE MERCADOPAGO ELIMINADAS ---
+
+const generateTemplatedEmailHtml = (subject, imageUrl, bodyText, buttonText, buttonUrl) => {
+  const formattedBody = bodyText.replace(/\n/g, '<br>');
+
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; line-height: 1.6; color: #334155; margin: 0; padding: 0; background-color: #f8fafc;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); max-width: 600px; margin: 0 auto;">
+                        <tr>
+                            <td align="center" style="padding: 30px 20px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
+                                <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/1000008587%20(1).png?alt=media&token=c41ac7ee-d142-4217-bcbf-4d37c9808381" alt="Plataforma Cósmica" height="40" style="display: block; margin: 0 auto;">
+                            </td>
+                        </tr>
+  `;
+
+  if (imageUrl) {
+    html += `
+                        <tr>
+                            <td align="center">
+                                <img src="${imageUrl}" alt="Campaña" style="display: block; width: 100%; max-width: 600px; height: auto;">
+                            </td>
+                        </tr>
+    `;
+  }
+
+  html += `
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h1 style="margin-top: 0; margin-bottom: 24px; font-size: 24px; font-weight: 700; color: #0f172a; text-align: center;">${subject}</h1>
+                                <div style="font-size: 16px; color: #334155; margin-bottom: 30px;">
+                                    ${formattedBody}
+                                </div>
+  `;
+
+  if (buttonText && buttonUrl) {
+    html += `
+                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                    <tr>
+                                        <td align="center">
+                                            <a href="${buttonUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; text-align: center;">
+                                                ${buttonText}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+    `;
+  }
+
+  html += `
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding: 24px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px;">
+                                <p style="margin: 0 0 8px 0;">Este correo fue enviado por Plataforma Cósmica.</p>
+                                <p style="margin: 0;">&copy; ${new Date().getFullYear()} Cósmica Web. Todos los derechos reservados.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+  `;
+
+  return html;
+};
+
 exports.sendAdminTestEmail = onCall(
   { secrets: ["RESEND_API_KEY"] },
   async (request) => {
@@ -667,26 +744,13 @@ exports.sendAdminTestEmail = onCall(
       throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para realizar esta acción.');
     }
 
-    const { subject, htmlBody, testEmail } = request.data;
-    if (!subject || !htmlBody || !testEmail) {
-      throw new functions.https.HttpsError('invalid-argument', 'El asunto, el mensaje y el correo de prueba son requeridos.');
+    const { subject, imageUrl, bodyText, buttonText, buttonUrl, testEmail } = request.data;
+    if (!subject || !bodyText || !testEmail) {
+      throw new functions.https.HttpsError('invalid-argument', 'El asunto, el texto y el correo de prueba son requeridos.');
     }
 
-    // Create a plain text fallback to improve deliverability and prevent spam
-    const textFallback = htmlBody.replace(/<[^>]+>/g, ' ');
-
-    // Wrap the React Quill output in standard email HTML tags
-    const fullHtmlEmail = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="utf-8">
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          ${htmlBody}
-      </body>
-      </html>
-    `;
+    const textFallback = bodyText;
+    const fullHtmlEmail = generateTemplatedEmailHtml(subject, imageUrl, bodyText, buttonText, buttonUrl);
 
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -715,9 +779,9 @@ exports.sendAdminMassEmail = onCall(
       throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para realizar esta acción.');
     }
 
-    const { subject, htmlBody, audience } = request.data;
-    if (!subject || !htmlBody) {
-      throw new functions.https.HttpsError('invalid-argument', 'El asunto y el mensaje son requeridos.');
+    const { subject, imageUrl, bodyText, buttonText, buttonUrl, audience, scheduledAt } = request.data;
+    if (!subject || !bodyText) {
+      throw new functions.https.HttpsError('invalid-argument', 'El asunto y el texto principal son requeridos.');
     }
 
     const db = getFirestore();
@@ -737,29 +801,25 @@ exports.sendAdminMassEmail = onCall(
 
       const emailsToProcess = [];
 
-      const textFallback = htmlBody.replace(/<[^>]+>/g, ' ');
-      const fullHtmlEmail = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            ${htmlBody}
-        </body>
-        </html>
-      `;
+      const textFallback = bodyText;
+      const fullHtmlEmail = generateTemplatedEmailHtml(subject, imageUrl, bodyText, buttonText, buttonUrl);
 
       usersSnap.forEach(doc => {
         const data = doc.data();
         if (data.email) {
-          emailsToProcess.push({
+          const payload = {
             from: "Plataforma Cósmica <notificaciones@send.cosmicaweb.com>",
             to: data.email,
             subject: subject,
             html: fullHtmlEmail,
             text: textFallback
-          });
+          };
+
+          if (scheduledAt) {
+            payload.scheduled_at = scheduledAt;
+          }
+
+          emailsToProcess.push(payload);
         }
       });
 

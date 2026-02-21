@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
 import Skeleton from '../components/Skeleton';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import moment from 'moment';
 
-const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getFunctions, httpsCallable }) => {
-    const quillRef = useRef(null);
+
+const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc }) => {
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
@@ -26,14 +26,32 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         active: true
     });
 
+    // Formulario Mailing Template
     const [mailingData, setMailingData] = useState({
         subject: '',
-        htmlBody: '',
+        imageUrl: '',
+        bodyText: '',
+        buttonText: '',
+        buttonUrl: '',
+        scheduledAt: '',
         audience: 'approved'
     });
     const [sendingMailing, setSendingMailing] = useState(false);
     const [testEmail, setTestEmail] = useState('');
     const [sendingTest, setSendingTest] = useState(false);
+
+    const resetMailingForm = () => {
+        setMailingData({
+            subject: '',
+            imageUrl: '',
+            bodyText: '',
+            buttonText: '',
+            buttonUrl: '',
+            scheduledAt: '',
+            audience: 'approved'
+        });
+        setTestEmail('');
+    };
 
     const pendingUsersCount = useMemo(() => users.filter(u => u.status === 'pending_approval').length, [users]);
     const pendingRequestsCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
@@ -182,18 +200,27 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
 
     const handleSendMailing = async (e) => {
         e.preventDefault();
-        if (!mailingData.subject || !mailingData.htmlBody) return toast.error("Asunto y mensaje son requeridos.");
+        if (!mailingData.subject || !mailingData.bodyText) return toast.error("Asunto y mensaje son requeridos.");
         if (!window.confirm(`¿Estás seguro de enviar esta campaña masiva a los usuarios: ${mailingData.audience}?`)) return;
 
         setSendingMailing(true);
         const sendAdminMassEmail = httpsCallable(getFunctions(), 'sendAdminMassEmail');
 
+        let payload = {
+            subject: mailingData.subject,
+            imageUrl: mailingData.imageUrl,
+            bodyText: mailingData.bodyText,
+            buttonText: mailingData.buttonText,
+            buttonUrl: mailingData.buttonUrl,
+            audience: mailingData.audience
+        };
+
+        if (mailingData.scheduledAt) {
+            payload.scheduledAt = new Date(mailingData.scheduledAt).toISOString();
+        }
+
         toast.promise(
-            sendAdminMassEmail({
-                subject: mailingData.subject,
-                htmlBody: mailingData.htmlBody,
-                audience: mailingData.audience
-            }),
+            sendAdminMassEmail(payload),
             {
                 loading: 'Procesando y enviando campaña masiva...',
                 success: (res) => res.data.message || `Campaña enviada a ${res.data.count} usuarios.`,
@@ -201,13 +228,13 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
             }
         ).finally(() => {
             setSendingMailing(false);
-            setMailingData({ subject: '', htmlBody: '', audience: 'approved' });
+            resetMailingForm();
         });
     };
 
     const handleSendTestEmail = async (e) => {
         e.preventDefault();
-        if (!mailingData.subject || !mailingData.htmlBody || !testEmail) return toast.error("Asunto, mensaje y correo de prueba son requeridos.");
+        if (!mailingData.subject || !mailingData.bodyText || !testEmail) return toast.error("Asunto, mensaje y correo de prueba son requeridos.");
 
         setSendingTest(true);
         const sendAdminTestEmail = httpsCallable(getFunctions(), 'sendAdminTestEmail');
@@ -215,7 +242,10 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
         toast.promise(
             sendAdminTestEmail({
                 subject: mailingData.subject,
-                htmlBody: mailingData.htmlBody,
+                imageUrl: mailingData.imageUrl,
+                bodyText: mailingData.bodyText,
+                buttonText: mailingData.buttonText,
+                buttonUrl: mailingData.buttonUrl,
                 testEmail: testEmail
             }),
             {
@@ -227,55 +257,6 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
             setSendingTest(false);
         });
     };
-
-    const imageHandler = useCallback(() => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.click();
-
-        input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
-
-            const loadingToast = toast.loading('Subiendo imagen a los servidores...');
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-
-                const functionUrl = 'https://us-central1-plataforma-cosmica.cloudfunctions.net/uploadFile';
-                const response = await fetch(`${functionUrl}?userId=${user.uid}`, {
-                    method: 'POST',
-                    body: formData,
-                });
-                if (!response.ok) throw new Error('Error al subir imagen');
-                const data = await response.json();
-
-                const quill = quillRef.current.getEditor();
-                const range = quill.getSelection(true);
-                quill.insertEmbed(range.index, 'image', data.fileURL);
-                toast.success('Imagen insertada correctamente', { id: loadingToast });
-            } catch (error) {
-                console.error('Upload failed', error);
-                toast.error('No se pudo subir la imagen.', { id: loadingToast });
-            }
-        };
-    }, [user.uid]);
-
-    const quillModules = useMemo(() => ({
-        toolbar: {
-            container: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                ['link', 'image'],
-                ['clean']
-            ],
-            handlers: {
-                image: imageHandler
-            }
-        }
-    }), [imageHandler]);
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -490,43 +471,110 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Asunto del Correo</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Título / Asunto Principal</label>
                                 <input
                                     type="text"
                                     placeholder="Ej: Nuevas actualizaciones en Cósmica"
-                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-bold text-slate-800"
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-800"
                                     value={mailingData.subject}
                                     onChange={e => setMailingData({ ...mailingData, subject: e.target.value })}
+                                    required
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Cuerpo del Mensaje</label>
-                                <p className="text-xs text-slate-500 mb-2">Para insertar imágenes, haz click en el icono de imagen en la barra y pega la URL de tu imagen.</p>
-                                <div className="bg-white border-slate-300 rounded-lg overflow-hidden">
-                                    <ReactQuill
-                                        ref={quillRef}
-                                        theme="snow"
-                                        value={mailingData.htmlBody}
-                                        onChange={content => setMailingData({ ...mailingData, htmlBody: content })}
-                                        style={{ height: '300px', marginBottom: '40px' }}
-                                        modules={quillModules}
+                                <label className="block text-sm font-bold text-slate-700 mb-1">URL de Imagen (Opcional)</label>
+                                <input
+                                    type="url"
+                                    placeholder="https://tudominio.com/imagen.jpg"
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    value={mailingData.imageUrl}
+                                    onChange={e => setMailingData({ ...mailingData, imageUrl: e.target.value })}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Pega un enlace directo a una imagen. Aparecerá en el encabezado.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Mensaje del Correo</label>
+                                <textarea
+                                    rows={6}
+                                    placeholder="Escribe el cuerpo del mensaje aquí..."
+                                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    value={mailingData.bodyText}
+                                    onChange={e => setMailingData({ ...mailingData, bodyText: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Texto del Botón (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej: Visitar Plataforma"
+                                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        value={mailingData.buttonText}
+                                        onChange={e => setMailingData({ ...mailingData, buttonText: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Enlace del Botón (Opcional)</label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://app.cosmicaweb.com"
+                                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        value={mailingData.buttonUrl}
+                                        onChange={e => setMailingData({ ...mailingData, buttonUrl: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            {/* PREVIEW BLOCK */}
-                            {mailingData.htmlBody && (
-                                <div className="mt-8 border-t border-slate-200 pt-6">
-                                    <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                        <span>👁️</span> Vista Previa del Correo
-                                    </h3>
-                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-inner">
-                                        <div className="bg-white rounded border border-slate-200 p-8 min-h-[200px]"
-                                            dangerouslySetInnerHTML={{ __html: mailingData.htmlBody }}
-                                        />
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">⌚ Programar Envío (Opcional)</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full md:w-1/2 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    value={mailingData.scheduledAt}
+                                    onChange={e => setMailingData({ ...mailingData, scheduledAt: e.target.value })}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Si dejas este campo vacío, la campaña se enviará inmediatamente. El envío programado funciona en horario local.</p>
+                            </div>
+
+                            {/* Preview block matching the backend HTML structure */}
+                            <div className="mt-8 border-t border-slate-200 pt-6">
+                                <label className="block text-sm font-bold text-slate-700 mb-2 border-b border-slate-100 pb-2">Vista Previa de la Plantilla</label>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: '#f8fafc', padding: '40px 20px' }}>
+                                    <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', maxWidth: '600px', margin: '0 auto' }}>
+                                        <div style={{ padding: '30px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+                                            <img src="https://firebasestorage.googleapis.com/v0/b/plataforma-cosmica.appspot.com/o/1000008587%20(1).png?alt=media&token=c41ac7ee-d142-4217-bcbf-4d37c9808381" alt="Logo" height="40" style={{ display: 'block', margin: '0 auto' }} />
+                                        </div>
+                                        {mailingData.imageUrl && (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <img src={mailingData.imageUrl} alt="Campaña" style={{ display: 'block', width: '100%', maxWidth: '600px', height: 'auto' }} />
+                                            </div>
+                                        )}
+                                        <div style={{ padding: '40px 30px' }}>
+                                            <h1 style={{ marginTop: '0', marginBottom: '24px', fontSize: '24px', fontWeight: '700', color: '#0f172a', textAlign: 'center' }}>
+                                                {mailingData.subject || "Aquí va tu asunto"}
+                                            </h1>
+                                            <div style={{ fontSize: '16px', color: '#334155', marginBottom: '30px', whiteSpace: 'pre-line' }}>
+                                                {mailingData.bodyText || "El texto principal de tu mensaje aparecerá en esta sección de lectura."}
+                                            </div>
+                                            {mailingData.buttonText && mailingData.buttonUrl && (
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <a href={mailingData.buttonUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', padding: '14px 28px', backgroundColor: '#4f46e5', color: '#ffffff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+                                                        {mailingData.buttonText}
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{ textAlign: 'center', padding: '24px', backgroundColor: '#f1f5f9', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
+                                            <p style={{ margin: '0 0 8px 0' }}>Este correo fue enviado por Plataforma Cósmica.</p>
+                                            <p style={{ margin: '0' }}>&copy; {new Date().getFullYear()} Cósmica Web.</p>
+                                        </div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
                             {/* PRE-SEND & TEST EMAIL BLOCK */}
                             <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center gap-6 justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6">
@@ -540,9 +588,8 @@ const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy,
                                         onChange={e => setTestEmail(e.target.value)}
                                     />
                                     <button
-                                        type="button"
                                         onClick={handleSendTestEmail}
-                                        disabled={sendingTest || !testEmail || !mailingData.htmlBody}
+                                        disabled={sendingTest || !testEmail || !mailingData.bodyText}
                                         className="w-full sm:w-auto bg-slate-800 text-white font-bold px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
                                     >
                                         {sendingTest ? 'Enviando...' : 'Enviar Prueba'}
