@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { StatusBadge, UserStatusBadge } from '../components/Badges';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import useFileUpload from '../hooks/useFileUpload';
+import Skeleton from '../components/Skeleton';
 
 
 const AdminDashboardPage = ({ user, auth, db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc }) => {
